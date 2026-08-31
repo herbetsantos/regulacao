@@ -22,3 +22,8 @@ Veja `INSTALL.md` para instalação e migrações.
 
 ### Aparência
 A versão 2.3 oferece temas Claro, Escuro, Alto contraste e Automático. A preferência fica vinculada à conta no `portal-saude-db` e é compartilhada com o Portal Saúde. Veja `AJUSTES_V2.3.md` e `migration_theme_v3.sql`.
+
+
+## Versão 2.4
+
+Consulte `AJUSTES_V2.4.md` para a substituição do imagotipo branco no cabeçalho.
