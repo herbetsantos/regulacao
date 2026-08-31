@@ -1,32 +1,39 @@
-// GET  /api/regulacao/pacientes?cpf=... ou ?q=nome  -> busca
-// POST /api/regulacao/pacientes                     -> cadastra
+// GET  /api/pacientes?cpf=... ou ?q=nome
+// POST /api/pacientes
 
 import { json, logAudit } from '../_utils.js';
 import { requireRegulacaoAccess, isValidCPF, onlyDigits } from '../_shared.js';
 
+function configError(err) {
+  return json({
+    error: 'O banco de dados da Regulação ainda não está pronto para pacientes. Verifique se o schema_regulacao.sql foi executado e se as unidades APS foram configuradas.',
+    detalhe: String(err?.message || ''),
+  }, 503);
+}
+
 export async function onRequestGet({ request, env }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
 
   const url = new URL(request.url);
   const cpf = onlyDigits(url.searchParams.get('cpf') || '');
   const q = (url.searchParams.get('q') || '').trim();
 
-  if (cpf) {
-    const paciente = await env.DB_REGULACAO.prepare(
-      'SELECT * FROM pacientes WHERE cpf = ?'
-    ).bind(cpf).first();
-    return json({ pacientes: paciente ? [paciente] : [] });
+  try {
+    if (cpf) {
+      const paciente = await env.DB_REGULACAO.prepare('SELECT * FROM pacientes WHERE cpf = ?').bind(cpf).first();
+      return json({ pacientes: paciente ? [paciente] : [] });
+    }
+    if (q) {
+      const { results } = await env.DB_REGULACAO.prepare(
+        'SELECT * FROM pacientes WHERE nome LIKE ? ORDER BY nome ASC LIMIT 25'
+      ).bind(`%${q}%`).all();
+      return json({ pacientes: results });
+    }
+    return json({ pacientes: [] });
+  } catch (err) {
+    return configError(err);
   }
-
-  if (q) {
-    const { results } = await env.DB_REGULACAO.prepare(
-      `SELECT * FROM pacientes WHERE nome LIKE ? ORDER BY nome ASC LIMIT 25`
-    ).bind(`%${q}%`).all();
-    return json({ pacientes: results });
-  }
-
-  return json({ pacientes: [] });
 }
 
 export async function onRequestPost({ request, env }) {
@@ -52,25 +59,25 @@ export async function onRequestPost({ request, env }) {
   if (!['F', 'M'].includes(sexo)) return json({ error: 'Sexo deve ser F ou M.' }, 400);
   if (!unidade_referencia_code) return json({ error: 'Unidade de referência é obrigatória.' }, 400);
 
-  // Confere que a unidade de referência existe e é mesmo uma unidade APS.
-  const unidade = await env.DB.prepare(
-    "SELECT code, tipo FROM unidades WHERE code = ? AND ativo = 1"
-  ).bind(unidade_referencia_code).first();
-  if (!unidade) return json({ error: 'Unidade de referência não encontrada.' }, 400);
-  if (unidade.tipo !== 'aps') {
-    return json({ error: 'A unidade de referência deve ser uma unidade de Atenção Primária.' }, 400);
+  try {
+    const unidade = await env.DB.prepare(
+      'SELECT code, tipo FROM unidades WHERE code = ? AND ativo = 1'
+    ).bind(unidade_referencia_code).first();
+    if (!unidade) return json({ error: 'Unidade de referência não encontrada.' }, 400);
+    if (unidade.tipo !== 'aps') return json({ error: 'A unidade de referência deve ser uma unidade de Atenção Primária.' }, 400);
+
+    const existente = await env.DB_REGULACAO.prepare('SELECT cpf FROM pacientes WHERE cpf = ?').bind(cpf).first();
+    if (existente) return json({ error: 'Já existe um paciente cadastrado com esse CPF.' }, 409);
+
+    await env.DB_REGULACAO.prepare(
+      `INSERT INTO pacientes (cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco).run();
+
+    await logAudit(env, user, 'create', 'paciente', cpf, { nome });
+    const paciente = await env.DB_REGULACAO.prepare('SELECT * FROM pacientes WHERE cpf = ?').bind(cpf).first();
+    return json({ paciente }, 201);
+  } catch (err) {
+    return configError(err);
   }
-
-  const existente = await env.DB_REGULACAO.prepare('SELECT cpf FROM pacientes WHERE cpf = ?').bind(cpf).first();
-  if (existente) return json({ error: 'Já existe um paciente cadastrado com esse CPF.' }, 409);
-
-  await env.DB_REGULACAO.prepare(
-    `INSERT INTO pacientes (cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco).run();
-
-  await logAudit(env, user, 'create', 'paciente', cpf, { nome });
-
-  const paciente = await env.DB_REGULACAO.prepare('SELECT * FROM pacientes WHERE cpf = ?').bind(cpf).first();
-  return json({ paciente }, 201);
 }

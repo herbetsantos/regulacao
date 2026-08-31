@@ -40,8 +40,8 @@ que é pré-requisito deste.
    Hoje ambos apontam para `https://apoioapscajamar.pages.dev` — troque se
    o domínio do portal mudar.
 
-6. **Crie o projeto no Cloudflare Pages** (nome sugerido:
-   `regulacao-vagas-cajamar` — é o que já está em `wrangler.toml`) e
+6. **Crie o projeto no Cloudflare Pages** (nome do projeto:
+   `emulti` — correspondente a `https://emulti.pages.dev`) e
    publique.
 
 7. **Volte no patch do portal** e complete a allowlist (`login.html`,
@@ -91,3 +91,29 @@ si (classificação `aps`/`outra`) — isso continua no banco do portal.
 - As páginas `paciente.html` e `guia-nova.html` cobrem o cadastro básico;
   não há, por exemplo, edição em massa ou histórico visual do paciente
   além da lista simples de guias.
+
+## Revisão 2.1 — menu lateral, equipe única e Links úteis
+
+Para esta revisão, rode também no banco **portal-saude-db**:
+
+```bash
+wrangler d1 execute portal-saude-db --remote --file=./migration_regulacao_v2_portal.sql
+```
+
+Essa migração faz duas coisas:
+
+1. aplica a regra funcional de **um profissional = uma única equipe eMulti**;
+2. cria a tabela `regulacao_link_icons`, usada somente para guardar o ícone que o administrador escolhe para cada link já cadastrado no Portal Saúde.
+
+Os links não são duplicados no módulo eMulti: a tela **Links úteis** continua lendo a tabela `links` do Portal. Assim, alterações de título, URL, descrição ou ordem feitas no Portal aparecem automaticamente aqui.
+
+### Se o cadastro de pacientes/guias não funcionar
+
+Abra **Administração > Diagnóstico da configuração** no módulo eMulti. A tela verifica os pontos que normalmente bloqueiam o fluxo:
+
+- `schema_regulacao.sql` não executado no banco `regulacao-vagas-db`;
+- nenhuma unidade classificada com `tipo = 'aps'` no banco do Portal;
+- equipes sem unidades ou profissionais vinculados;
+- usuário comum sem vínculo em `regulacao_user_unidades` com `pode_emitir = 1`.
+
+Administradores podem emitir por qualquer unidade; usuários comuns só podem criar guia pelas unidades explicitamente configuradas para emissão.

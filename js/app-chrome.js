@@ -1,69 +1,100 @@
-// Chrome de página (topbar) deste projeto — independente do portal, mas
-// reaproveitando a mesma identidade visual (css/style.css copiado do
-// portal) e a mesma sessão (via handoff, ver functions/_middleware.js).
-//
-// EDITE a constante PORTAL_URL abaixo com o domínio real do portal antes do
-// deploy em produção.
-const PORTAL_URL = 'https://apoioapscajamar.pages.dev'; // TODO: ajustar se mudar de domínio
+// Estrutura visual do módulo eMulti / Regulação de Vagas.
+// O login continua pertencendo ao Portal Saúde Cajamar; este projeto recebe
+// uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
-const TOPBAR_HTML = `
-<header class="topbar">
-  <div class="topbar__inner">
-    <div class="topbar__left">
-      <button class="hamburger-btn" id="hamburgerBtn" type="button" aria-label="Abrir menu" aria-expanded="false">
-        <span class="hamburger-icon"></span>
-      </button>
-      <a class="brand" href="/"><img src="/assets/imagotipo.png" alt="Prefeitura de Cajamar — Saúde"></a>
-      <nav class="nav" id="mainNav">
-        <div class="nav__item">
-          <a class="nav__link" href="/"><span class="label-text">FILA DE GUIAS</span></a>
-        </div>
-        <div class="nav__item">
-          <a class="nav__link" href="/paciente.html"><span class="label-text">PACIENTES</span></a>
-        </div>
-        <div class="nav__item">
-          <a class="nav__link" href="/guia-nova.html"><span class="label-text">+ NOVA GUIA</span></a>
-        </div>
-        <div class="nav__item" id="navAdminItem" style="display:none">
-          <a class="nav__link" href="/admin.html"><span class="label-text">ADMINISTRAÇÃO</span></a>
-        </div>
-        <div class="nav__item">
-          <a class="nav__link" href="${PORTAL_URL}/portal.html"><span class="label-text">← VOLTAR AO PORTAL</span></a>
-        </div>
-        <div class="nav__mobile-foot">
-          <div class="user-chip" id="userChipMobile"></div>
-          <button class="btn btn--outline btn--sm" id="logoutBtnMobile" type="button">Sair</button>
-        </div>
-      </nav>
-    </div>
-    <div class="topbar__right">
-      <button class="bell-btn" id="bellBtn" type="button" aria-label="Notificações" title="Notificações">
-        🔔<span class="bell-badge" id="bellBadge" style="display:none">0</span>
-      </button>
-      <div class="bell-panel" id="bellPanel" style="display:none">
-        <div class="bell-panel__head">Notificações</div>
-        <div class="bell-panel__list" id="bellList"><div class="empty-state">Nenhuma notificação.</div></div>
-      </div>
-      <div class="user-chip" id="userChip"></div>
-      <button class="btn btn--ghost-light btn--sm" id="logoutBtn" type="button">Sair</button>
-    </div>
-  </div>
-</header>
-<style>
-  .bell-btn { position:relative; background:none; border:none; font-size:20px; cursor:pointer; padding:6px 8px; }
-  .bell-badge { position:absolute; top:0; right:0; background:#c0392b; color:#fff; border-radius:999px; font-size:10px; padding:1px 5px; font-weight:700; }
-  .bell-panel { position:absolute; top:56px; right:16px; width:320px; max-height:400px; overflow-y:auto; background:#fff; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.18); z-index:50; }
-  .bell-panel__head { padding:12px 16px; font-weight:700; border-bottom:1px solid #eee; }
-  .bell-panel__list { padding:6px; }
-  .bell-item { padding:10px 12px; border-radius:8px; font-size:13px; line-height:1.4; cursor:pointer; }
-  .bell-item:hover { background:#f5f7fa; }
-  .bell-item__time { color:#888; font-size:11px; margin-top:2px; }
-</style>`;
+const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
 
-function renderTopbar() {
+const ICONS = {
+  queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 4h10M7 12h10M7 16h6"/></svg>',
+  patients: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  newguide: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M12 11v6M9 14h6"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+  admin: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M9 12l2 2 4-4"/></svg>',
+  portal: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7M5 10v10h14V10M9 20v-6h6v6"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>',
+  key: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14 9l3 3"/></svg>',
+  links: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+  info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+  logout: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg>',
+  document: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg>',
+  book: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13Z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>',
+  tools: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5-5L12 3.6 9.6 6 7.3 3.7a4 4 0 0 0 5 5l-7.6 7.6a2.1 2.1 0 1 0 3 3l7.6-7.6a4 4 0 0 0 5-5L18 9l-2.4-2.4 2.3-2.3a4 4 0 0 0-3.2 2Z"/></svg>',
+  calendar: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  message: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"/></svg>',
+  hospital: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16M9 21v-5h6v5M9 8h6M12 5v6"/></svg>',
+  chart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
+  external: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h7v7M10 14 21 3M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6"/></svg>',
+};
+
+function appIconSvg(name) {
+  return ICONS[name] || ICONS.links;
+}
+window.appIconSvg = appIconSvg;
+window.APP_ICON_KEYS = ['links', 'document', 'book', 'tools', 'calendar', 'message', 'hospital', 'chart', 'patients', 'queue', 'info', 'external'];
+window.PORTAL_URL = PORTAL_URL;
+
+function renderChrome() {
   const mount = document.getElementById('app-topbar');
   if (!mount) return;
-  mount.innerHTML = TOPBAR_HTML;
+
+  mount.innerHTML = `
+    <header class="topbar app-topbar">
+      <div class="topbar__inner app-topbar__inner">
+        <a class="brand app-brand" href="/" aria-label="Página inicial da Regulação">
+          <img src="/assets/imagotipo.png" alt="Prefeitura de Cajamar">
+        </a>
+        <div class="account-wrap">
+          <button class="account-button" id="accountButton" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="account-button__identity">
+              <strong id="accountName">Carregando…</strong>
+              <small id="accountTeam">eMulti</small>
+            </span>
+            <span class="account-button__chevron">⌄</span>
+          </button>
+          <div class="account-menu" id="accountMenu" hidden>
+            <a href="/minha-conta.html">${appIconSvg('key')}<span>Alterar senha</span></a>
+            <a href="/links-uteis.html">${appIconSvg('links')}<span>Links úteis</span></a>
+            <a href="/sobre.html">${appIconSvg('info')}<span>Sobre</span></a>
+            <div class="account-menu__divider"></div>
+            <button type="button" id="logoutBtn">${appIconSvg('logout')}<span>Sair</span></button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <aside class="side-nav" id="sideNav" aria-label="Menu principal">
+      <div class="side-nav__items">
+        <a class="side-nav__item" data-path="/" href="/" title="Fila de guias">
+          <span class="side-nav__icon">${appIconSvg('queue')}</span><span class="side-nav__label">Fila de guias</span>
+        </a>
+        <a class="side-nav__item" data-path="/paciente.html" href="/paciente.html" title="Pacientes">
+          <span class="side-nav__icon">${appIconSvg('patients')}</span><span class="side-nav__label">Pacientes</span>
+        </a>
+        <a class="side-nav__item" data-path="/guia-nova.html" href="/guia-nova.html" title="Nova guia">
+          <span class="side-nav__icon">${appIconSvg('newguide')}</span><span class="side-nav__label">Nova guia</span>
+        </a>
+        <button class="side-nav__item side-nav__button" id="bellBtn" type="button" title="Notificações">
+          <span class="side-nav__icon">${appIconSvg('bell')}<span class="side-nav__badge" id="bellBadge" hidden>0</span></span>
+          <span class="side-nav__label">Notificações</span>
+        </button>
+        <a class="side-nav__item" id="navAdminItem" data-path="/admin.html" href="/admin.html" title="Administração" hidden>
+          <span class="side-nav__icon">${appIconSvg('admin')}</span><span class="side-nav__label">Administração</span>
+        </a>
+      </div>
+      <div class="side-nav__bottom">
+        <a class="side-nav__item" href="${PORTAL_URL}/portal.html" title="Voltar ao Portal Saúde">
+          <span class="side-nav__icon">${appIconSvg('portal')}</span><span class="side-nav__label">Portal Saúde</span>
+        </a>
+      </div>
+    </aside>
+
+    <div class="bell-panel" id="bellPanel" hidden>
+      <div class="bell-panel__head">
+        <strong>Notificações</strong>
+        <button type="button" id="bellClose" aria-label="Fechar">×</button>
+      </div>
+      <div class="bell-panel__list" id="bellList"><div class="empty-state">Nenhuma notificação.</div></div>
+    </div>`;
 }
 
 function setFavicon(url) {
@@ -76,10 +107,6 @@ function setFavicon(url) {
   link.href = url;
 }
 
-// Confere a sessão chamando o /api/me DESTE projeto (que valida o mesmo
-// cookie/tabela sessions do portal, via env.DB compartilhado). Se não
-// estiver logado, manda pro login do PORTAL (não existe login.html aqui),
-// com next= apontando de volta pra esta página.
 async function requireLogin() {
   try {
     const res = await fetch('/api/me', { credentials: 'same-origin' });
@@ -96,64 +123,68 @@ async function requireLogin() {
   }
 }
 
-function initials(name) {
-  return (name || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() || '').join('');
-}
-
-function renderTopbarUser(user) {
-  const chipHtml = `<span class="user-chip__avatar">${initials(user.name)}</span><span>${user.name}</span>`;
-  const chip = document.getElementById('userChip');
-  if (chip) chip.innerHTML = chipHtml;
-  const chipMobile = document.getElementById('userChipMobile');
-  if (chipMobile) chipMobile.innerHTML = chipHtml;
+function renderUser(user) {
+  const nameEl = document.getElementById('accountName');
+  const teamEl = document.getElementById('accountTeam');
+  if (nameEl) nameEl.textContent = user.name || user.username || 'Usuário';
+  if (teamEl) {
+    if (user.equipe?.nome) teamEl.textContent = user.equipe.nome;
+    else if (user.role === 'admin' || user.role === 'super_admin') teamEl.textContent = 'Administração';
+    else teamEl.textContent = 'Sem equipe vinculada';
+  }
 
   if (user.role === 'admin' || user.role === 'super_admin') {
     const adminItem = document.getElementById('navAdminItem');
-    if (adminItem) adminItem.style.display = '';
+    if (adminItem) adminItem.hidden = false;
   }
 }
 
-function setupLogout() {
-  const doLogout = async () => {
-    // O endpoint de logout também vive só no portal (apaga a sessão
-    // compartilhada) — chamamos via URL absoluta.
-    await fetch(`${PORTAL_URL}/api/logout`, { method: 'POST', credentials: 'include' });
-    window.location.href = `${PORTAL_URL}/login.html`;
-  };
-  const btn = document.getElementById('logoutBtn');
-  if (btn) btn.addEventListener('click', doLogout);
-  const btnMobile = document.getElementById('logoutBtnMobile');
-  if (btnMobile) btnMobile.addEventListener('click', doLogout);
-}
+function setupAccountMenu() {
+  const button = document.getElementById('accountButton');
+  const menu = document.getElementById('accountMenu');
+  if (!button || !menu) return;
 
-function setupMobileNav() {
-  const hamburger = document.getElementById('hamburgerBtn');
-  const nav = document.getElementById('mainNav');
-  if (!hamburger || !nav) return;
-  const closeNav = () => {
-    nav.classList.remove('is-mobile-open');
-    hamburger.classList.remove('is-open');
-    hamburger.setAttribute('aria-expanded', 'false');
+  const close = () => {
+    menu.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
   };
-  hamburger.addEventListener('click', (e) => {
+  button.addEventListener('click', (e) => {
     e.stopPropagation();
-    const willOpen = !nav.classList.contains('is-mobile-open');
-    nav.classList.toggle('is-mobile-open', willOpen);
-    hamburger.classList.toggle('is-open', willOpen);
-    hamburger.setAttribute('aria-expanded', String(willOpen));
+    menu.hidden = !menu.hidden;
+    button.setAttribute('aria-expanded', String(!menu.hidden));
   });
-  nav.addEventListener('click', (e) => { if (e.target.closest('a.nav__link')) closeNav(); });
-  document.addEventListener('click', (e) => { if (!nav.contains(e.target) && e.target !== hamburger) closeNav(); });
+  menu.addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', close);
 }
 
-// --- Notificações (sininho) ---
-// Busca as não lidas ao carregar e a cada 60s. Clicar numa notificação
-// chama POST /api/notificacoes/:id/marcar-lida (único endpoint que existe
-// pra isso — sem corpo, sem PATCH) e, se a notificação tiver guia_id, leva
-// direto pra guia.
+function setupActiveNav() {
+  const path = window.location.pathname || '/';
+  document.querySelectorAll('.side-nav__item[data-path]').forEach((el) => {
+    const target = el.dataset.path;
+    const active = target === '/' ? path === '/' || path === '/index.html' : path === target;
+    el.classList.toggle('is-active', active);
+  });
+}
+
+function setupLogout() {
+  const btn = document.getElementById('logoutBtn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    // A sessão deste domínio é host-only; limpar o Portal também encerra a
+    // sessão principal. Se a chamada cross-origin falhar, o usuário volta ao
+    // login e o módulo deixa de reutilizar a sessão atual no próximo handoff.
+    try {
+      await fetch('/api/logout-local', { method: 'POST', credentials: 'same-origin' });
+    } catch { /* continua para o portal */ }
+    window.location.href = `${PORTAL_URL}/login.html`;
+  });
+}
+
 function timeAgo(iso) {
-  const diffMs = Date.now() - new Date(iso.replace(' ', 'T') + 'Z').getTime();
-  const min = Math.floor(diffMs / 60000);
+  if (!iso) return '';
+  const normalized = iso.includes('T') ? iso : iso.replace(' ', 'T') + 'Z';
+  const diffMs = Date.now() - new Date(normalized).getTime();
+  const min = Math.max(0, Math.floor(diffMs / 60000));
   if (min < 1) return 'agora';
   if (min < 60) return `há ${min} min`;
   const h = Math.floor(min / 60);
@@ -165,70 +196,66 @@ async function carregarNotificacoes() {
   try {
     const res = await fetch('/api/notificacoes', { credentials: 'same-origin' });
     if (!res.ok) return;
-    const { notificacoes } = await res.json();
-
+    const { notificacoes = [] } = await res.json();
     const badge = document.getElementById('bellBadge');
     const list = document.getElementById('bellList');
     if (!badge || !list) return;
 
-    if (notificacoes.length === 0) {
-      badge.style.display = 'none';
-      list.innerHTML = '<div class="empty-state">Nenhuma notificação.</div>';
-      return;
-    }
-
-    badge.style.display = '';
+    badge.hidden = notificacoes.length === 0;
     badge.textContent = notificacoes.length > 9 ? '9+' : String(notificacoes.length);
-    list.innerHTML = notificacoes.map((n) => `
-      <div class="bell-item" data-id="${n.id}" data-guia-id="${n.guia_id || ''}">
-        <div>${escapeHtml(n.mensagem)}</div>
-        <div class="bell-item__time">${timeAgo(n.created_at)}</div>
-      </div>
-    `).join('');
+
+    list.innerHTML = notificacoes.length ? notificacoes.map((n) => `
+      <button class="bell-item" type="button" data-id="${n.id}" data-guia-id="${n.guia_id || ''}">
+        <span>${escapeHtml(n.mensagem)}</span>
+        <small>${timeAgo(n.created_at)}</small>
+      </button>`).join('') : '<div class="empty-state">Nenhuma notificação.</div>';
 
     list.querySelectorAll('.bell-item').forEach((el) => {
       el.addEventListener('click', async () => {
-        await fetch(`/api/notificacoes/${el.dataset.id}/marcar-lida`, {
-          method: 'POST',
-          credentials: 'same-origin',
-        });
+        await fetch(`/api/notificacoes/${el.dataset.id}/marcar-lida`, { method: 'POST', credentials: 'same-origin' });
         if (el.dataset.guiaId) window.location.href = `/guia-detalhe.html?id=${el.dataset.guiaId}`;
         else carregarNotificacoes();
       });
     });
-  } catch { /* falha silenciosa — não trava a página por causa do sininho */ }
+  } catch { /* notificação não pode bloquear a página */ }
 }
 
 function setupNotificacoes() {
-  const bellBtn = document.getElementById('bellBtn');
+  const btn = document.getElementById('bellBtn');
   const panel = document.getElementById('bellPanel');
-  if (!bellBtn || !panel) return;
+  const closeBtn = document.getElementById('bellClose');
+  if (!btn || !panel) return;
 
-  bellBtn.addEventListener('click', (e) => {
+  const close = () => { panel.hidden = true; };
+  btn.addEventListener('click', (e) => {
     e.stopPropagation();
-    panel.style.display = panel.style.display === 'none' ? '' : 'none';
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) carregarNotificacoes();
   });
-  document.addEventListener('click', (e) => {
-    if (!panel.contains(e.target) && e.target !== bellBtn) panel.style.display = 'none';
-  });
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  panel.addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', close);
 
   carregarNotificacoes();
   setInterval(carregarNotificacoes, 60000);
 }
 
 function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 function escapeAttr(str) { return escapeHtml(str); }
 
 async function initPortalChrome() {
   setFavicon('/assets/favicon.png');
-  renderTopbar();
+  renderChrome();
+  setupAccountMenu();
+  setupActiveNav();
+
   const user = await requireLogin();
   if (!user) return null;
-  renderTopbarUser(user);
+
+  renderUser(user);
   setupLogout();
-  setupMobileNav();
   setupNotificacoes();
   return user;
 }
