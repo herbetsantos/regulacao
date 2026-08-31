@@ -18,4 +18,4 @@ database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
 [[d1_databases]]
 binding = "DB_REGULACAO"
 database_name = "regulacao-vagas-db"
-database_id = "SUBSTITUA-PELO-ID-RETORNADO-POR-WRANGLER-D1-CREATE"
+database_id = "1a40262a-3005-4b06-9fb7-2f04ebda9246"
