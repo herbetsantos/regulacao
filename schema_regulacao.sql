@@ -1,0 +1,186 @@
+-- Regulação de Vagas — Cajamar Saúde
+-- Banco D1 DEDICADO a este projeto (conteúdo clínico: pacientes, guias,
+-- acompanhamentos). O login, as unidades e as equipes multidisciplinares
+-- vivem no banco do Portal (portal-saude-db) — ver
+-- migration_regulacao_setup.sql nesse outro repositório.
+--
+-- Criar o banco:
+--   wrangler d1 create regulacao-vagas-db
+-- Rodar este schema:
+--   wrangler d1 execute regulacao-vagas-db --remote --file=./schema_regulacao.sql
+--
+-- Este módulo referencia códigos de unidade (ex.: 'jordanesia'), ids de
+-- equipe (ex.: 1 = 'Estratégia 1') e ids de usuário (ex.: 42) que vivem no
+-- OUTRO banco (portal-saude-db). Como D1 não permite foreign key entre
+-- bancos diferentes, esses campos são guardados como texto/inteiro
+-- "soltos" (sem FK) — a validação de que o código/id existe de fato é
+-- feita na camada de API, não pelo SQLite.
+
+DROP TABLE IF EXISTS notificacao_lidas;
+DROP TABLE IF EXISTS notificacoes;
+DROP TABLE IF EXISTS acompanhamento_sessoes;
+DROP TABLE IF EXISTS acompanhamento_guias;
+DROP TABLE IF EXISTS acompanhamentos;
+DROP TABLE IF EXISTS guias;
+DROP TABLE IF EXISTS pacientes;
+DROP TABLE IF EXISTS especialidades;
+
+-- Especialidades atendidas pela regulação. Começa com as 4 pedidas; novas
+-- podem ser cadastradas depois via POST /api/especialidades, sem precisar
+-- mexer em código.
+CREATE TABLE especialidades (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nome TEXT NOT NULL UNIQUE,
+  ativo INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+INSERT INTO especialidades (nome, sort_order) VALUES
+  ('Fisioterapia', 1),
+  ('Nutrição', 2),
+  ('Psicologia', 3),
+  ('Fonoaudiologia', 4);
+
+-- Cadastro de pacientes. CPF como chave primária (só dígitos, sem
+-- pontuação — a formatação fica por conta do front-end).
+CREATE TABLE pacientes (
+  cpf TEXT PRIMARY KEY,
+  nome TEXT NOT NULL,
+  data_nascimento TEXT NOT NULL,               -- YYYY-MM-DD
+  sexo TEXT NOT NULL CHECK (sexo IN ('F','M')),
+  tel1 TEXT,
+  tel2 TEXT,
+  tel3 TEXT,
+  -- Código da unidade de referência (APS) do paciente. Corresponde a
+  -- unidades.code no banco do portal (não há FK entre bancos — ver acima).
+  unidade_referencia_code TEXT NOT NULL,
+  endereco TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Guias de encaminhamento.
+CREATE TABLE guias (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cpf TEXT NOT NULL,                            -- FK "lógica" -> pacientes.cpf
+  unidade_solicitante_code TEXT NOT NULL,       -- qualquer unidade (não só APS)
+  medico_solicitante TEXT NOT NULL,
+  especialidade_id INTEGER NOT NULL,
+  -- Unidade de Atenção Primária onde a guia será executada. Só unidades
+  -- tipo='aps' podem aparecer aqui (CER II, Policlínica, CAPS e CAPS IJ só
+  -- emitem guias, não executam, por enquanto) — validado na API, não pelo
+  -- SQLite (unidades vive no outro banco). Fica NULL enquanto a guia ainda
+  -- não foi triada.
+  unidade_executante_code TEXT,
+  -- Equipe multidisciplinar responsável pela triagem/execução (referência
+  -- solta a regulacao_equipes.id, no banco do portal). Preenchida junto com
+  -- unidade_executante_code no momento da triagem.
+  equipe_id INTEGER,
+  motivo TEXT NOT NULL,
+  cid10 TEXT,
+  situacao TEXT NOT NULL DEFAULT 'aguardando_autorizacao'
+    CHECK (situacao IN (
+      'aguardando_autorizacao',  -- Aguardando autorização
+      'lista_espera',            -- Em lista de espera
+      'em_atendimento',          -- Em atendimento
+      'concluido',               -- Concluído
+      'negado'                   -- Negado
+    )),
+  created_by INTEGER,                           -- id do usuário (banco do portal), sem FK
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (cpf) REFERENCES pacientes(cpf) ON DELETE RESTRICT,
+  FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
+);
+CREATE INDEX idx_guias_cpf ON guias(cpf);
+CREATE INDEX idx_guias_situacao ON guias(situacao);
+CREATE INDEX idx_guias_unidade_executante ON guias(unidade_executante_code);
+CREATE INDEX idx_guias_equipe ON guias(equipe_id);
+CREATE INDEX idx_guias_especialidade ON guias(especialidade_id);
+
+-- Acompanhamentos: agrupam 1 guia (atendimento individual) ou 2+ guias
+-- (atendimento em grupo) sob uma mesma agenda/sessões. Um grupo PODE
+-- combinar guias que originalmente tinham unidades executantes diferentes
+-- (a critério do profissional, ao juntar demanda parecida de mais de uma
+-- unidade da mesma equipe) — por isso a "unidade executante" e o "local de
+-- execução" vivem aqui no acompanhamento, não obrigatoriamente repetindo o
+-- que cada guia tinha antes de entrar no grupo.
+CREATE TABLE acompanhamentos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tipo TEXT NOT NULL CHECK (tipo IN ('individual','grupo')),
+  especialidade_id INTEGER NOT NULL,
+  -- Equipe responsável (referência solta a regulacao_equipes.id, banco do
+  -- portal) — sempre obrigatória: quem inicia um acompanhamento faz isso
+  -- como profissional de uma equipe.
+  equipe_id INTEGER NOT NULL,
+  -- Unidade de Atenção Primária de referência deste acompanhamento (uma
+  -- das unidades cobertas pela equipe acima). Continua obrigatória mesmo
+  -- quando o atendimento acontece fisicamente em outro lugar (ver
+  -- local_execucao) — é o vínculo administrativo/estatístico.
+  unidade_executante_code TEXT NOT NULL,
+  -- Local físico do atendimento, quando DIFERENTE da unidade de saúde
+  -- acima (ex.: escola, quadra, outro espaço público). Opcional — quando
+  -- NULL, entende-se que o atendimento acontece na própria unidade.
+  local_execucao TEXT,
+  created_by INTEGER,
+  created_at TEXT DEFAULT (datetime('now')),
+  encerrado_em TEXT,
+  FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
+);
+CREATE INDEX idx_acompanhamentos_equipe ON acompanhamentos(equipe_id);
+
+-- Vínculo N:N entre acompanhamento e guias. 1 linha = individual.
+-- 2+ linhas (guias diferentes) = grupo.
+CREATE TABLE acompanhamento_guias (
+  acompanhamento_id INTEGER NOT NULL,
+  guia_id INTEGER NOT NULL,
+  PRIMARY KEY (acompanhamento_id, guia_id),
+  FOREIGN KEY (acompanhamento_id) REFERENCES acompanhamentos(id) ON DELETE CASCADE,
+  FOREIGN KEY (guia_id) REFERENCES guias(id) ON DELETE RESTRICT
+);
+CREATE INDEX idx_acomp_guias_guia ON acompanhamento_guias(guia_id);
+
+-- Sessões/atividades executadas dentro de um acompanhamento. Cada sessão
+-- tem sua própria data, horário e evolução (nota clínica em texto) — para
+-- atendimento em grupo, a evolução pode ser geral da sessão e/ou por
+-- paciente via presentes (JSON com os guia_id presentes naquela sessão).
+CREATE TABLE acompanhamento_sessoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  acompanhamento_id INTEGER NOT NULL,
+  data_sessao TEXT NOT NULL,     -- YYYY-MM-DD
+  horario TEXT NOT NULL,         -- HH:MM
+  presentes TEXT,                -- JSON com lista de guia_id presentes (grupo); NULL = todos
+  evolucao TEXT NOT NULL,
+  created_by INTEGER,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (acompanhamento_id) REFERENCES acompanhamentos(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_sessoes_acompanhamento ON acompanhamento_sessoes(acompanhamento_id);
+
+-- Notificações dirigidas a uma EQUIPE (referência solta a
+-- regulacao_equipes.id, banco do portal) — hoje usada só para avisar sobre
+-- transferência de guia entre equipes (ex.: paciente mudou de endereço e a
+-- guia foi redirecionada para outra equipe de regulação). guia_id é FK de
+-- verdade porque guias vive neste mesmo banco.
+CREATE TABLE notificacoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  equipe_id INTEGER NOT NULL,
+  guia_id INTEGER NOT NULL,
+  tipo TEXT NOT NULL DEFAULT 'transferencia',
+  mensagem TEXT NOT NULL,
+  created_by INTEGER,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (guia_id) REFERENCES guias(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_notificacoes_equipe ON notificacoes(equipe_id);
+
+-- Controle de leitura POR USUÁRIO (cada profissional da equipe marca como
+-- lida individualmente — não é uma leitura "da equipe toda").
+CREATE TABLE notificacao_lidas (
+  notificacao_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  lida_em TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (notificacao_id, user_id),
+  FOREIGN KEY (notificacao_id) REFERENCES notificacoes(id) ON DELETE CASCADE
+);

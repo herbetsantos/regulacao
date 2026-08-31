@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Administração — Regulação de Vagas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .adm-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:900px) { .adm-grid { grid-template-columns:1fr; } }
+  .adm-card { background:#f5f7fa; border-radius:10px; padding:16px 18px; margin-bottom:14px; }
+  .adm-card__head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .adm-card__title { font-weight:700; font-size:15px; }
+  .adm-tag { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #ddd; border-radius:999px; padding:3px 10px 3px 12px; font-size:12px; margin:3px 6px 3px 0; }
+  .adm-tag button { background:none; border:none; color:#c0392b; cursor:pointer; font-size:14px; line-height:1; padding:0; }
+  .field { margin-bottom:12px; }
+  .inline-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+  .inline-row .field { margin-bottom:0; min-width:160px; flex:1; }
+  table.adm-table { width:100%; font-size:13px; }
+  table.adm-table th, table.adm-table td { padding:6px 8px; text-align:left; border-bottom:1px solid #eee; }
+</style>
+</head>
+<body>
+
+<div id="app-topbar"></div>
+
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">Regulação de Vagas</div>
+    <h1 class="page__title">Administração</h1>
+    <p class="page__subtitle">Equipes multidisciplinares, agentes operacionais e especialidades. Só administradores acessam esta página.</p>
+  </div>
+
+  <div id="accessDenied" class="empty-state" style="display:none">Você não tem permissão para acessar esta página.</div>
+
+  <div id="adminContent" style="display:none">
+
+    <!-- EQUIPES -->
+    <div class="panel-section">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Equipes multidisciplinares</div>
+        <div class="panel-section__desc">Cada equipe cobre uma ou mais unidades de Atenção Primária e agrupa profissionais de várias especialidades.</div>
+      </div>
+
+      <div class="inline-row" style="margin-bottom:16px">
+        <div class="field">
+          <label for="novaEquipeNome">Nova equipe</label>
+          <input type="text" id="novaEquipeNome" placeholder="Ex.: Complementar 4">
+        </div>
+        <button class="btn btn--accent btn--sm" type="button" id="btnCriarEquipe">Criar equipe</button>
+      </div>
+      <span class="form-msg" id="equipeMsg"></span>
+
+      <div id="equipesList"></div>
+    </div>
+
+    <!-- AGENTES OPERACIONAIS -->
+    <div class="panel-section">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Agentes operacionais</div>
+        <div class="panel-section__desc">Quem pode emitir guia (unidade solicitante) e/ou executar diretamente (sem passar por equipe) por unidade.</div>
+      </div>
+
+      <div class="adm-grid" style="margin-bottom:16px">
+        <div class="field">
+          <label for="agUsuario">Usuário</label>
+          <select id="agUsuario"><option value="">Selecione</option></select>
+        </div>
+        <div class="field">
+          <label for="agUnidade">Unidade</label>
+          <select id="agUnidade"><option value="">Selecione</option></select>
+        </div>
+      </div>
+      <label style="font-size:13px; margin-right:16px"><input type="checkbox" id="agPodeEmitir"> Pode emitir guia</label>
+      <label style="font-size:13px"><input type="checkbox" id="agPodeExecutar"> Pode executar diretamente (sem equipe)</label>
+      <div style="margin-top:12px">
+        <button class="btn btn--accent btn--sm" type="button" id="btnSalvarAgente">Salvar vínculo</button>
+        <span class="form-msg" id="agenteMsg"></span>
+      </div>
+
+      <div id="agentesList" style="margin-top:16px"></div>
+    </div>
+
+    <!-- ESPECIALIDADES -->
+    <div class="panel-section">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Especialidades</div>
+        <div class="panel-section__desc">Especialidades disponíveis para encaminhamento.</div>
+      </div>
+      <div class="inline-row" style="margin-bottom:16px">
+        <div class="field">
+          <label for="novaEspNome">Nova especialidade</label>
+          <input type="text" id="novaEspNome" placeholder="Ex.: Terapia Ocupacional">
+        </div>
+        <button class="btn btn--accent btn--sm" type="button" id="btnCriarEsp">Adicionar</button>
+      </div>
+      <span class="form-msg" id="espMsg"></span>
+      <div id="especialidadesList"></div>
+    </div>
+
+  </div>
+</main>
+
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
+<script>
+(async () => {
+  const user = await initPortalChrome();
+  if (!user) return;
+
+  if (user.role !== 'admin' && user.role !== 'super_admin') {
+    document.getElementById('accessDenied').style.display = '';
+    return;
+  }
+  document.getElementById('adminContent').style.display = '';
+
+  let todasUnidades = [];
+  let todosUsuarios = [];
+
+  async function carregarListasBase() {
+    const [unidResp, usResp] = await Promise.all([
+      apiFetch('/api/unidades'),
+      apiFetch('/api/admin/usuarios'),
+    ]);
+    todasUnidades = unidResp.ok ? unidResp.data.todas : [];
+    todosUsuarios = usResp.ok ? usResp.data.usuarios : [];
+
+    const agUnidadeSel = document.getElementById('agUnidade');
+    agUnidadeSel.innerHTML = '<option value="">Selecione</option>' +
+      todasUnidades.map((u) => `<option value="${u.code}">${escapeHtml(u.nome)} ${u.tipo === 'aps' ? '(APS)' : ''}</option>`).join('');
+
+    const agUsuarioSel = document.getElementById('agUsuario');
+    agUsuarioSel.innerHTML = '<option value="">Selecione</option>' +
+      todosUsuarios.map((u) => `<option value="${u.id}">${escapeHtml(u.name)} (${escapeHtml(u.username)})</option>`).join('');
+  }
+
+  // --- EQUIPES ---
+  async function carregarEquipes() {
+    const { ok, data } = await apiFetch('/api/admin/equipes');
+    const area = document.getElementById('equipesList');
+    if (!ok) { area.innerHTML = `<div class="empty-state">Erro ao carregar equipes.</div>`; return; }
+
+    const unidadesAps = todasUnidades.filter((u) => u.tipo === 'aps');
+
+    area.innerHTML = data.equipes.map((eq) => `
+      <div class="adm-card" data-equipe-id="${eq.id}">
+        <div class="adm-card__head">
+          <div class="adm-card__title">${escapeHtml(eq.nome)}</div>
+        </div>
+
+        <div style="font-size:13px; color:#666; margin-bottom:4px">Unidades cobertas</div>
+        <div class="unidades-tags">
+          ${eq.unidades.map((u) => `
+            <span class="adm-tag">${escapeHtml(u.nome)} <button data-remove-unidade="${u.code}">✕</button></span>
+          `).join('') || '<span style="font-size:13px;color:#999">Nenhuma ainda</span>'}
+        </div>
+        <div class="inline-row" style="margin-top:8px">
+          <select class="add-unidade-sel">
+            <option value="">+ vincular unidade (APS)</option>
+            ${unidadesAps.filter((u) => !eq.unidades.some((e) => e.code === u.code)).map((u) => `<option value="${u.code}">${escapeHtml(u.nome)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div style="font-size:13px; color:#666; margin:12px 0 4px">Profissionais</div>
+        <div class="profissionais-tags">
+          ${eq.profissionais.map((p) => `
+            <span class="adm-tag">${escapeHtml(p.name)} <button data-remove-prof="${p.id}">✕</button></span>
+          `).join('') || '<span style="font-size:13px;color:#999">Nenhum ainda</span>'}
+        </div>
+        <div class="inline-row" style="margin-top:8px">
+          <select class="add-prof-sel">
+            <option value="">+ vincular profissional</option>
+            ${todosUsuarios.filter((u) => !eq.profissionais.some((p) => p.id === u.id)).map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    `).join('');
+
+    area.querySelectorAll('[data-equipe-id]').forEach((card) => {
+      const equipeId = card.dataset.equipeId;
+
+      card.querySelectorAll('[data-remove-unidade]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await apiFetch(`/api/admin/equipes/${equipeId}/unidades?unidade_code=${encodeURIComponent(btn.dataset.removeUnidade)}`, { method: 'DELETE' });
+          carregarEquipes();
+        });
+      });
+      card.querySelectorAll('[data-remove-prof]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await apiFetch(`/api/admin/equipes/${equipeId}/profissionais?user_id=${btn.dataset.removeProf}`, { method: 'DELETE' });
+          carregarEquipes();
+        });
+      });
+      card.querySelector('.add-unidade-sel').addEventListener('change', async (e) => {
+        if (!e.target.value) return;
+        await apiFetch(`/api/admin/equipes/${equipeId}/unidades`, { method: 'POST', body: JSON.stringify({ unidade_code: e.target.value }) });
+        carregarEquipes();
+      });
+      card.querySelector('.add-prof-sel').addEventListener('change', async (e) => {
+        if (!e.target.value) return;
+        await apiFetch(`/api/admin/equipes/${equipeId}/profissionais`, { method: 'POST', body: JSON.stringify({ user_id: Number(e.target.value) }) });
+        carregarEquipes();
+      });
+    });
+  }
+
+  document.getElementById('btnCriarEquipe').addEventListener('click', async () => {
+    const msg = document.getElementById('equipeMsg');
+    const nome = document.getElementById('novaEquipeNome').value.trim();
+    if (!nome) { msg.textContent = 'Informe o nome da equipe.'; msg.style.color = '#c0392b'; return; }
+    const { ok, data } = await apiFetch('/api/admin/equipes', { method: 'POST', body: JSON.stringify({ nome }) });
+    if (!ok) { msg.textContent = data?.error || 'Erro ao criar equipe.'; msg.style.color = '#c0392b'; return; }
+    msg.textContent = 'Equipe criada.'; msg.style.color = '#2e7d32';
+    document.getElementById('novaEquipeNome').value = '';
+    carregarEquipes();
+  });
+
+  // --- AGENTES OPERACIONAIS ---
+  async function carregarAgentes() {
+    const { ok, data } = await apiFetch('/api/admin/agentes');
+    const area = document.getElementById('agentesList');
+    if (!ok) { area.innerHTML = `<div class="empty-state">Erro ao carregar.</div>`; return; }
+    if (data.agentes.length === 0) { area.innerHTML = `<div class="empty-state">Nenhum vínculo cadastrado ainda.</div>`; return; }
+
+    area.innerHTML = `
+      <table class="adm-table">
+        <thead><tr><th>Usuário</th><th>Unidade</th><th>Emite</th><th>Executa</th><th></th></tr></thead>
+        <tbody>
+          ${data.agentes.map((a) => `
+            <tr>
+              <td>${escapeHtml(a.user_name)}</td>
+              <td>${escapeHtml(a.unidade_nome)}</td>
+              <td>${a.pode_emitir ? '✔' : '—'}</td>
+              <td>${a.pode_executar ? '✔' : '—'}</td>
+              <td><button class="btn btn--outline btn--sm" data-user="${a.user_id}" data-unidade="${a.unidade_code}">Remover</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>`;
+
+    area.querySelectorAll('button[data-user]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await apiFetch(`/api/admin/agentes?user_id=${btn.dataset.user}&unidade_code=${encodeURIComponent(btn.dataset.unidade)}`, { method: 'DELETE' });
+        carregarAgentes();
+      });
+    });
+  }
+
+  document.getElementById('btnSalvarAgente').addEventListener('click', async () => {
+    const msg = document.getElementById('agenteMsg');
+    const payload = {
+      user_id: Number(document.getElementById('agUsuario').value),
+      unidade_code: document.getElementById('agUnidade').value,
+      pode_emitir: document.getElementById('agPodeEmitir').checked,
+      pode_executar: document.getElementById('agPodeExecutar').checked,
+    };
+    if (!payload.user_id || !payload.unidade_code) { msg.textContent = 'Selecione usuário e unidade.'; msg.style.color = '#c0392b'; return; }
+    const { ok, data } = await apiFetch('/api/admin/agentes', { method: 'POST', body: JSON.stringify(payload) });
+    if (!ok) { msg.textContent = data?.error || 'Erro ao salvar.'; msg.style.color = '#c0392b'; return; }
+    msg.textContent = 'Salvo.'; msg.style.color = '#2e7d32';
+    carregarAgentes();
+  });
+
+  // --- ESPECIALIDADES ---
+  async function carregarEspecialidades() {
+    const { ok, data } = await apiFetch('/api/especialidades?all=1');
+    const area = document.getElementById('especialidadesList');
+    if (!ok) { area.innerHTML = `<div class="empty-state">Erro ao carregar.</div>`; return; }
+    area.innerHTML = data.especialidades.map((e) => `<span class="adm-tag">${escapeHtml(e.nome)}${e.ativo ? '' : ' (inativa)'}</span>`).join('');
+  }
+
+  document.getElementById('btnCriarEsp').addEventListener('click', async () => {
+    const msg = document.getElementById('espMsg');
+    const nome = document.getElementById('novaEspNome').value.trim();
+    if (!nome) { msg.textContent = 'Informe o nome da especialidade.'; msg.style.color = '#c0392b'; return; }
+    const { ok, data } = await apiFetch('/api/especialidades', { method: 'POST', body: JSON.stringify({ nome }) });
+    if (!ok) { msg.textContent = data?.error || 'Erro ao adicionar.'; msg.style.color = '#c0392b'; return; }
+    msg.textContent = 'Especialidade adicionada.'; msg.style.color = '#2e7d32';
+    document.getElementById('novaEspNome').value = '';
+    carregarEspecialidades();
+  });
+
+  await carregarListasBase();
+  await Promise.all([carregarEquipes(), carregarAgentes(), carregarEspecialidades()]);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pacientes — Regulação de Vagas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .reg-search-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:24px; }
+  .reg-search-row .field { margin-bottom:0; min-width:220px; }
+  .reg-form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+  .panel-section { margin-top:24px; }
+</style>
+</head>
+<body>
+
+<div id="app-topbar"></div>
+
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">Regulação de Vagas</div>
+    <h1 class="page__title">Pacientes</h1>
+    <p class="page__subtitle">Busque um paciente pelo CPF ou nome. Se não encontrar, cadastre abaixo.</p>
+  </div>
+
+  <div class="reg-search-row">
+    <div class="field">
+      <label for="searchCpf">CPF</label>
+      <input type="text" id="searchCpf" placeholder="000.000.000-00">
+    </div>
+    <div class="field">
+      <label for="searchNome">ou Nome</label>
+      <input type="text" id="searchNome" placeholder="Nome do paciente">
+    </div>
+    <button class="btn btn--accent" id="btnSearch" type="button">Buscar</button>
+  </div>
+
+  <div id="resultArea"></div>
+
+  <div class="panel-section" id="formSection" style="display:none">
+    <div class="panel-section__head">
+      <div class="panel-section__title" id="formTitle">Novo paciente</div>
+      <div class="panel-section__desc">Preencha os dados abaixo.</div>
+    </div>
+    <form id="pacienteForm">
+      <div class="reg-form-grid">
+        <div class="field">
+          <label for="pCpf">CPF *</label>
+          <input type="text" id="pCpf" required maxlength="14">
+        </div>
+        <div class="field">
+          <label for="pNome">Nome completo *</label>
+          <input type="text" id="pNome" required>
+        </div>
+        <div class="field">
+          <label for="pNasc">Data de nascimento *</label>
+          <input type="date" id="pNasc" required>
+        </div>
+        <div class="field">
+          <label for="pSexo">Sexo *</label>
+          <select id="pSexo" required>
+            <option value="">Selecione</option>
+            <option value="F">Feminino</option>
+            <option value="M">Masculino</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="pUnidade">Unidade de referência (APS) *</label>
+          <select id="pUnidade" required><option value="">Selecione</option></select>
+        </div>
+        <div class="field">
+          <label for="pTel1">Telefone 1</label>
+          <input type="text" id="pTel1" maxlength="15">
+        </div>
+        <div class="field">
+          <label for="pTel2">Telefone 2</label>
+          <input type="text" id="pTel2" maxlength="15">
+        </div>
+        <div class="field">
+          <label for="pTel3">Telefone 3</label>
+          <input type="text" id="pTel3" maxlength="15">
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label for="pEndereco">Endereço</label>
+          <input type="text" id="pEndereco">
+        </div>
+      </div>
+      <div class="form-msg" id="formMsg"></div>
+      <div class="inline-form__actions" style="margin-top:16px">
+        <button class="btn btn--accent" type="submit">Salvar paciente</button>
+        <button class="btn btn--outline" type="button" id="btnNovaGuiaAtalho" style="display:none">Criar guia para este paciente</button>
+      </div>
+    </form>
+  </div>
+</main>
+
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
+<script>
+(async () => {
+  const user = await initPortalChrome();
+  if (!user) return;
+
+  const unidResp = await apiFetch('/api/unidades');
+  const apsSel = document.getElementById('pUnidade');
+  if (unidResp.ok) {
+    unidResp.data.aps.forEach((u) => {
+      apsSel.insertAdjacentHTML('beforeend', `<option value="${u.code}">${escapeHtml(u.nome)}</option>`);
+    });
+  }
+
+  document.getElementById('searchCpf').addEventListener('input', (e) => {
+    e.target.value = maskCPF(e.target.value);
+  });
+  ['pTel1', 'pTel2', 'pTel3'].forEach((id) => {
+    document.getElementById(id).addEventListener('input', (e) => { e.target.value = maskPhone(e.target.value); });
+  });
+  document.getElementById('pCpf').addEventListener('input', (e) => { e.target.value = maskCPF(e.target.value); });
+
+  let currentCpf = null;
+
+  function showForm(paciente) {
+    const section = document.getElementById('formSection');
+    const title = document.getElementById('formTitle');
+    const atalho = document.getElementById('btnNovaGuiaAtalho');
+    section.style.display = '';
+
+    if (paciente) {
+      title.textContent = `Editar paciente — ${paciente.nome}`;
+      currentCpf = paciente.cpf;
+      document.getElementById('pCpf').value = maskCPF(paciente.cpf);
+      document.getElementById('pCpf').disabled = true;
+      document.getElementById('pNome').value = paciente.nome;
+      document.getElementById('pNasc').value = paciente.data_nascimento;
+      document.getElementById('pSexo').value = paciente.sexo;
+      apsSel.value = paciente.unidade_referencia_code;
+      document.getElementById('pTel1').value = maskPhone(paciente.tel1 || '');
+      document.getElementById('pTel2').value = maskPhone(paciente.tel2 || '');
+      document.getElementById('pTel3').value = maskPhone(paciente.tel3 || '');
+      document.getElementById('pEndereco').value = paciente.endereco || '';
+      atalho.style.display = '';
+      atalho.onclick = () => { window.location.href = `/guia-nova.html?cpf=${paciente.cpf}`; };
+    } else {
+      title.textContent = 'Novo paciente';
+      currentCpf = null;
+      document.getElementById('pacienteForm').reset();
+      document.getElementById('pCpf').disabled = false;
+      atalho.style.display = 'none';
+    }
+  }
+
+  async function doSearch() {
+    const cpf = onlyDigits(document.getElementById('searchCpf').value);
+    const nome = document.getElementById('searchNome').value.trim();
+    const area = document.getElementById('resultArea');
+    area.innerHTML = '';
+
+    if (!cpf && !nome) return;
+
+    const params = new URLSearchParams();
+    if (cpf) params.set('cpf', cpf); else params.set('q', nome);
+    const { ok, data } = await apiFetch(`/api/pacientes?${params.toString()}`);
+
+    if (!ok) { area.innerHTML = `<div class="empty-state">Erro ao buscar.</div>`; return; }
+    const pacientes = data.pacientes || [];
+
+    if (pacientes.length === 0) {
+      area.innerHTML = `<div class="empty-state">Nenhum paciente encontrado. Cadastre abaixo.</div>`;
+      showForm(null);
+      if (cpf) document.getElementById('pCpf').value = maskCPF(cpf);
+      return;
+    }
+
+    area.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>CPF</th><th>Nome</th><th>Nascimento</th><th>Unidade de referência</th><th></th></tr></thead>
+          <tbody>
+            ${pacientes.map((p) => `
+              <tr>
+                <td>${maskCPF(p.cpf)}</td>
+                <td>${escapeHtml(p.nome)}</td>
+                <td>${formatDateBR(p.data_nascimento)}</td>
+                <td>${escapeHtml(p.unidade_referencia_code)}</td>
+                <td><button class="btn btn--outline btn--sm" data-cpf="${p.cpf}">Selecionar</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    area.querySelectorAll('button[data-cpf]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const p = pacientes.find((x) => x.cpf === btn.dataset.cpf);
+        showForm(p);
+      });
+    });
+  }
+
+  document.getElementById('btnSearch').addEventListener('click', doSearch);
+
+  document.getElementById('pacienteForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('formMsg');
+    msg.textContent = '';
+
+    const payload = {
+      cpf: document.getElementById('pCpf').value,
+      nome: document.getElementById('pNome').value.trim(),
+      data_nascimento: document.getElementById('pNasc').value,
+      sexo: document.getElementById('pSexo').value,
+      unidade_referencia_code: apsSel.value,
+      tel1: document.getElementById('pTel1').value,
+      tel2: document.getElementById('pTel2').value,
+      tel3: document.getElementById('pTel3').value,
+      endereco: document.getElementById('pEndereco').value.trim(),
+    };
+
+    const url = currentCpf ? `/api/pacientes/${currentCpf}` : '/api/pacientes';
+    const method = currentCpf ? 'PUT' : 'POST';
+    const { ok, data } = await apiFetch(url, { method, body: JSON.stringify(payload) });
+
+    if (!ok) { msg.textContent = data?.error || 'Erro ao salvar.'; msg.style.color = '#c0392b'; return; }
+    msg.style.color = '#2e7d32';
+    msg.textContent = 'Paciente salvo com sucesso.';
+    showForm(data.paciente);
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+name = "regulacao-vagas-cajamar"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "."
+
+# Banco de LOGIN/unidades/equipes — o MESMO banco do Portal Saúde Cajamar
+# (portal-saude-db). Este projeto só LÊ usuários/sessões/unidades/equipes
+# daqui (login em si continua acontecendo só no portal) e ESCREVE sessões
+# novas ao consumir um código de repasse (ver functions/_middleware.js).
+[[d1_databases]]
+binding = "DB"
+database_name = "portal-saude-db"
+database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
+
+# Banco de CONTEÚDO deste projeto (pacientes, guias, acompanhamentos,
+# notificações) — exclusivo, criado com:
+#   wrangler d1 create regulacao-vagas-db
+# Troque o database_id abaixo pelo id retornado.
+[[d1_databases]]
+binding = "DB_REGULACAO"
+database_name = "regulacao-vagas-db"
+database_id = "SUBSTITUA-PELO-ID-RETORNADO-POR-WRANGLER-D1-CREATE"

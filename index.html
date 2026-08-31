@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Regulação de Vagas — Portal Saúde Cajamar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .reg-filters { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+  .reg-filters .field { min-width:180px; margin-bottom:0; }
+  .reg-toolbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; }
+  .reg-aviso-existentes { background:#fff7e6; border:1px solid #f0c36d; border-radius:8px; padding:12px 16px; margin-bottom:16px; font-size:14px; }
+</style>
+</head>
+<body>
+
+<div id="app-topbar"></div>
+
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">Regulação de Vagas</div>
+    <h1 class="page__title">Fila de Encaminhamentos</h1>
+    <p class="page__subtitle">Guias de encaminhamento para Fisioterapia, Nutrição, Psicologia, Fonoaudiologia e demais especialidades cadastradas.</p>
+  </div>
+
+  <div class="reg-toolbar">
+    <div class="reg-filters" id="filters">
+      <div class="field">
+        <label for="fSituacao">Situação</label>
+        <select id="fSituacao">
+          <option value="">Todas</option>
+          <option value="aguardando_autorizacao">Aguardando autorização</option>
+          <option value="lista_espera">Em lista de espera</option>
+          <option value="em_atendimento">Em atendimento</option>
+          <option value="concluido">Concluído</option>
+          <option value="negado">Negado</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fEspecialidade">Especialidade</label>
+        <select id="fEspecialidade"><option value="">Todas</option></select>
+      </div>
+      <div class="field">
+        <label for="fUnidade">Unidade executante</label>
+        <select id="fUnidade"><option value="">Todas</option></select>
+      </div>
+      <div class="field">
+        <label for="fEquipe">Equipe</label>
+        <select id="fEquipe"><option value="">Todas</option></select>
+      </div>
+    </div>
+    <a class="btn btn--accent" href="/guia-nova.html">+ Nova guia</a>
+  </div>
+
+  <div id="listArea">
+    <div class="skeleton-loading">Carregando guias…</div>
+  </div>
+</main>
+
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
+<script>
+(async () => {
+  const user = await initPortalChrome();
+  if (!user) return;
+
+  const especSel = document.getElementById('fEspecialidade');
+  const unidadeSel = document.getElementById('fUnidade');
+  const situacaoSel = document.getElementById('fSituacao');
+  const equipeSel = document.getElementById('fEquipe');
+
+  const [especResp, unidResp, equipesResp] = await Promise.all([
+    apiFetch('/api/especialidades'),
+    apiFetch('/api/unidades'),
+    apiFetch('/api/equipes'),
+  ]);
+
+  if (equipesResp.ok) {
+    equipesResp.data.equipes.forEach((eq) => {
+      equipeSel.insertAdjacentHTML('beforeend', `<option value="${eq.id}">${escapeHtml(eq.nome)}</option>`);
+    });
+  }
+
+  if (especResp.ok) {
+    especResp.data.especialidades.forEach((e) => {
+      especSel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(e.nome)}</option>`);
+    });
+  }
+  if (unidResp.ok) {
+    const lista = unidResp.data.isAdmin ? unidResp.data.todas : unidResp.data.minhasExecutantes;
+    lista.forEach((u) => {
+      unidadeSel.insertAdjacentHTML('beforeend', `<option value="${u.code}">${escapeHtml(u.nome)}</option>`);
+    });
+  }
+
+  async function loadGuias() {
+    const area = document.getElementById('listArea');
+    area.innerHTML = `<div class="skeleton-loading">Carregando guias…</div>`;
+
+    const params = new URLSearchParams();
+    if (situacaoSel.value) params.set('situacao', situacaoSel.value);
+    if (especSel.value) params.set('especialidade_id', especSel.value);
+    if (unidadeSel.value) params.set('unidade_executante', unidadeSel.value);
+
+    const { ok, data } = await apiFetch(`/api/guias?${params.toString()}`);
+    if (!ok) { area.innerHTML = `<div class="empty-state">Não foi possível carregar as guias.</div>`; return; }
+
+    let guias = data.guias || [];
+    if (equipeSel.value) {
+      guias = guias.filter((g) => String(g.equipe_id) === equipeSel.value);
+    }
+    if (guias.length === 0) {
+      area.innerHTML = `<div class="empty-state">Nenhuma guia encontrada com os filtros atuais.</div>`;
+      return;
+    }
+
+    area.innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Paciente</th>
+              <th>Especialidade</th>
+              <th>Unid. solicitante</th>
+              <th>Equipe / Unid. executante</th>
+              <th>Situação</th>
+              <th>Criada em</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${guias.map((g) => `
+              <tr>
+                <td>${escapeHtml(g.paciente_nome)}</td>
+                <td>${escapeHtml(g.especialidade_nome)}</td>
+                <td>${escapeHtml(g.unidade_solicitante_code)}</td>
+                <td>${g.unidade_executante_code ? escapeHtml(g.unidade_executante_code) : '<span class="badge badge--user">Aguardando triagem</span>'}</td>
+                <td>${situacaoBadgeHtml(g.situacao)}</td>
+                <td>${new Date(g.created_at).toLocaleDateString('pt-BR')}</td>
+                <td><a class="btn btn--outline btn--sm" href="/guia-detalhe.html?id=${g.id}">Abrir</a></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  [situacaoSel, especSel, unidadeSel, equipeSel].forEach((el) => el.addEventListener('change', loadGuias));
+  loadGuias();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guia de Encaminhamento — Regulação de Vagas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .reg-grid-2 { display:grid; grid-template-columns:1.3fr 1fr; gap:24px; align-items:start; }
+  @media (max-width:900px) { .reg-grid-2 { grid-template-columns:1fr; } }
+  .reg-info-list { list-style:none; padding:0; margin:0; }
+  .reg-info-list li { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee; font-size:14px; gap:12px; }
+  .reg-info-list li span:first-child { color:#666; flex-shrink:0; }
+  .reg-info-list li span:last-child { text-align:right; }
+  .sessao-card { background:#f5f7fa; border-radius:8px; padding:14px 18px; margin-bottom:12px; }
+  .sessao-card__head { display:flex; justify-content:space-between; font-weight:600; margin-bottom:6px; font-size:14px; }
+  .sessao-card__evolucao { font-size:14px; white-space:pre-wrap; }
+  .field { margin-bottom:14px; }
+  .fila-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; font-size:13px; }
+  .fila-item:hover { background:#f5f7fa; }
+  .reg-aviso { background:#fff7e6; border:1px solid #f0c36d; border-radius:8px; padding:12px 16px; font-size:13px; margin:12px 0; }
+</style>
+</head>
+<body>
+
+<div id="app-topbar"></div>
+
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">Regulação de Vagas</div>
+    <h1 class="page__title" id="pageTitle">Guia #—</h1>
+  </div>
+
+  <div class="reg-grid-2">
+    <div>
+      <div class="panel-section">
+        <div class="panel-section__head"><div class="panel-section__title">Dados da guia</div></div>
+        <ul class="reg-info-list" id="infoList"></ul>
+
+        <form id="situacaoForm" style="margin-top:16px">
+          <div class="field">
+            <label for="fSituacao">Situação</label>
+            <select id="fSituacao">
+              <option value="aguardando_autorizacao">Aguardando autorização</option>
+              <option value="lista_espera">Em lista de espera</option>
+              <option value="em_atendimento">Em atendimento</option>
+              <option value="concluido">Concluído</option>
+              <option value="negado">Negado</option>
+            </select>
+          </div>
+          <button class="btn btn--outline btn--sm" type="submit">Salvar situação</button>
+          <span class="form-msg" id="situacaoMsg"></span>
+        </form>
+      </div>
+
+      <div class="panel-section" id="acompanhamentoSection" style="display:none">
+        <div class="panel-section__head"><div class="panel-section__title">Acompanhamento</div></div>
+        <div id="acompanhamentoInfo"></div>
+
+        <div id="novaSessaoBox" style="margin-top:16px">
+          <div class="reg-grid-2" style="gap:14px">
+            <div class="field">
+              <label for="sData">Data da sessão</label>
+              <input type="date" id="sData">
+            </div>
+            <div class="field">
+              <label for="sHorario">Horário</label>
+              <input type="time" id="sHorario">
+            </div>
+          </div>
+          <div class="field">
+            <label for="sEvolucao">Evolução desta sessão</label>
+            <textarea id="sEvolucao" rows="4"></textarea>
+          </div>
+          <button class="btn btn--accent btn--sm" type="button" id="btnAddSessao">Registrar sessão</button>
+          <span class="form-msg" id="sessaoMsg"></span>
+        </div>
+
+        <div id="sessoesList" style="margin-top:20px"></div>
+      </div>
+    </div>
+
+    <div>
+      <!-- Transferência: só faz sentido antes do acompanhamento começar -->
+      <div class="panel-section" id="transferirSection" style="display:none">
+        <div class="panel-section__head">
+          <div class="panel-section__title">Equipe responsável</div>
+          <div class="panel-section__desc" id="equipeAtualDesc"></div>
+        </div>
+        <button class="btn btn--outline btn--sm" type="button" id="btnMostrarTransferir">Transferir para outra equipe</button>
+        <div id="transferirForm" style="display:none; margin-top:12px">
+          <div class="field">
+            <label for="tEquipe">Nova equipe</label>
+            <select id="tEquipe"><option value="">Selecione</option></select>
+          </div>
+          <div class="field">
+            <label for="tUnidade">Nova unidade executante</label>
+            <select id="tUnidade"><option value="">Selecione a equipe primeiro</option></select>
+          </div>
+          <div class="field">
+            <label for="tMotivo">Motivo da transferência</label>
+            <textarea id="tMotivo" rows="2" placeholder="Ex.: paciente mudou de endereço"></textarea>
+          </div>
+          <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Confirmar transferência</button>
+          <span class="form-msg" id="transferirMsg"></span>
+        </div>
+      </div>
+
+      <div class="panel-section" id="iniciarSection" style="display:none">
+        <div class="panel-section__head">
+          <div class="panel-section__title">Iniciar atendimento</div>
+          <div class="panel-section__desc">Escolha a equipe responsável. Opcionalmente, junte outras guias da fila (mesma especialidade) num grupo — mesmo que sejam de outra unidade, desde que da mesma equipe.</div>
+        </div>
+        <div class="field">
+          <label for="iEquipe">Equipe</label>
+          <select id="iEquipe"><option value="">Selecione</option></select>
+        </div>
+        <div class="field">
+          <label for="iUnidade">Unidade executante</label>
+          <select id="iUnidade"><option value="">Selecione a equipe primeiro</option></select>
+        </div>
+        <div class="field">
+          <label for="iLocal">Local de execução (se diferente da unidade)</label>
+          <input type="text" id="iLocal" placeholder="Ex.: Escola Municipal X, quadra do bairro Y...">
+        </div>
+
+        <div class="field">
+          <button class="btn btn--outline btn--sm" type="button" id="btnBuscarFila">Buscar guias da fila para juntar em grupo</button>
+          <div id="filaResultado" style="margin-top:8px"></div>
+        </div>
+
+        <div id="iniciarMsg" class="reg-aviso" style="display:none"></div>
+        <button class="btn btn--accent" type="button" id="btnIniciar">Iniciar atendimento</button>
+        <span class="form-msg" id="iniciarFormMsg"></span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
+<script>
+(async () => {
+  const user = await initPortalChrome();
+  if (!user) return;
+
+  const guiaId = new URLSearchParams(window.location.search).get('id');
+  if (!guiaId) { window.location.href = '/'; return; }
+
+  const equipesResp = await apiFetch('/api/equipes');
+  const minhasEquipes = equipesResp.ok ? equipesResp.data.equipes : [];
+
+  function preencherSelectEquipes(sel) {
+    sel.innerHTML = '<option value="">Selecione</option>';
+    minhasEquipes.forEach((eq) => sel.insertAdjacentHTML('beforeend', `<option value="${eq.id}">${escapeHtml(eq.nome)}</option>`));
+  }
+  function preencherSelectUnidadesDaEquipe(sel, equipeId) {
+    const eq = minhasEquipes.find((e) => String(e.id) === String(equipeId));
+    sel.innerHTML = eq
+      ? eq.unidades.map((u) => `<option value="${u.code}">${escapeHtml(u.nome)}</option>`).join('')
+      : '<option value="">Selecione a equipe primeiro</option>';
+  }
+
+  const iEquipeSel = document.getElementById('iEquipe');
+  const iUnidadeSel = document.getElementById('iUnidade');
+  const tEquipeSel = document.getElementById('tEquipe');
+  const tUnidadeSel = document.getElementById('tUnidade');
+  preencherSelectEquipes(iEquipeSel);
+  preencherSelectEquipes(tEquipeSel);
+  iEquipeSel.addEventListener('change', () => preencherSelectUnidadesDaEquipe(iUnidadeSel, iEquipeSel.value));
+  tEquipeSel.addEventListener('change', () => preencherSelectUnidadesDaEquipe(tUnidadeSel, tEquipeSel.value));
+
+  let guiaAtual = null;
+  let guiasParaGrupo = []; // ids extras selecionados na busca da fila
+
+  async function carregar() {
+    const { ok, data } = await apiFetch(`/api/guias/${guiaId}`);
+    if (!ok) { document.getElementById('pageTitle').textContent = 'Guia não encontrada'; return; }
+
+    guiaAtual = data.guia;
+    document.getElementById('pageTitle').textContent = `Guia #${guiaAtual.id} — ${guiaAtual.paciente_nome}`;
+    document.getElementById('infoList').innerHTML = `
+      <li><span>Paciente</span><span>${escapeHtml(guiaAtual.paciente_nome)}</span></li>
+      <li><span>CPF</span><span>${maskCPF(guiaAtual.cpf)}</span></li>
+      <li><span>Nascimento</span><span>${formatDateBR(guiaAtual.data_nascimento)} · ${guiaAtual.sexo === 'F' ? 'Feminino' : 'Masculino'}</span></li>
+      <li><span>Telefones</span><span>${[guiaAtual.tel1, guiaAtual.tel2, guiaAtual.tel3].filter(Boolean).map(maskPhone).join(' · ') || '—'}</span></li>
+      <li><span>Especialidade</span><span>${escapeHtml(guiaAtual.especialidade_nome)}</span></li>
+      <li><span>Unidade solicitante</span><span>${escapeHtml(guiaAtual.unidade_solicitante_code)}</span></li>
+      <li><span>Médico solicitante</span><span>${escapeHtml(guiaAtual.medico_solicitante)}</span></li>
+      <li><span>CID-10</span><span>${escapeHtml(guiaAtual.cid10 || '—')}</span></li>
+      <li><span>Motivo</span><span>${escapeHtml(guiaAtual.motivo)}</span></li>
+      <li><span>Situação atual</span><span>${situacaoBadgeHtml(guiaAtual.situacao)}</span></li>
+      <li><span>Equipe</span><span>${data.equipeAtual ? escapeHtml(data.equipeAtual.nome) : '— ainda não triada —'}</span></li>
+      <li><span>Unidade executante</span><span>${guiaAtual.unidade_executante_code ? escapeHtml(guiaAtual.unidade_executante_code) : '—'}</span></li>
+    `;
+    document.getElementById('fSituacao').value = guiaAtual.situacao;
+
+    const acompanhamentoSection = document.getElementById('acompanhamentoSection');
+    const iniciarSection = document.getElementById('iniciarSection');
+    const transferirSection = document.getElementById('transferirSection');
+
+    if (data.acompanhamento) {
+      iniciarSection.style.display = 'none';
+      transferirSection.style.display = 'none'; // transferência só antes de iniciar
+      acompanhamentoSection.style.display = '';
+      await carregarAcompanhamento(data.acompanhamento.id);
+    } else {
+      acompanhamentoSection.style.display = 'none';
+      iniciarSection.style.display = '';
+      if (data.equipeAtual) {
+        transferirSection.style.display = '';
+        document.getElementById('equipeAtualDesc').textContent = `Atualmente com a equipe ${data.equipeAtual.nome}.`;
+        // Pré-seleciona a equipe atual no formulário de iniciar, pra evitar
+        // o erro de "guia já pertence a outra equipe" ao só confirmar.
+        iEquipeSel.value = String(data.equipeAtual.id);
+        preencherSelectUnidadesDaEquipe(iUnidadeSel, data.equipeAtual.id);
+        if (guiaAtual.unidade_executante_code) iUnidadeSel.value = guiaAtual.unidade_executante_code;
+      } else {
+        transferirSection.style.display = 'none';
+      }
+    }
+  }
+
+  async function carregarAcompanhamento(id) {
+    const { ok, data } = await apiFetch(`/api/acompanhamentos/${id}`);
+    if (!ok) return;
+
+    document.getElementById('acompanhamentoInfo').innerHTML = `
+      <p style="font-size:14px;margin:0 0 8px">
+        Tipo: <strong>${data.acompanhamento.tipo === 'grupo' ? 'Atendimento em grupo' : 'Atendimento individual'}</strong>
+        · Unidade: <strong>${escapeHtml(data.acompanhamento.unidade_executante_code)}</strong>
+        ${data.acompanhamento.local_execucao ? ` · Local: <strong>${escapeHtml(data.acompanhamento.local_execucao)}</strong>` : ''}
+      </p>
+      ${data.acompanhamento.tipo === 'grupo' ? `<p style="font-size:14px;margin:0 0 8px">Pacientes: ${data.guias.map((g) => escapeHtml(g.paciente_nome)).join(', ')}</p>` : ''}
+    `;
+
+    const list = document.getElementById('sessoesList');
+    if (data.sessoes.length === 0) {
+      list.innerHTML = `<div class="empty-state">Nenhuma sessão registrada ainda.</div>`;
+    } else {
+      list.innerHTML = data.sessoes.map((s) => `
+        <div class="sessao-card">
+          <div class="sessao-card__head"><span>${formatDateBR(s.data_sessao)} às ${escapeHtml(s.horario)}</span></div>
+          <div class="sessao-card__evolucao">${escapeHtml(s.evolucao)}</div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('btnAddSessao').onclick = async () => {
+      const msg = document.getElementById('sessaoMsg');
+      const payload = {
+        data_sessao: document.getElementById('sData').value,
+        horario: document.getElementById('sHorario').value,
+        evolucao: document.getElementById('sEvolucao').value.trim(),
+      };
+      const { ok, data: res } = await apiFetch(`/api/acompanhamentos/${id}/sessoes`, { method: 'POST', body: JSON.stringify(payload) });
+      if (!ok) { msg.textContent = res?.error || 'Erro ao registrar sessão.'; msg.style.color = '#c0392b'; return; }
+      msg.textContent = 'Sessão registrada.'; msg.style.color = '#2e7d32';
+      document.getElementById('sEvolucao').value = '';
+      await carregarAcompanhamento(id);
+    };
+  }
+
+  // --- situação ---
+  document.getElementById('situacaoForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('situacaoMsg');
+    const { ok, data } = await apiFetch(`/api/guias/${guiaId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ situacao: document.getElementById('fSituacao').value }),
+    });
+    if (!ok) { msg.textContent = data?.error || 'Erro ao salvar.'; msg.style.color = '#c0392b'; return; }
+    msg.textContent = 'Salvo.'; msg.style.color = '#2e7d32';
+    carregar();
+  });
+
+  // --- transferência ---
+  document.getElementById('btnMostrarTransferir').addEventListener('click', () => {
+    const form = document.getElementById('transferirForm');
+    form.style.display = form.style.display === 'none' ? '' : 'none';
+  });
+  document.getElementById('btnConfirmarTransferir').addEventListener('click', async () => {
+    const msg = document.getElementById('transferirMsg');
+    const equipeId = tEquipeSel.value;
+    const unidade = tUnidadeSel.value;
+    if (!equipeId || !unidade) { msg.textContent = 'Selecione a equipe e a unidade destino.'; msg.style.color = '#c0392b'; return; }
+    const { ok, data } = await apiFetch(`/api/guias/${guiaId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        equipe_id: Number(equipeId),
+        unidade_executante_code: unidade,
+        motivo_transferencia: document.getElementById('tMotivo').value.trim(),
+      }),
+    });
+    if (!ok) { msg.textContent = data?.error || 'Erro ao transferir.'; msg.style.color = '#c0392b'; return; }
+    msg.textContent = 'Guia transferida — a nova equipe foi notificada.'; msg.style.color = '#2e7d32';
+    carregar();
+  });
+
+  // --- buscar guias da fila para grupo ---
+  document.getElementById('btnBuscarFila').addEventListener('click', async () => {
+    const area = document.getElementById('filaResultado');
+    area.innerHTML = 'Buscando...';
+    const { ok, data } = await apiFetch(`/api/guias?especialidade_id=${guiaAtual.especialidade_id}`);
+    if (!ok) { area.innerHTML = ''; return; }
+
+    const equipeEscolhida = iEquipeSel.value ? Number(iEquipeSel.value) : null;
+    const candidatas = data.guias.filter((g) =>
+      g.id !== guiaAtual.id
+      && ['aguardando_autorizacao', 'lista_espera'].includes(g.situacao)
+      && (g.equipe_id === null || g.equipe_id === undefined || (equipeEscolhida && g.equipe_id === equipeEscolhida))
+    );
+
+    if (candidatas.length === 0) {
+      area.innerHTML = `<div class="empty-state">Nenhuma guia disponível para juntar.</div>`;
+      return;
+    }
+    area.innerHTML = candidatas.map((g) => `
+      <label class="fila-item">
+        <input type="checkbox" value="${g.id}" ${guiasParaGrupo.includes(g.id) ? 'checked' : ''}>
+        <span>#${g.id} — ${escapeHtml(g.paciente_nome)} (${escapeHtml(g.unidade_solicitante_code)})</span>
+      </label>
+    `).join('');
+    area.querySelectorAll('input[type=checkbox]').forEach((cb) => {
+      cb.addEventListener('change', () => {
+        const id = Number(cb.value);
+        guiasParaGrupo = cb.checked ? [...guiasParaGrupo, id] : guiasParaGrupo.filter((x) => x !== id);
+      });
+    });
+  });
+
+  // --- iniciar atendimento ---
+  document.getElementById('btnIniciar').addEventListener('click', async () => {
+    const msg = document.getElementById('iniciarFormMsg');
+    const equipeId = iEquipeSel.value;
+    const unidade = iUnidadeSel.value;
+    if (!equipeId || !unidade) { msg.textContent = 'Selecione a equipe e a unidade executante.'; msg.style.color = '#c0392b'; return; }
+
+    const payload = {
+      guia_ids: [Number(guiaId), ...guiasParaGrupo],
+      equipe_id: Number(equipeId),
+      unidade_executante_code: unidade,
+      local_execucao: document.getElementById('iLocal').value.trim(),
+    };
+    const { ok, data } = await apiFetch('/api/acompanhamentos', { method: 'POST', body: JSON.stringify(payload) });
+    if (!ok) { msg.textContent = data?.error || 'Erro ao iniciar atendimento.'; msg.style.color = '#c0392b'; return; }
+    msg.textContent = 'Atendimento iniciado.'; msg.style.color = '#2e7d32';
+    carregar();
+  });
+
+  carregar();
+})();
+</script>
+</body>
+</html>
