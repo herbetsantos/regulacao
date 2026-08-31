@@ -22,6 +22,7 @@ export async function onRequestGet({ request, env }) {
   const diagnostico = {
     binding_regulacao_ok: false,
     banco_conteudo_ok: false,
+    cadastro_cidadao_pronto: false,
     tabelas_regulacao_faltantes: [],
     reparo_regulacao_disponivel: false,
     pacientes: null,
@@ -34,6 +35,11 @@ export async function onRequestGet({ request, env }) {
     profissionais_com_equipe: null,
     profissionais_em_multiplas_equipes: null,
     agentes_emissores: null,
+    acessos_configurados: null,
+    cadastrantes: null,
+    reguladores: null,
+    executores: null,
+    administradores_regulacao: null,
     icones_links_ok: false,
     avisos: [],
   };
@@ -81,12 +87,26 @@ export async function onRequestGet({ request, env }) {
      )`
   ));
   diagnostico.agentes_emissores = await safeCount(env.DB.prepare('SELECT COUNT(DISTINCT user_id) AS n FROM regulacao_user_unidades WHERE pode_emitir = 1'));
+  diagnostico.acessos_configurados = await safeCount(env.DB.prepare('SELECT COUNT(*) AS n FROM regulacao_user_acessos'));
+  diagnostico.cadastrantes = await safeCount(env.DB.prepare('SELECT COUNT(*) AS n FROM regulacao_user_acessos WHERE cadastrante = 1 OR administrador = 1'));
+  diagnostico.reguladores = await safeCount(env.DB.prepare('SELECT COUNT(*) AS n FROM regulacao_user_acessos WHERE regulador = 1 OR administrador = 1'));
+  diagnostico.executores = await safeCount(env.DB.prepare('SELECT COUNT(*) AS n FROM regulacao_user_acessos WHERE executor = 1 OR administrador = 1'));
+  diagnostico.administradores_regulacao = await safeCount(env.DB.prepare('SELECT COUNT(*) AS n FROM regulacao_user_acessos WHERE administrador = 1'));
 
   if (diagnostico.equipes_ativas === null) diagnostico.avisos.push('As tabelas de equipes da Regulação ainda não existem no banco do Portal.');
   if (diagnostico.vinculos_equipe_unidade === 0) diagnostico.avisos.push('As equipes ainda não possuem unidades vinculadas.');
   if (diagnostico.profissionais_com_equipe === 0) diagnostico.avisos.push('Nenhum profissional está vinculado a uma equipe.');
   if ((diagnostico.profissionais_em_multiplas_equipes || 0) > 0) diagnostico.avisos.push('Há profissional vinculado a mais de uma equipe; a regra atual permite apenas uma.');
-  if (diagnostico.agentes_emissores === 0) diagnostico.avisos.push('Nenhum usuário comum possui permissão de emissão de guia. Administradores ainda podem emitir.');
+  if (diagnostico.acessos_configurados === null) diagnostico.avisos.push('A migração v2.6 de acessos próprios da Regulação ainda não foi aplicada ao portal-saude-db.');
+  if (diagnostico.cadastrantes === 0) diagnostico.avisos.push('Nenhum Cadastrante foi definido. Sem esse perfil, usuários comuns não poderão cadastrar cidadãos nem emitir guias.');
+  if (diagnostico.agentes_emissores === 0) diagnostico.avisos.push('Nenhuma unidade de emissão está vinculada a Cadastrantes. O cadastro de cidadão pode funcionar, mas a emissão de guias ficará bloqueada.');
+
+  diagnostico.cadastro_cidadao_pronto = !!(
+    diagnostico.binding_regulacao_ok &&
+    diagnostico.banco_conteudo_ok &&
+    (diagnostico.unidades_aps || 0) > 0 &&
+    diagnostico.acessos_configurados !== null
+  );
 
   try {
     await env.DB.prepare('SELECT 1 FROM regulacao_link_icons LIMIT 1').first();

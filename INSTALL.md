@@ -62,10 +62,10 @@ que é pré-requisito deste.
 
 ## Configuração via interface (não precisa mais de SQL manual para isso)
 
-A página **`/admin.html`** (menu "Administração", visível só para
-`admin`/`super_admin`) permite:
+A página **`/admin.html`** (menu "Administração", visível para quem possui a responsabilidade **Administrador da Regulação**) permite:
 - Criar equipes e vincular unidades (só APS) e profissionais a cada uma
-- Cadastrar agentes operacionais (usuário × unidade × pode emitir/executar)
+- Definir responsabilidades Cadastrante, Regulador, Executor e Administrador
+- Vincular unidades autorizadas para emissão aos Cadastrantes
 - Cadastrar novas especialidades
 
 O que ainda depende de SQL direto: editar o nome de uma equipe existente,
@@ -76,8 +76,7 @@ si (classificação `aps`/`outra`) — isso continua no banco do portal.
 
 - Cadastro/busca de paciente, criação de guia com aviso de duplicidade
 - Fila de guias com filtros, incluindo a **fila de triagem** (guias ainda
-  sem equipe/unidade, visíveis a qualquer profissional com acesso de
-  execução — direto ou via equipe)
+  sem equipe/unidade, visíveis aos **Reguladores**; Executores veem as guias já direcionadas ao seu escopo)
 - Início de acompanhamento **individual ou em grupo**, podendo combinar
   guias de unidades diferentes dentro da mesma equipe, com
   `local_execucao` livre (escola, quadra, etc.)
@@ -116,7 +115,7 @@ Abra **Administração > Diagnóstico da configuração** no módulo eMulti. A t
 - equipes sem unidades ou profissionais vinculados;
 - usuário comum sem vínculo em `regulacao_user_unidades` com `pode_emitir = 1`.
 
-Administradores podem emitir por qualquer unidade; usuários comuns só podem criar guia pelas unidades explicitamente configuradas para emissão.
+Administradores da Regulação podem emitir por qualquer unidade; Cadastrantes só podem criar guia pelas unidades explicitamente configuradas para emissão.
 
 ## Aparência (v2.3)
 
@@ -145,3 +144,25 @@ wrangler d1 execute regulacao-vagas-db --remote --file=./migration_regulacao_saf
 ```
 
 **Não use uma versão antiga do `schema_regulacao.sql` que contenha `DROP TABLE`.** O arquivo incluído neste pacote já foi alterado para ser não destrutivo.
+
+## Acessos próprios do eMulti — v2.6
+
+Antes de publicar a v2.6, execute no banco compartilhado **portal-saude-db**:
+
+```bash
+wrangler d1 execute portal-saude-db --remote --file=./migration_regulacao_acessos_v2_6.sql
+```
+
+A migração é não destrutiva. Ela cria `regulacao_user_acessos` e converte vínculos antigos de forma conservadora:
+
+- `pode_emitir=1` → Cadastrante;
+- profissional já vinculado a equipe → Executor;
+- `pode_executar=1` legado → Regulador + Executor;
+- administradores do Portal existentes → Administrador eMulti (somente como compatibilidade inicial);
+- `super_admin` → acesso total implícito, sem depender da tabela.
+
+Depois da migração, use **Administração > Acessos e responsabilidades** no eMulti para revisar cada usuário. O `role` do Portal deixa de determinar o acesso operacional ao eMulti.
+
+### Cadastro de cidadãos
+
+Para cadastrar ou editar um cidadão, o usuário precisa da responsabilidade **Cadastrante**. Para emitir uma guia, além de ser Cadastrante, precisa possuir ao menos uma unidade autorizada em **Unidades autorizadas para emissão**. Reguladores e Executores continuam podendo consultar cidadãos, mas não alterá-los, salvo se acumularem também a responsabilidade Cadastrante.

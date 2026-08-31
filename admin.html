@@ -32,7 +32,7 @@
   <div class="page__header">
     <div class="eyebrow">eMulti</div>
     <h1 class="page__title">Administração</h1>
-    <p class="page__subtitle">Configuração das equipes, unidades, profissionais, agentes de emissão, especialidades e apresentação dos links úteis.</p>
+    <p class="page__subtitle">Configuração dos acessos da Regulação, equipes, unidades de emissão, profissionais, especialidades e links úteis.</p>
   </div>
 
   <div id="accessDenied" class="empty-state" style="display:none">Você não tem permissão para acessar esta página.</div>
@@ -44,6 +44,16 @@
         <div class="panel-section__desc">Ajuda a identificar por que pacientes ou guias podem não estar sendo cadastrados.</div>
       </div>
       <div id="diagnosticoArea"><div class="skeleton-loading">Verificando configuração…</div></div>
+    </section>
+
+
+    <section class="panel-section section-anchor" id="acessosSection">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Acessos e responsabilidades</div>
+        <div class="panel-section__desc">O perfil no Portal é independente do eMulti. Cada usuário pode acumular responsabilidades de Cadastrante, Regulador e Executor.</div>
+      </div>
+      <div class="notice-box" style="margin-bottom:14px"><strong>Como funciona:</strong> Cadastrante inclui cidadãos e emite guias; Regulador organiza fila, triagem, transferências e grupos; Executor registra atendimentos e evoluções; Administrador configura todo o módulo.</div>
+      <div id="acessosList"><div class="skeleton-loading">Carregando acessos…</div></div>
     </section>
 
     <section class="panel-section section-anchor" id="equipesSection">
@@ -61,15 +71,15 @@
 
     <section class="panel-section section-anchor" id="agentesSection">
       <div class="panel-section__head">
-        <div class="panel-section__title">Emissão de guias e execução direta</div>
-        <div class="panel-section__desc">Defina por quais unidades um usuário comum pode emitir guias. A falta desse vínculo impede a criação de guia para usuários não administradores.</div>
+        <div class="panel-section__title">Unidades autorizadas para emissão</div>
+        <div class="panel-section__desc">Defina por quais unidades cada Cadastrante pode emitir guias. A responsabilidade Cadastrante é configurada na seção acima.</div>
       </div>
       <div class="adm-grid" style="margin-bottom:12px">
         <div class="field"><label for="agUsuario">Usuário</label><select id="agUsuario"><option value="">Selecione</option></select></div>
         <div class="field"><label for="agUnidade">Unidade</label><select id="agUnidade"><option value="">Selecione</option></select></div>
       </div>
-      <label style="font-size:13px;margin-right:18px"><input type="checkbox" id="agPodeEmitir"> Pode emitir guia</label>
-      <label style="font-size:13px"><input type="checkbox" id="agPodeExecutar"> Pode executar diretamente</label>
+      <label style="font-size:13px;margin-right:18px"><input type="checkbox" id="agPodeEmitir" checked> Pode emitir guia por esta unidade</label>
+      <input type="checkbox" id="agPodeExecutar" style="display:none">
       <div style="margin-top:12px"><button class="btn btn--accent btn--sm" type="button" id="btnSalvarAgente">Salvar vínculo</button></div>
       <div class="form-msg" id="agenteMsg"></div>
       <div id="agentesList" style="margin-top:16px"></div>
@@ -104,7 +114,7 @@
 (async () => {
   const user = await initPortalChrome();
   if (!user) return;
-  if (user.role !== 'admin' && user.role !== 'super_admin') {
+  if (!user.regulacao?.administrador) {
     document.getElementById('accessDenied').style.display = '';
     return;
   }
@@ -127,11 +137,15 @@
     const d = data.diagnostico;
     const cards = [
       ['Banco da Regulação', d.banco_conteudo_ok ? 'OK' : 'Atenção', d.banco_conteudo_ok],
+      ['Cadastro de cidadãos', d.cadastro_cidadao_pronto ? 'Pronto' : 'Atenção', d.cadastro_cidadao_pronto],
       ['Unidades APS', d.unidades_aps ?? '—', (d.unidades_aps || 0) > 0],
       ['Equipes ativas', d.equipes_ativas ?? '—', (d.equipes_ativas || 0) > 0],
       ['Vínculos equipe/unidade', d.vinculos_equipe_unidade ?? '—', (d.vinculos_equipe_unidade || 0) > 0],
       ['Profissionais com equipe', d.profissionais_com_equipe ?? '—', (d.profissionais_com_equipe || 0) > 0],
-      ['Usuários que podem emitir', d.agentes_emissores ?? '—', true],
+      ['Cadastrantes', d.cadastrantes ?? '—', (d.cadastrantes || 0) > 0],
+      ['Reguladores', d.reguladores ?? '—', true],
+      ['Executores', d.executores ?? '—', true],
+      ['Unidades com emissores', d.agentes_emissores ?? '—', true],
     ];
     area.innerHTML = `
       <div class="admin-summary-grid">
@@ -167,6 +181,46 @@
       todasUnidades.map((u) => `<option value="${u.code}">${escapeHtml(u.nome)}${u.tipo === 'aps' ? ' (APS)' : ''}</option>`).join('');
     document.getElementById('agUsuario').innerHTML = '<option value="">Selecione</option>' +
       todosUsuarios.map((u) => `<option value="${u.id}">${escapeHtml(u.name)} (${escapeHtml(u.username)})</option>`).join('');
+  }
+
+  async function carregarAcessos() {
+    const area = document.getElementById('acessosList');
+    const { ok, data } = await apiFetch('/api/admin/acessos');
+    if (!ok) {
+      area.innerHTML = `<div class="notice-box is-warning">${escapeHtml(data?.error || 'Não foi possível carregar os acessos.')}</div>`;
+      return;
+    }
+    const acessos = data.acessos || [];
+    area.innerHTML = acessos.length ? `<div class="table-wrap"><table class="adm-table"><thead><tr><th>Usuário</th><th>Portal</th><th>Equipe</th><th>Cadastrante</th><th>Regulador</th><th>Executor</th><th>Administrador</th><th></th></tr></thead><tbody>${acessos.map((a) => {
+      const superAdmin = a.role === 'super_admin';
+      const checked = (v) => (superAdmin || v) ? 'checked' : '';
+      const disabled = superAdmin ? 'disabled' : '';
+      const alertas = [];
+      if (a.cadastrante && Number(a.unidades_emissao || 0) === 0) alertas.push('sem unidade de emissão');
+      if ((a.regulador || a.executor) && !a.equipe_id) alertas.push('sem equipe');
+      return `<tr data-access-user="${a.id}">
+        <td><strong>${escapeHtml(a.name)}</strong><br><span style="color:var(--muted);font-size:11px">${escapeHtml(a.username)}</span>${alertas.length ? `<br><span style="font-size:11px;color:#a15c00">${escapeHtml(alertas.join(' · '))}</span>` : ''}</td>
+        <td>${escapeHtml(a.role)}</td>
+        <td>${escapeHtml(a.equipe_nome || '—')}</td>
+        <td><input type="checkbox" data-cap="cadastrante" ${checked(a.cadastrante)} ${disabled}></td>
+        <td><input type="checkbox" data-cap="regulador" ${checked(a.regulador)} ${disabled}></td>
+        <td><input type="checkbox" data-cap="executor" ${checked(a.executor)} ${disabled}></td>
+        <td><input type="checkbox" data-cap="administrador" ${checked(a.administrador)} ${disabled}></td>
+        <td>${superAdmin ? '<span class="badge badge--admin">Total implícito</span>' : '<button class="btn btn--outline btn--sm" type="button" data-save-access>Salvar</button>'}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>` : '<div class="empty-state">Nenhum usuário ativo encontrado.</div>';
+
+    area.querySelectorAll('[data-save-access]').forEach((btn) => btn.addEventListener('click', async () => {
+      const row = btn.closest('[data-access-user]');
+      const payload = { user_id:Number(row.dataset.accessUser) };
+      row.querySelectorAll('[data-cap]').forEach((cb) => { payload[cb.dataset.cap] = cb.checked; });
+      btn.disabled = true;
+      btn.textContent = 'Salvando…';
+      const resp = await apiFetch('/api/admin/acessos', { method:'POST', body:JSON.stringify(payload) });
+      if (!resp.ok) alert(resp.data?.error || 'Não foi possível salvar o acesso.');
+      await carregarAcessos();
+      await carregarDiagnostico();
+    }));
   }
 
   async function carregarEquipes() {
@@ -253,7 +307,7 @@
     const area = document.getElementById('agentesList');
     if (!ok) { area.innerHTML = '<div class="empty-state">Erro ao carregar vínculos.</div>'; return; }
     const agentes = data.agentes || [];
-    area.innerHTML = agentes.length ? `<table class="adm-table"><thead><tr><th>Usuário</th><th>Unidade</th><th>Emite</th><th>Executa</th><th></th></tr></thead><tbody>${agentes.map((a) => `<tr><td>${escapeHtml(a.user_name)}</td><td>${escapeHtml(a.unidade_nome)}</td><td>${a.pode_emitir ? 'Sim' : '—'}</td><td>${a.pode_executar ? 'Sim' : '—'}</td><td><button class="btn btn--outline btn--sm" data-user="${a.user_id}" data-unidade="${a.unidade_code}">Remover</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhum vínculo de emissão/execução cadastrado.</div>';
+    area.innerHTML = agentes.length ? `<table class="adm-table"><thead><tr><th>Usuário</th><th>Unidade</th><th>Emite</th><th></th></tr></thead><tbody>${agentes.map((a) => `<tr><td>${escapeHtml(a.user_name)}</td><td>${escapeHtml(a.unidade_nome)}</td><td>${a.pode_emitir ? 'Sim' : '—'}</td><td><button class="btn btn--outline btn--sm" data-user="${a.user_id}" data-unidade="${a.unidade_code}">Remover</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhum vínculo de emissão/execução cadastrado.</div>';
     area.querySelectorAll('button[data-user]').forEach((btn) => btn.addEventListener('click', async () => {
       await apiFetch(`/api/admin/agentes?user_id=${btn.dataset.user}&unidade_code=${encodeURIComponent(btn.dataset.unidade)}`, { method:'DELETE' });
       await carregarAgentes(); await carregarDiagnostico();
@@ -265,7 +319,7 @@
       user_id:Number(document.getElementById('agUsuario').value),
       unidade_code:document.getElementById('agUnidade').value,
       pode_emitir:document.getElementById('agPodeEmitir').checked,
-      pode_executar:document.getElementById('agPodeExecutar').checked,
+      pode_executar:false,
     };
     if (!payload.user_id || !payload.unidade_code) return showMsg('agenteMsg', 'Selecione usuário e unidade.');
     const { ok, data } = await apiFetch('/api/admin/agentes', { method:'POST', body:JSON.stringify(payload) });
@@ -321,7 +375,7 @@
   }
 
   await carregarListasBase();
-  await Promise.all([carregarDiagnostico(), carregarEquipes(), carregarAgentes(), carregarEspecialidades(), carregarLinkIcons()]);
+  await Promise.all([carregarDiagnostico(), carregarAcessos(), carregarEquipes(), carregarAgentes(), carregarEspecialidades(), carregarLinkIcons()]);
 })();
 </script>
 </body>

@@ -4,14 +4,14 @@ import { json } from '../_utils.js';
 import { requireRegulacaoAccess, getRegulacaoScope } from '../_shared.js';
 
 export async function onRequestGet({ request, env, params }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
 
   const id = Number(params.id);
   const acompanhamento = await env.DB_REGULACAO.prepare('SELECT * FROM acompanhamentos WHERE id = ?').bind(id).first();
   if (!acompanhamento) return json({ error: 'Acompanhamento não encontrado.' }, 404);
 
-  const scope = await getRegulacaoScope(env, user);
+  const scope = await getRegulacaoScope(env, user, access);
   if (!scope.isAdmin && !scope.executantes.includes(acompanhamento.unidade_executante_code)) {
     return json({ error: 'Você não tem acesso a este acompanhamento.' }, 403);
   }

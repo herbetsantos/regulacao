@@ -7,7 +7,7 @@ Módulo integrado ao Portal Saúde Cajamar para cadastro de pacientes, emissão 
 - um profissional pertence a **uma única equipe**;
 - uma equipe pode ter **vários profissionais**;
 - uma equipe pode atender **várias unidades**;
-- o login, usuários, unidades, equipes e permissões vêm do banco do Portal;
+- o login, usuários, unidades e vínculos operacionais usam o banco do Portal; as responsabilidades do eMulti são independentes do papel do Portal;
 - pacientes, guias, acompanhamentos e notificações ficam no banco próprio da Regulação.
 
 ## Interface
@@ -31,3 +31,9 @@ Consulte `AJUSTES_V2.4.md` para a substituição do imagotipo branco no cabeçal
 ## Revisão 2.5 — cadastro de pacientes resiliente
 
 A v2.5 remove duas dependências indevidas que podiam bloquear o cadastro de pacientes: a existência da coluna `unidades.tipo` e a configuração completa das tabelas de escopo do usuário. O eMulti agora possui fallback compatível para reconhecer as unidades APS conhecidas e um diagnóstico/reparo não destrutivo do `DB_REGULACAO` em **Administração**.
+
+## Versão 2.6 — acessos independentes do Portal
+
+A v2.6 separa o papel do usuário no Portal das responsabilidades no eMulti. Um usuário `user` comum pode ser Cadastrante, Regulador e/ou Executor. A Administração do eMulti permite combinar essas responsabilidades e sincroniza apenas a permissão de abertura da ferramenta com o Portal.
+
+Antes do deploy, execute `migration_regulacao_acessos_v2_6.sql` no `portal-saude-db`.

@@ -2,7 +2,7 @@
 // POST /api/regulacao/especialidades  -> cadastra nova (admin/super_admin)
 
 import { json, logAudit } from '../_utils.js';
-import { requireRegulacaoAccess } from '../_shared.js';
+import { requireRegulacaoAccess, requireAdminAccess } from '../_shared.js';
 
 export async function onRequestGet({ request, env }) {
   const { error } = await requireRegulacaoAccess(request, env);
@@ -18,11 +18,8 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, error } = await requireAdminAccess(request, env);
   if (error) return error;
-  if (user.role !== 'admin' && user.role !== 'super_admin') {
-    return json({ error: 'Apenas administradores podem cadastrar especialidades.' }, 403);
-  }
 
   let body;
   try { body = await request.json(); } catch { return json({ error: 'JSON inválido.' }, 400); }

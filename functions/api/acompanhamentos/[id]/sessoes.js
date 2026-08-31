@@ -6,10 +6,13 @@
 // presentes.
 
 import { json, logAudit } from '../../_utils.js';
-import { requireRegulacaoAccess, getRegulacaoScope } from '../../_shared.js';
+import { requireRegulacaoCapability, getRegulacaoScope } from '../../_shared.js';
 
 export async function onRequestPost({ request, env, params }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, access, error } = await requireRegulacaoCapability(
+    request, env, 'executor',
+    'Apenas Executores podem registrar sessões e evoluções de atendimento.'
+  );
   if (error) return error;
 
   const acompanhamentoId = Number(params.id);
@@ -18,7 +21,7 @@ export async function onRequestPost({ request, env, params }) {
   ).bind(acompanhamentoId).first();
   if (!acompanhamento) return json({ error: 'Acompanhamento não encontrado.' }, 404);
 
-  const scope = await getRegulacaoScope(env, user);
+  const scope = await getRegulacaoScope(env, user, access);
   if (!scope.isAdmin && !scope.executantes.includes(acompanhamento.unidade_executante_code)) {
     return json({ error: 'Você não tem acesso a este acompanhamento.' }, 403);
   }

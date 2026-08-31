@@ -1,15 +1,15 @@
 import { json, getAuthUser } from './_utils.js';
-import { getUserPermissions } from './_permissions.js';
+import { getUserPermissions, getRegulacaoAccessProfile } from './_permissions.js';
 
 export async function onRequestGet({ request, env }) {
   const user = await getAuthUser(request, env);
   if (!user) return json({ error: 'Não autenticado.' }, 401);
 
-  const permissions = await getUserPermissions(env, user);
+  const [permissions, regulacao] = await Promise.all([
+    getUserPermissions(env, user),
+    getRegulacaoAccessProfile(env, user),
+  ]);
 
-  // Regra do módulo eMulti: cada profissional pertence a, no máximo, uma
-  // equipe. Durante a transição mantemos a consulta tolerante caso ainda
-  // existam vínculos antigos duplicados no banco e devolvemos o primeiro.
   let equipe = null;
   try {
     equipe = await env.DB.prepare(
@@ -20,23 +20,20 @@ export async function onRequestGet({ request, env }) {
        ORDER BY e.nome ASC
        LIMIT 1`
     ).bind(user.id).first();
-  } catch {
-    // Migração da Regulação ainda não aplicada: não impede o /api/me.
-  }
+  } catch { /* migração ainda não aplicada */ }
 
   let theme = 'light';
   try {
     const row = await env.DB.prepare('SELECT theme FROM users WHERE id = ?').bind(user.id).first();
     if (['auto', 'light', 'dark', 'contrast'].includes(row?.theme)) theme = row.theme;
-  } catch {
-    // Compatibilidade enquanto migration_theme_v3.sql ainda não foi executada.
-  }
+  } catch { /* tema opcional */ }
 
   return json({
     user: {
       ...user,
       theme,
       permissions,
+      regulacao,
       equipe: equipe ? { id: equipe.id, nome: equipe.nome } : null,
     },
   });

@@ -6,11 +6,11 @@ import { json } from '../_utils.js';
 import { requireRegulacaoAccess, getUserEquipeIds, inClause } from '../_shared.js';
 
 export async function onRequestGet({ request, env }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
 
   let equipeIds;
-  if (user.role === 'admin' || user.role === 'super_admin') {
+  if (access.administrador) {
     const { results } = await env.DB.prepare('SELECT id FROM regulacao_equipes WHERE ativo = 1').all();
     equipeIds = results.map((r) => r.id);
   } else {

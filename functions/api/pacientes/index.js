@@ -2,7 +2,7 @@
 // POST /api/pacientes
 
 import { json, logAudit } from '../_utils.js';
-import { requireRegulacaoAccess, isValidCPF, onlyDigits } from '../_shared.js';
+import { requireRegulacaoAccess, requireRegulacaoCapability, isValidCPF, onlyDigits } from '../_shared.js';
 import { getUnidadeAtivaComTipo, friendlyRegulacaoError } from '../_db.js';
 
 function configError(err) {
@@ -39,7 +39,10 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, error } = await requireRegulacaoCapability(
+    request, env, 'cadastrante',
+    'Seu acesso permite consultar cidadãos, mas não cadastrar novos cidadãos.'
+  );
   if (error) return error;
 
   let body;

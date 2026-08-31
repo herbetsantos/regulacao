@@ -5,17 +5,17 @@
 
 import { json, logAudit } from '../_utils.js';
 import {
-  requireRegulacaoAccess, getRegulacaoScope, inClause, onlyDigits,
+  requireRegulacaoAccess, requireRegulacaoCapability, getRegulacaoScope, inClause, onlyDigits,
   findGuiasAtivasMesmaEspecialidade, situacaoLabel,
 } from '../_shared.js';
 
 const SITUACOES_VALIDAS = ['aguardando_autorizacao', 'lista_espera', 'em_atendimento', 'concluido', 'negado'];
 
 export async function onRequestGet({ request, env }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
 
-  const scope = await getRegulacaoScope(env, user);
+  const scope = await getRegulacaoScope(env, user, access);
   const url = new URL(request.url);
   const situacao = url.searchParams.get('situacao');
   const especialidadeId = url.searchParams.get('especialidade_id');
@@ -41,7 +41,7 @@ export async function onRequestGet({ request, env }) {
 
   if (!scope.isAdmin) {
     const { clause, binds: b } = inClause(codigosVisiveis);
-    const podeTriar = scope.executantes.length > 0;
+    const podeTriar = !!(access.regulador || access.administrador);
     if (podeTriar) {
       where.push(`(g.unidade_solicitante_code IN ${clause} OR g.unidade_executante_code IN ${clause} OR g.unidade_executante_code IS NULL)`);
       binds.push(...b, ...b);
@@ -81,7 +81,10 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, access, error } = await requireRegulacaoCapability(
+    request, env, 'cadastrante',
+    'Seu usuário não possui responsabilidade de Cadastrante para emitir guias.'
+  );
   if (error) return error;
 
   let body;
@@ -104,7 +107,7 @@ export async function onRequestPost({ request, env }) {
   const paciente = await env.DB_REGULACAO.prepare('SELECT cpf FROM pacientes WHERE cpf = ?').bind(cpf).first();
   if (!paciente) return json({ error: 'Paciente não encontrado. Cadastre o paciente antes de criar a guia.' }, 404);
 
-  const scope = await getRegulacaoScope(env, user);
+  const scope = await getRegulacaoScope(env, user, access);
   if (!scope.isAdmin && !scope.emissoras.includes(unidade_solicitante_code)) {
     return json({ error: 'Você não tem permissão para emitir guias por essa unidade.' }, 403);
   }

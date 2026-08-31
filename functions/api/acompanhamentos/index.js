@@ -8,10 +8,13 @@
 // antes, via PATCH /api/guias/:id).
 
 import { json, logAudit } from '../_utils.js';
-import { requireRegulacaoAccess, isEquipeMember, getEquipeInfo } from '../_shared.js';
+import { requireRegulacaoCapability, isEquipeMember, getEquipeInfo } from '../_shared.js';
 
 export async function onRequestPost({ request, env }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, access, error } = await requireRegulacaoCapability(
+    request, env, 'regulador',
+    'Apenas Reguladores podem organizar atendimentos individuais ou em grupo.'
+  );
   if (error) return error;
 
   let body;
@@ -28,7 +31,7 @@ export async function onRequestPost({ request, env }) {
 
   const localExecucao = (body.local_execucao || '').trim() || null;
 
-  const podeUsarEquipe = await isEquipeMember(env, user, equipeId);
+  const podeUsarEquipe = await isEquipeMember(env, user, equipeId, access);
   if (!podeUsarEquipe) return json({ error: 'Você não é profissional desta equipe.' }, 403);
 
   const equipeInfo = await getEquipeInfo(env, equipeId);

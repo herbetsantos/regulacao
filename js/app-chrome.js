@@ -134,17 +134,25 @@ async function requireLogin() {
 function renderUser(user) {
   const nameEl = document.getElementById('accountName');
   const teamEl = document.getElementById('accountTeam');
+  const access = user.regulacao || {};
   if (nameEl) nameEl.textContent = user.name || user.username || 'Usuário';
   if (teamEl) {
     if (user.equipe?.nome) teamEl.textContent = user.equipe.nome;
-    else if (user.role === 'admin' || user.role === 'super_admin') teamEl.textContent = 'Administração';
-    else teamEl.textContent = 'Sem equipe vinculada';
+    else if (access.administrador) teamEl.textContent = 'Administração da Regulação';
+    else if (access.cadastrante) teamEl.textContent = 'Cadastrante';
+    else if (access.regulador) teamEl.textContent = 'Regulação';
+    else if (access.executor) teamEl.textContent = 'Execução';
+    else teamEl.textContent = 'eMulti';
   }
 
-  if (user.role === 'admin' || user.role === 'super_admin') {
-    const adminItem = document.getElementById('navAdminItem');
-    if (adminItem) adminItem.hidden = false;
-  }
+  const adminItem = document.getElementById('navAdminItem');
+  if (adminItem) adminItem.hidden = !access.administrador;
+
+  const novaGuia = document.querySelector('.side-nav__item[data-path="/guia-nova.html"]');
+  if (novaGuia) novaGuia.hidden = !(access.cadastrante || access.administrador);
+
+  const bellBtn = document.getElementById('bellBtn');
+  if (bellBtn) bellBtn.hidden = !(access.regulador || access.executor || access.administrador);
 }
 
 function setupAccountMenu() {
@@ -270,6 +278,7 @@ async function initPortalChrome() {
   }
   renderUser(user);
   setupLogout();
-  setupNotificacoes();
+  const bellBtn = document.getElementById('bellBtn');
+  if (bellBtn && !bellBtn.hidden) setupNotificacoes();
   return user;
 }

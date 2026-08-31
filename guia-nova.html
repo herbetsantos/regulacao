@@ -54,6 +54,14 @@
 (async () => {
   const user = await initPortalChrome();
   if (!user) return;
+  const access = user.regulacao || {};
+  const podeCadastrar = !!(access.cadastrante || access.administrador);
+  if (!podeCadastrar) {
+    document.getElementById('configAlert').innerHTML = '<div class="notice-box is-warning">Seu usuário não possui a responsabilidade <strong>Cadastrante</strong>. A emissão de guias não está disponível para este perfil.</div>';
+    document.getElementById('btnBuscarPaciente').disabled = true;
+    document.getElementById('gCpf').disabled = true;
+    return;
+  }
 
   const [unidResp, especResp] = await Promise.all([apiFetch('/api/unidades'), apiFetch('/api/especialidades')]);
   const unidSel = document.getElementById('gUnidadeSolicitante');
@@ -95,7 +103,7 @@
     if (!ok) { box.innerHTML = `<div class="notice-box is-error">${escapeHtml(data?.error || 'Erro ao buscar paciente.')}</div>`; return; }
     const pacientes = data.pacientes || [];
     if (!pacientes.length) {
-      box.innerHTML = `<div class="notice-box is-warning">Paciente não encontrado. <a href="/paciente.html?cpf=${cpf}&retorno=guia" style="color:var(--primary);font-weight:700">Cadastrar este paciente</a>.</div>`;
+      box.innerHTML = `<div class="notice-box is-warning">Cidadão não encontrado. <a href="/paciente.html?cpf=${cpf}&retorno=guia" style="color:var(--primary);font-weight:700">Cadastrar este cidadão</a>.</div>`;
       return;
     }
 

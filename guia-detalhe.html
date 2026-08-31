@@ -147,6 +147,12 @@
 (async () => {
   const user = await initPortalChrome();
   if (!user) return;
+  const access = user.regulacao || {};
+  const podeRegular = !!(access.regulador || access.administrador);
+  const podeExecutar = !!(access.executor || access.administrador);
+  const podeAlterarSituacao = !!(podeRegular || podeExecutar);
+  document.getElementById('situacaoForm').style.display = podeAlterarSituacao ? '' : 'none';
+  document.getElementById('novaSessaoBox').style.display = podeExecutar ? '' : 'none';
 
   const guiaId = new URLSearchParams(window.location.search).get('id');
   if (!guiaId) { window.location.href = '/'; return; }
@@ -207,12 +213,13 @@
       iniciarSection.style.display = 'none';
       transferirSection.style.display = 'none'; // transferência só antes de iniciar
       acompanhamentoSection.style.display = '';
+      document.getElementById('novaSessaoBox').style.display = podeExecutar ? '' : 'none';
       await carregarAcompanhamento(data.acompanhamento.id);
     } else {
       acompanhamentoSection.style.display = 'none';
-      iniciarSection.style.display = '';
+      iniciarSection.style.display = podeRegular ? '' : 'none';
       if (data.equipeAtual) {
-        transferirSection.style.display = '';
+        transferirSection.style.display = podeRegular ? '' : 'none';
         document.getElementById('equipeAtualDesc').textContent = `Atualmente com a equipe ${data.equipeAtual.nome}.`;
         // Pré-seleciona a equipe atual no formulário de iniciar, pra evitar
         // o erro de "guia já pertence a outra equipe" ao só confirmar.
@@ -250,7 +257,7 @@
       `).join('');
     }
 
-    document.getElementById('btnAddSessao').onclick = async () => {
+    document.getElementById('btnAddSessao').onclick = podeExecutar ? async () => {
       const msg = document.getElementById('sessaoMsg');
       const payload = {
         data_sessao: document.getElementById('sData').value,
@@ -262,12 +269,13 @@
       msg.textContent = 'Sessão registrada.'; msg.style.color = '#2e7d32';
       document.getElementById('sEvolucao').value = '';
       await carregarAcompanhamento(id);
-    };
+    } : null;
   }
 
   // --- situação ---
   document.getElementById('situacaoForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!podeAlterarSituacao) return;
     const msg = document.getElementById('situacaoMsg');
     const { ok, data } = await apiFetch(`/api/guias/${guiaId}`, {
       method: 'PATCH',
@@ -280,10 +288,12 @@
 
   // --- transferência ---
   document.getElementById('btnMostrarTransferir').addEventListener('click', () => {
+    if (!podeRegular) return;
     const form = document.getElementById('transferirForm');
     form.style.display = form.style.display === 'none' ? '' : 'none';
   });
   document.getElementById('btnConfirmarTransferir').addEventListener('click', async () => {
+    if (!podeRegular) return;
     const msg = document.getElementById('transferirMsg');
     const equipeId = tEquipeSel.value;
     const unidade = tUnidadeSel.value;
@@ -303,6 +313,7 @@
 
   // --- buscar guias da fila para grupo ---
   document.getElementById('btnBuscarFila').addEventListener('click', async () => {
+    if (!podeRegular) return;
     const area = document.getElementById('filaResultado');
     area.innerHTML = 'Buscando...';
     const { ok, data } = await apiFetch(`/api/guias?especialidade_id=${guiaAtual.especialidade_id}`);
@@ -335,6 +346,7 @@
 
   // --- iniciar atendimento ---
   document.getElementById('btnIniciar').addEventListener('click', async () => {
+    if (!podeRegular) return;
     const msg = document.getElementById('iniciarFormMsg');
     const equipeId = iEquipeSel.value;
     const unidade = iUnidadeSel.value;

@@ -11,7 +11,7 @@ import {
 const SITUACOES_VALIDAS = ['aguardando_autorizacao', 'lista_espera', 'em_atendimento', 'concluido', 'negado'];
 
 export async function onRequestGet({ request, env, params }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
 
   const id = Number(params.id);
@@ -25,8 +25,8 @@ export async function onRequestGet({ request, env, params }) {
   ).bind(id).first();
   if (!guia) return json({ error: 'Guia não encontrada.' }, 404);
 
-  const scope = await getRegulacaoScope(env, user);
-  const podeTriar = scope.executantes.length > 0;
+  const scope = await getRegulacaoScope(env, user, access);
+  const podeTriar = !!(access.regulador || access.administrador);
   const visivel = scope.isAdmin
     || scope.emissoras.includes(guia.unidade_solicitante_code)
     || (guia.unidade_executante_code && scope.executantes.includes(guia.unidade_executante_code))
@@ -46,7 +46,7 @@ export async function onRequestGet({ request, env, params }) {
 }
 
 export async function onRequestPatch({ request, env, params }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
 
   const id = Number(params.id);
@@ -55,8 +55,8 @@ export async function onRequestPatch({ request, env, params }) {
   ).bind(id).first();
   if (!guia) return json({ error: 'Guia não encontrada.' }, 404);
 
-  const scope = await getRegulacaoScope(env, user);
-  const podeTriar = scope.executantes.length > 0;
+  const scope = await getRegulacaoScope(env, user, access);
+  const podeTriar = !!(access.regulador || access.administrador);
   const visivel = scope.isAdmin
     || scope.emissoras.includes(guia.unidade_solicitante_code)
     || (guia.unidade_executante_code && scope.executantes.includes(guia.unidade_executante_code))
@@ -65,6 +65,14 @@ export async function onRequestPatch({ request, env, params }) {
 
   let body;
   try { body = await request.json(); } catch { return json({ error: 'JSON inválido.' }, 400); }
+
+  const alteraFluxo = body.equipe_id !== undefined || body.unidade_executante_code !== undefined;
+  if (alteraFluxo && !access.regulador && !access.administrador) {
+    return json({ error: 'Apenas Reguladores podem triar, transferir ou definir a unidade executante.', codigo: 'SEM_PERMISSAO_REGULADOR' }, 403);
+  }
+  if (body.situacao !== undefined && !access.regulador && !access.executor && !access.administrador) {
+    return json({ error: 'Apenas Reguladores ou Executores podem alterar a situação da guia.', codigo: 'SEM_PERMISSAO_FLUXO' }, 403);
+  }
 
   const updates = [];
   const binds = [];
@@ -97,14 +105,14 @@ export async function onRequestPatch({ request, env, params }) {
         // Só quem já é da equipe ATUAL (ou admin) pode transferir a guia
         // para outra equipe — é a equipe que está com a guia que decide
         // repassá-la (ex.: paciente mudou de endereço).
-        const podeTransferir = await isEquipeMember(env, user, equipeAtualId);
+        const podeTransferir = await isEquipeMember(env, user, equipeAtualId, access);
         if (!podeTransferir) {
           return json({ error: 'Só um profissional da equipe atual desta guia (ou administrador) pode transferi-la para outra equipe.' }, 403);
         }
       } else {
         // Triagem inicial: só quem é da equipe DESTINO (ou admin) pode
         // assumir a guia — é a própria equipe que está triando.
-        const podeAssumir = await isEquipeMember(env, user, novaEquipeId);
+        const podeAssumir = await isEquipeMember(env, user, novaEquipeId, access);
         if (!podeAssumir) {
           return json({ error: 'Só um profissional da equipe que está assumindo a guia (ou administrador) pode fazer isso.' }, 403);
         }

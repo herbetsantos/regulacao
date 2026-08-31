@@ -68,6 +68,10 @@
 (async () => {
   const user = await initPortalChrome();
   if (!user) return;
+  const access = user.regulacao || {};
+  const podeCadastrar = !!(access.cadastrante || access.administrador);
+  const btnNovoTopo = document.getElementById('btnNovoPaciente');
+  if (btnNovoTopo) btnNovoTopo.style.display = podeCadastrar ? '' : 'none';
 
   const paramsUrl = new URLSearchParams(window.location.search);
   const retornoGuia = paramsUrl.get('retorno') === 'guia';
@@ -99,6 +103,10 @@
   let currentCpf = null;
 
   function showForm(paciente = null, prefillCpf = '') {
+    if (!podeCadastrar) {
+      document.getElementById('configAlert').innerHTML = '<div class="notice-box is-warning">Seu perfil permite consultar cidadãos, mas não cadastrar ou editar. Solicite a responsabilidade <strong>Cadastrante</strong> a um administrador da Regulação.</div>';
+      return;
+    }
     const section = document.getElementById('formSection');
     const title = document.getElementById('formTitle');
     const atalho = document.getElementById('btnNovaGuiaAtalho');
@@ -150,12 +158,16 @@
     const pacientes = data.pacientes || [];
 
     if (!pacientes.length) {
-      area.innerHTML = '<div class="empty-state">Paciente não encontrado. O formulário de novo cadastro foi aberto abaixo.</div>';
-      showForm(null, cpf);
+      if (podeCadastrar) {
+        area.innerHTML = '<div class="empty-state">Paciente não encontrado. O formulário de novo cadastro foi aberto abaixo.</div>';
+        showForm(null, cpf);
+      } else {
+        area.innerHTML = '<div class="empty-state">Cidadão não encontrado. Seu perfil não possui a responsabilidade Cadastrante para incluir um novo cadastro.</div>';
+      }
       return;
     }
 
-    area.innerHTML = `<div class="table-wrap"><table><thead><tr><th>CPF</th><th>Nome</th><th>Nascimento</th><th>Unidade de referência</th><th></th></tr></thead><tbody>${pacientes.map((p) => `<tr><td>${maskCPF(p.cpf)}</td><td>${escapeHtml(p.nome)}</td><td>${formatDateBR(p.data_nascimento)}</td><td>${escapeHtml(unidadeNome[p.unidade_referencia_code] || p.unidade_referencia_code)}</td><td><button class="btn btn--outline btn--sm" data-cpf="${p.cpf}">Selecionar</button></td></tr>`).join('')}</tbody></table></div>`;
+    area.innerHTML = `<div class="table-wrap"><table><thead><tr><th>CPF</th><th>Nome</th><th>Nascimento</th><th>Unidade de referência</th><th></th></tr></thead><tbody>${pacientes.map((p) => `<tr><td>${maskCPF(p.cpf)}</td><td>${escapeHtml(p.nome)}</td><td>${formatDateBR(p.data_nascimento)}</td><td>${escapeHtml(unidadeNome[p.unidade_referencia_code] || p.unidade_referencia_code)}</td><td>${podeCadastrar ? `<button class="btn btn--outline btn--sm" data-cpf="${p.cpf}">Editar</button>` : '<span style="color:var(--muted);font-size:12px">Somente consulta</span>'}</td></tr>`).join('')}</tbody></table></div>`;
     area.querySelectorAll('button[data-cpf]').forEach((btn) => btn.addEventListener('click', () => showForm(pacientes.find((p) => p.cpf === btn.dataset.cpf))));
   }
 

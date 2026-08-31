@@ -2,7 +2,7 @@
 // PUT /api/pacientes/:cpf -> atualiza cadastro
 
 import { json, logAudit } from '../_utils.js';
-import { requireRegulacaoAccess, onlyDigits } from '../_shared.js';
+import { requireRegulacaoAccess, requireRegulacaoCapability, onlyDigits } from '../_shared.js';
 import { getUnidadeAtivaComTipo, friendlyRegulacaoError } from '../_db.js';
 
 function configError(err) {
@@ -32,7 +32,10 @@ export async function onRequestGet({ request, env, params }) {
 }
 
 export async function onRequestPut({ request, env, params }) {
-  const { user, error } = await requireRegulacaoAccess(request, env);
+  const { user, error } = await requireRegulacaoCapability(
+    request, env, 'cadastrante',
+    'Seu acesso permite consultar cidadãos, mas não editar cadastros.'
+  );
   if (error) return error;
 
   try {

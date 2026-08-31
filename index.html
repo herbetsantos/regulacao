@@ -53,7 +53,7 @@
         <select id="fEquipe"><option value="">Todas</option></select>
       </div>
     </div>
-    <a class="btn btn--accent" href="/guia-nova.html">+ Nova guia</a>
+    <a class="btn btn--accent" id="btnNovaGuiaHome" href="/guia-nova.html">+ Nova guia</a>
   </div>
 
   <div id="listArea">
@@ -67,6 +67,9 @@
 (async () => {
   const user = await initPortalChrome();
   if (!user) return;
+  const access = user.regulacao || {};
+  const btnNova = document.getElementById('btnNovaGuiaHome');
+  if (btnNova) btnNova.style.display = (access.cadastrante || access.administrador) ? '' : 'none';
 
   const especSel = document.getElementById('fEspecialidade');
   const unidadeSel = document.getElementById('fUnidade');
