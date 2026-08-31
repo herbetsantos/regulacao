@@ -117,3 +117,13 @@ Abra **Administração > Diagnóstico da configuração** no módulo eMulti. A t
 - usuário comum sem vínculo em `regulacao_user_unidades` com `pode_emitir = 1`.
 
 Administradores podem emitir por qualquer unidade; usuários comuns só podem criar guia pelas unidades explicitamente configuradas para emissão.
+
+## Aparência (v2.3)
+
+Antes de usar a sincronização de **Claro / Escuro / Alto contraste / Automático**, execute uma única vez no banco compartilhado do Portal:
+
+```bash
+wrangler d1 execute portal-saude-db --remote --file=./migration_theme_v3.sql
+```
+
+A coluna `users.theme` tem `light` como padrão, portanto a atualização não muda automaticamente a aparência atual dos usuários. A mesma preferência é lida e gravada pelo Portal e pelo eMulti.

@@ -869,7 +869,7 @@ body { min-height: 100vh; }
   inset: 0 0 auto 0;
   height: var(--app-topbar-h);
   z-index: 220;
-  background: #0f5ca7;
+  background: var(--primary);
 }
 
 .app-topbar__inner {
@@ -886,7 +886,10 @@ body { min-height: 100vh; }
   gap: 10px;
 }
 
-.app-brand img { height: 46px; }
+.app-brand img {
+  height: 46px;
+  filter: brightness(0) invert(1);
+}
 
 .app-brand__text {
   color: #fff;
@@ -1153,7 +1156,10 @@ body { min-height: 100vh; }
 @media (max-width: 760px) {
   :root { --app-topbar-h: 60px; --side-w: 58px; }
   .app-topbar__inner { padding: 0 12px; }
-  .app-brand img { height: 40px; }
+  .app-brand img {
+    height: 40px;
+    filter: brightness(0) invert(1);
+  }
   .app-brand__text { display:none; }
   .account-button { padding:6px; }
   .account-button__identity { min-width:0; max-width:210px; }

@@ -19,3 +19,6 @@ Módulo integrado ao Portal Saúde Cajamar para cadastro de pacientes, emissão 
 - Administração inclui diagnóstico de configuração, equipes, emissão de guias, especialidades e ícones.
 
 Veja `INSTALL.md` para instalação e migrações.
+
+### Aparência
+A versão 2.3 oferece temas Claro, Escuro, Alto contraste e Automático. A preferência fica vinculada à conta no `portal-saude-db` e é compartilhada com o Portal Saúde. Veja `AJUSTES_V2.3.md` e `migration_theme_v3.sql`.

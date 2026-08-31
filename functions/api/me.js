@@ -24,9 +24,18 @@ export async function onRequestGet({ request, env }) {
     // Migração da Regulação ainda não aplicada: não impede o /api/me.
   }
 
+  let theme = 'light';
+  try {
+    const row = await env.DB.prepare('SELECT theme FROM users WHERE id = ?').bind(user.id).first();
+    if (['auto', 'light', 'dark', 'contrast'].includes(row?.theme)) theme = row.theme;
+  } catch {
+    // Compatibilidade enquanto migration_theme_v3.sql ainda não foi executada.
+  }
+
   return json({
     user: {
       ...user,
+      theme,
       permissions,
       equipe: equipe ? { id: equipe.id, nome: equipe.nome } : null,
     },

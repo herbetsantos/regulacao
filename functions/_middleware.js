@@ -29,6 +29,14 @@ export async function onRequest({ request, env, next }) {
     }
     const sessionToken = await createSession(env, userId);
     url.searchParams.delete('handoff');
+    try {
+      const row = await env.DB.prepare('SELECT theme FROM users WHERE id = ?').bind(userId).first();
+      if (['auto', 'light', 'dark', 'contrast'].includes(row?.theme)) {
+        url.searchParams.set('theme', row.theme);
+      }
+    } catch {
+      // Migração de tema ainda não aplicada: segue sem o parâmetro.
+    }
     return new Response(null, {
       status: 302,
       headers: {

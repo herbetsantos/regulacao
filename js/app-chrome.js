@@ -56,6 +56,14 @@ function renderChrome() {
             <a href="/links-uteis.html">${appIconSvg('links')}<span>Links úteis</span></a>
             <a href="/sobre.html">${appIconSvg('info')}<span>Sobre</span></a>
             <div class="account-menu__divider"></div>
+            <div class="theme-menu-label">Aparência</div>
+            <div class="theme-choice-list">
+              <button type="button" data-theme-choice="auto"><span>Automático</span><span class="theme-choice__check" data-theme-check></span></button>
+              <button type="button" data-theme-choice="light"><span>Claro</span><span class="theme-choice__check" data-theme-check></span></button>
+              <button type="button" data-theme-choice="dark"><span>Escuro</span><span class="theme-choice__check" data-theme-check></span></button>
+              <button type="button" data-theme-choice="contrast"><span>Alto contraste</span><span class="theme-choice__check" data-theme-check></span></button>
+            </div>
+            <div class="account-menu__divider"></div>
             <button type="button" id="logoutBtn">${appIconSvg('logout')}<span>Sair</span></button>
           </div>
         </div>
@@ -155,6 +163,8 @@ function setupAccountMenu() {
   });
   menu.addEventListener('click', (e) => e.stopPropagation());
   document.addEventListener('click', close);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  if (window.SaudeTheme) window.SaudeTheme.bindControls(menu);
 }
 
 function setupActiveNav() {
@@ -254,6 +264,10 @@ async function initPortalChrome() {
   const user = await requireLogin();
   if (!user) return null;
 
+  if (window.SaudeTheme) {
+    window.SaudeTheme.syncFromUser(user);
+    window.SaudeTheme.bindControls(document.getElementById('accountMenu'));
+  }
   renderUser(user);
   setupLogout();
   setupNotificacoes();
