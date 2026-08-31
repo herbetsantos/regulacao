@@ -23,6 +23,7 @@
   table.adm-table th, table.adm-table td { padding:9px 8px; text-align:left; border-bottom:1px solid #e6eaf1; vertical-align:middle; }
   table.adm-table input[type="text"], table.adm-table input[type="number"], table.adm-table select { padding:7px 9px; border:1px solid var(--line); border-radius:7px; font-family:inherit; width:100%; }
   .section-anchor { scroll-margin-top:90px; }
+  #adminContent .panel-section { margin-bottom:16px; }
 </style>
 <link rel="stylesheet" href="/css/theme.css">
 </head>
@@ -38,7 +39,7 @@
   <div id="accessDenied" class="empty-state" style="display:none">Você não tem permissão para acessar esta página.</div>
 
   <div id="adminContent" style="display:none">
-    <section class="panel-section section-anchor" id="diagnosticoSection">
+    <section class="panel-section section-anchor is-active" id="diagnosticoSection">
       <div class="panel-section__head">
         <div class="panel-section__title">Diagnóstico da configuração</div>
         <div class="panel-section__desc">Ajuda a identificar por que pacientes ou guias podem não estar sendo cadastrados.</div>
@@ -47,7 +48,7 @@
     </section>
 
 
-    <section class="panel-section section-anchor" id="acessosSection">
+    <section class="panel-section section-anchor is-active" id="acessosSection">
       <div class="panel-section__head">
         <div class="panel-section__title">Acessos e responsabilidades</div>
         <div class="panel-section__desc">O perfil no Portal é independente do eMulti. Cada usuário pode acumular responsabilidades de Cadastrante, Regulador e Executor.</div>
@@ -56,7 +57,7 @@
       <div id="acessosList"><div class="skeleton-loading">Carregando acessos…</div></div>
     </section>
 
-    <section class="panel-section section-anchor" id="equipesSection">
+    <section class="panel-section section-anchor is-active" id="equipesSection">
       <div class="panel-section__head">
         <div class="panel-section__title">Equipes multiprofissionais</div>
         <div class="panel-section__desc"><strong>Regra:</strong> uma equipe pode cobrir várias unidades e ter vários profissionais; cada profissional pertence a apenas uma equipe.</div>
@@ -69,7 +70,7 @@
       <div id="equipesList"></div>
     </section>
 
-    <section class="panel-section section-anchor" id="agentesSection">
+    <section class="panel-section section-anchor is-active" id="agentesSection">
       <div class="panel-section__head">
         <div class="panel-section__title">Unidades autorizadas para emissão</div>
         <div class="panel-section__desc">Defina por quais unidades cada Cadastrante pode emitir guias. A responsabilidade Cadastrante é configurada na seção acima.</div>
@@ -85,7 +86,7 @@
       <div id="agentesList" style="margin-top:16px"></div>
     </section>
 
-    <section class="panel-section section-anchor" id="especialidadesSection">
+    <section class="panel-section section-anchor is-active" id="especialidadesSection">
       <div class="panel-section__head">
         <div class="panel-section__title">Especialidades</div>
         <div class="panel-section__desc">Cadastre, renomeie, ordene ou desative especialidades disponíveis para encaminhamento.</div>
@@ -98,7 +99,7 @@
       <div id="especialidadesList"></div>
     </section>
 
-    <section class="panel-section section-anchor" id="linksSection">
+    <section class="panel-section section-anchor is-active" id="linksSection">
       <div class="panel-section__head">
         <div class="panel-section__title">Ícones dos Links úteis</div>
         <div class="panel-section__desc">Os links são os mesmos cadastrados no Portal Saúde. Aqui o administrador escolhe apenas o ícone exibido na grade do eMulti.</div>
