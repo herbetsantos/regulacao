@@ -2,7 +2,7 @@
 // usuário (não afeta a visão dos outros profissionais da equipe).
 
 import { json } from '../../_utils.js';
-import { requireRegulacaoAccess, getUserEquipeIds } from '../_shared.js';
+import { requireRegulacaoAccess, getUserEquipeIds } from '../../_shared.js';
 
 export async function onRequestPost({ request, env, params }) {
   const { user, error } = await requireRegulacaoAccess(request, env);

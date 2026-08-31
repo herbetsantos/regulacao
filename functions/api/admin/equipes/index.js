@@ -2,8 +2,8 @@
 //      unidades e profissionais completos
 // POST /api/admin/equipes -> cria nova equipe { nome }
 
-import { json, logAudit } from '../_utils.js';
-import { requireAdminAccess } from '../_shared.js';
+import { json, logAudit } from '../../_utils.js';
+import { requireAdminAccess } from '../../_shared.js';
 
 export async function onRequestGet({ request, env }) {
   const { error } = await requireAdminAccess(request, env);
