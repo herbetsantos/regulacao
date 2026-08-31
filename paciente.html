@@ -85,6 +85,8 @@
     cadastroDisponivel = (unidResp.data.aps || []).length > 0;
     if (!cadastroDisponivel) {
       document.getElementById('configAlert').innerHTML = '<div class="notice-box is-warning">Nenhuma unidade está classificada como APS. O administrador precisa revisar a configuração antes de cadastrar pacientes.</div>';
+    } else if (unidResp.data.configuracao?.aviso) {
+      document.getElementById('configAlert').innerHTML = `<div class="notice-box is-warning"><strong>Compatibilidade ativa:</strong> ${escapeHtml(unidResp.data.configuracao.aviso)}</div>`;
     }
   } else {
     document.getElementById('configAlert').innerHTML = `<div class="notice-box is-error">Não foi possível carregar as unidades de referência. ${escapeHtml(unidResp.data?.error || 'Verifique a migração do banco do Portal.')}</div>`;
@@ -183,7 +185,12 @@
     btn.disabled = true;
     const { ok, data } = await apiFetch(url, { method, body:JSON.stringify(payload) });
     btn.disabled = false;
-    if (!ok) { msg.className='form-msg is-error'; msg.textContent=data?.error || 'Erro ao salvar paciente.'; return; }
+    if (!ok) {
+      msg.className='form-msg is-error';
+      msg.textContent = data?.error || 'Erro ao salvar paciente.';
+      if (data?.codigo) msg.textContent += ` [${data.codigo}]`;
+      return;
+    }
     showForm(data.paciente);
     const finalMsg = document.getElementById('formMsg');
     finalMsg.className='form-msg is-ok';

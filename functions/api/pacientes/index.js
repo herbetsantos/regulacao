@@ -3,10 +3,12 @@
 
 import { json, logAudit } from '../_utils.js';
 import { requireRegulacaoAccess, isValidCPF, onlyDigits } from '../_shared.js';
+import { getUnidadeAtivaComTipo, friendlyRegulacaoError } from '../_db.js';
 
 function configError(err) {
+  const friendly = friendlyRegulacaoError(err);
   return json({
-    error: 'O banco de dados da Regulação ainda não está pronto para pacientes. Verifique se o schema_regulacao.sql foi executado e se as unidades APS foram configuradas.',
+    ...friendly,
     detalhe: String(err?.message || ''),
   }, 503);
 }
@@ -28,7 +30,7 @@ export async function onRequestGet({ request, env }) {
       const { results } = await env.DB_REGULACAO.prepare(
         'SELECT * FROM pacientes WHERE nome LIKE ? ORDER BY nome ASC LIMIT 25'
       ).bind(`%${q}%`).all();
-      return json({ pacientes: results });
+      return json({ pacientes: results || [] });
     }
     return json({ pacientes: [] });
   } catch (err) {
@@ -60,11 +62,16 @@ export async function onRequestPost({ request, env }) {
   if (!unidade_referencia_code) return json({ error: 'Unidade de referência é obrigatória.' }, 400);
 
   try {
-    const unidade = await env.DB.prepare(
-      'SELECT code, tipo FROM unidades WHERE code = ? AND ativo = 1'
-    ).bind(unidade_referencia_code).first();
+    const { unidade } = await getUnidadeAtivaComTipo(env, unidade_referencia_code);
     if (!unidade) return json({ error: 'Unidade de referência não encontrada.' }, 400);
     if (unidade.tipo !== 'aps') return json({ error: 'A unidade de referência deve ser uma unidade de Atenção Primária.' }, 400);
+
+    if (!env.DB_REGULACAO) {
+      return json({
+        error: 'O banco da Regulação não está vinculado ao projeto. Configure o binding DB_REGULACAO no Cloudflare Pages.',
+        codigo: 'DB_REGULACAO_AUSENTE',
+      }, 503);
+    }
 
     const existente = await env.DB_REGULACAO.prepare('SELECT cpf FROM pacientes WHERE cpf = ?').bind(cpf).first();
     if (existente) return json({ error: 'Já existe um paciente cadastrado com esse CPF.' }, 409);

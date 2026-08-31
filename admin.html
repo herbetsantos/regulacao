@@ -137,7 +137,25 @@
       <div class="admin-summary-grid">
         ${cards.map(([label, value, good]) => `<div class="admin-summary-card ${good ? 'is-ok' : 'is-warning'}"><strong>${value}</strong><span>${label}</span></div>`).join('')}
       </div>
-      ${d.avisos.length ? `<div class="notice-box is-warning"><strong>Pontos a verificar:</strong><br>${d.avisos.map((a) => `• ${escapeHtml(a)}`).join('<br>')}</div>` : '<div class="notice-box">Configuração básica sem alertas.</div>'}`;
+      ${d.avisos.length ? `<div class="notice-box is-warning"><strong>Pontos a verificar:</strong><br>${d.avisos.map((a) => `• ${escapeHtml(a)}`).join('<br>')}</div>` : '<div class="notice-box">Configuração básica sem alertas.</div>'}
+      ${d.reparo_regulacao_disponivel ? '<div class="inline-form__actions" style="margin-top:12px"><button class="btn btn--accent" type="button" id="btnRepararRegulacao">Corrigir estrutura do banco da Regulação</button></div>' : ''}`;
+
+    const reparar = document.getElementById('btnRepararRegulacao');
+    if (reparar) {
+      reparar.addEventListener('click', async () => {
+        if (!confirm('A correção cria somente tabelas e índices ausentes no banco da Regulação. Nenhum paciente ou guia existente será apagado. Deseja continuar?')) return;
+        reparar.disabled = true;
+        reparar.textContent = 'Corrigindo…';
+        const resp = await apiFetch('/api/admin/reparar-regulacao', { method:'POST', body:'{}' });
+        if (!resp.ok) {
+          alert(resp.data?.error || 'Não foi possível corrigir a estrutura.');
+          reparar.disabled = false;
+          reparar.textContent = 'Corrigir estrutura do banco da Regulação';
+          return;
+        }
+        await carregarDiagnostico();
+      });
+    }
   }
 
   async function carregarListasBase() {

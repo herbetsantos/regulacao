@@ -3,6 +3,7 @@
 
 import { json, logAudit } from '../../../_utils.js';
 import { requireAdminAccess } from '../../../_shared.js';
+import { getUnidadeAtivaComTipo } from '../../../_db.js';
 
 export async function onRequestPost({ request, env, params }) {
   const { user, error } = await requireAdminAccess(request, env);
@@ -17,7 +18,7 @@ export async function onRequestPost({ request, env, params }) {
   const unidadeCode = (body.unidade_code || '').trim();
   if (!unidadeCode) return json({ error: 'Informe a unidade.' }, 400);
 
-  const unidade = await env.DB.prepare('SELECT code, tipo FROM unidades WHERE code = ? AND ativo = 1').bind(unidadeCode).first();
+  const { unidade } = await getUnidadeAtivaComTipo(env, unidadeCode);
   if (!unidade) return json({ error: 'Unidade não encontrada.' }, 400);
   if (unidade.tipo !== 'aps') {
     return json({ error: 'Só unidades de Atenção Primária podem ser vinculadas a uma equipe (as demais só emitem guias, por enquanto).' }, 400);

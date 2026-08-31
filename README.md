@@ -27,3 +27,7 @@ A versão 2.3 oferece temas Claro, Escuro, Alto contraste e Automático. A prefe
 ## Versão 2.4
 
 Consulte `AJUSTES_V2.4.md` para a substituição do imagotipo branco no cabeçalho.
+
+## Revisão 2.5 — cadastro de pacientes resiliente
+
+A v2.5 remove duas dependências indevidas que podiam bloquear o cadastro de pacientes: a existência da coluna `unidades.tipo` e a configuração completa das tabelas de escopo do usuário. O eMulti agora possui fallback compatível para reconhecer as unidades APS conhecidas e um diagnóstico/reparo não destrutivo do `DB_REGULACAO` em **Administração**.

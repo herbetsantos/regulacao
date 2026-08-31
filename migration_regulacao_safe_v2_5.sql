@@ -1,3 +1,6 @@
+-- eMulti v2.5 — reparo seguro do banco regulacao-vagas-db.
+-- Não contém DROP e pode ser executado em banco já existente.
+
 -- Regulação de Vagas — Cajamar Saúde
 -- Banco D1 DEDICADO a este projeto (conteúdo clínico: pacientes, guias,
 -- acompanhamentos). O login, as unidades e as equipes multidisciplinares

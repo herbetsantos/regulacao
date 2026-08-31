@@ -55,26 +55,37 @@ export async function getRegulacaoScope(env, user) {
     return { isAdmin: true, emissoras: todas, executantes: todas };
   }
 
-  const [diretoResult, equipeResult] = await Promise.all([
-    env.DB.prepare(
-      `SELECT ru.unidade_code, ru.pode_emitir, ru.pode_executar
-       FROM regulacao_user_unidades ru
-       JOIN unidades u ON u.code = ru.unidade_code
-       WHERE ru.user_id = ? AND u.ativo = 1`
-    ).bind(user.id).all(),
-    env.DB.prepare(
-      `SELECT DISTINCT eu.unidade_code
-       FROM regulacao_equipe_profissionais ep
-       JOIN regulacao_equipes e ON e.id = ep.equipe_id AND e.ativo = 1
-       JOIN regulacao_equipe_unidades eu ON eu.equipe_id = ep.equipe_id
-       JOIN unidades u ON u.code = eu.unidade_code AND u.ativo = 1
-       WHERE ep.user_id = ?`
-    ).bind(user.id).all(),
-  ]);
+  // Instalações mais antigas do Portal podem ainda não ter recebido as
+  // tabelas de configuração da Regulação. Isso NÃO deve impedir a tela de
+  // pacientes de carregar. Nesse caso devolvemos escopo vazio para usuários
+  // comuns; a emissão de guias continua corretamente bloqueada até o admin
+  // configurar os vínculos.
+  let diretoResult = { results: [] };
+  let equipeResult = { results: [] };
+  try {
+    [diretoResult, equipeResult] = await Promise.all([
+      env.DB.prepare(
+        `SELECT ru.unidade_code, ru.pode_emitir, ru.pode_executar
+         FROM regulacao_user_unidades ru
+         JOIN unidades u ON u.code = ru.unidade_code
+         WHERE ru.user_id = ? AND u.ativo = 1`
+      ).bind(user.id).all(),
+      env.DB.prepare(
+        `SELECT DISTINCT eu.unidade_code
+         FROM regulacao_equipe_profissionais ep
+         JOIN regulacao_equipes e ON e.id = ep.equipe_id AND e.ativo = 1
+         JOIN regulacao_equipe_unidades eu ON eu.equipe_id = ep.equipe_id
+         JOIN unidades u ON u.code = eu.unidade_code AND u.ativo = 1
+         WHERE ep.user_id = ?`
+      ).bind(user.id).all(),
+    ]);
+  } catch {
+    return { isAdmin: false, emissoras: [], executantes: [] };
+  }
 
-  const emissoras = diretoResult.results.filter((r) => r.pode_emitir).map((r) => r.unidade_code);
-  const executantesDireto = diretoResult.results.filter((r) => r.pode_executar).map((r) => r.unidade_code);
-  const executantesEquipe = equipeResult.results.map((r) => r.unidade_code);
+  const emissoras = (diretoResult.results || []).filter((r) => r.pode_emitir).map((r) => r.unidade_code);
+  const executantesDireto = (diretoResult.results || []).filter((r) => r.pode_executar).map((r) => r.unidade_code);
+  const executantesEquipe = (equipeResult.results || []).map((r) => r.unidade_code);
   const executantes = Array.from(new Set([...executantesDireto, ...executantesEquipe]));
 
   return { isAdmin: false, emissoras, executantes };

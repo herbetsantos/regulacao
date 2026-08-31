@@ -127,3 +127,21 @@ wrangler d1 execute portal-saude-db --remote --file=./migration_theme_v3.sql
 ```
 
 A coluna `users.theme` tem `light` como padrão, portanto a atualização não muda automaticamente a aparência atual dos usuários. A mesma preferência é lida e gravada pelo Portal e pelo eMulti.
+
+## Correção do cadastro de pacientes — v2.5
+
+A partir da v2.5, o cadastro de pacientes não fica mais bloqueado apenas porque a instalação antiga do Portal ainda não possui `unidades.tipo` ou porque as tabelas de vínculos de equipes/agentes ainda não foram criadas.
+
+Após publicar, entre como administrador em **Administração > Diagnóstico da configuração**:
+
+- se aparecer **Banco da Regulação: OK**, teste o cadastro normalmente;
+- se o banco estiver vinculado mas faltarem tabelas, use **Corrigir estrutura do banco da Regulação**. O procedimento não contém `DROP` e não apaga dados existentes;
+- se aparecer **binding DB_REGULACAO não configurado**, vincule `regulacao-vagas-db` ao binding `DB_REGULACAO` no Cloudflare Pages. Esse é o único caso que não pode ser corrigido pela própria interface.
+
+Também é possível aplicar manualmente, de forma segura:
+
+```bash
+wrangler d1 execute regulacao-vagas-db --remote --file=./migration_regulacao_safe_v2_5.sql
+```
+
+**Não use uma versão antiga do `schema_regulacao.sql` que contenha `DROP TABLE`.** O arquivo incluído neste pacote já foi alterado para ser não destrutivo.
