@@ -24,6 +24,8 @@ export async function onRequestGet({ request, env }) {
     banco_conteudo_ok: false,
     cadastro_cidadao_pronto: false,
     tabelas_regulacao_faltantes: [],
+    colunas_endereco_faltantes: [],
+    colunas_integracao_esus_faltantes: [],
     reparo_regulacao_disponivel: false,
     pacientes: null,
     guias: null,
@@ -48,12 +50,22 @@ export async function onRequestGet({ request, env }) {
   diagnostico.binding_regulacao_ok = schema.bindingOk;
   diagnostico.banco_conteudo_ok = schema.schemaOk;
   diagnostico.tabelas_regulacao_faltantes = schema.tabelasFaltantes || [];
+  diagnostico.colunas_endereco_faltantes = schema.colunasPacienteEnderecoFaltantes || [];
+  diagnostico.colunas_integracao_esus_faltantes = schema.colunasPacienteIntegracaoFaltantes || [];
   diagnostico.reparo_regulacao_disponivel = schema.bindingOk && !schema.schemaOk;
 
   if (!schema.bindingOk) {
     diagnostico.avisos.push('O binding DB_REGULACAO não está configurado. Vincule o banco regulacao-vagas-db ao projeto eMulti no Cloudflare Pages.');
   } else if (!schema.schemaOk) {
-    diagnostico.avisos.push(`Estrutura do banco da Regulação incompleta. Tabelas ausentes: ${(schema.tabelasFaltantes || []).join(', ') || 'não identificadas'}.`);
+    if ((schema.tabelasFaltantes || []).length) {
+      diagnostico.avisos.push(`Estrutura do banco da Regulação incompleta. Tabelas ausentes: ${(schema.tabelasFaltantes || []).join(', ')}.`);
+    }
+    if ((schema.colunasPacienteEnderecoFaltantes || []).length) {
+      diagnostico.avisos.push(`Cadastro de endereço ainda está no formato legado. Campos estruturados ausentes em pacientes: ${schema.colunasPacienteEnderecoFaltantes.join(', ')}. Use o reparo não destrutivo para habilitar a integração completa com CEP.`);
+    }
+    if ((schema.colunasPacienteIntegracaoFaltantes || []).length) {
+      diagnostico.avisos.push(`Integração e-SUS PEC ainda não está completa. Campos ausentes em pacientes: ${schema.colunasPacienteIntegracaoFaltantes.join(', ')}. Use o reparo não destrutivo para habilitar o CNS.`);
+    }
   }
 
   if (schema.bindingOk) {

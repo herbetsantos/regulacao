@@ -41,3 +41,12 @@ Antes do deploy, execute `migration_regulacao_acessos_v2_6.sql` no `portal-saude
 ## Aparência v2.7
 
 O seletor de aparência foi movido para um controle compacto no cabeçalho, à esquerda do usuário. O botão principal alterna Claro/Escuro e a seta mantém acesso a Automático e Alto contraste. Não há nova migração de banco para esta versão.
+
+## Endereço por CEP — v2.8
+
+O cadastro de cidadãos integra a **BrasilAPI** para busca de endereço por CEP. A consulta é intermediada pelo endpoint interno `/api/cep/:cep`, e uma indisponibilidade externa nunca bloqueia o preenchimento manual ou o salvamento do cadastro.
+
+Para persistir CEP, logradouro, número, complemento, bairro, município e UF separadamente, use **Administração > Diagnóstico > Corrigir estrutura do banco da Regulação** após o deploy, ou execute uma única vez `migration_regulacao_endereco_v2_8.sql` no `regulacao-vagas-db`.
+
+## Integração e-SUS PEC — v2.9
+A v2.9 inclui `POST /api/integracoes/esus/paciente`, destinado à extensão **eSUS PEC → eMulti**. O endpoint exige um usuário autenticado no eMulti com responsabilidade Cadastrante e usa CPF como identificador do cidadão. Se o CPF já existir, o cadastro não é sobrescrito automaticamente.

@@ -42,6 +42,7 @@ INSERT OR IGNORE INTO especialidades (nome, sort_order) VALUES
 -- pontuação — a formatação fica por conta do front-end).
 CREATE TABLE IF NOT EXISTS pacientes (
   cpf TEXT PRIMARY KEY,
+  cns TEXT,                                     -- CNS opcional, 15 dígitos
   nome TEXT NOT NULL,
   data_nascimento TEXT NOT NULL,               -- YYYY-MM-DD
   sexo TEXT NOT NULL CHECK (sexo IN ('F','M')),
@@ -51,7 +52,14 @@ CREATE TABLE IF NOT EXISTS pacientes (
   -- Código da unidade de referência (APS) do paciente. Corresponde a
   -- unidades.code no banco do portal (não há FK entre bancos — ver acima).
   unidade_referencia_code TEXT NOT NULL,
-  endereco TEXT,
+  endereco TEXT,                                  -- representação legada/formatada
+  cep TEXT,
+  logradouro TEXT,
+  numero TEXT,
+  complemento TEXT,
+  bairro TEXT,
+  municipio TEXT,
+  uf TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );

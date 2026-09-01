@@ -158,7 +158,7 @@
     const reparar = document.getElementById('btnRepararRegulacao');
     if (reparar) {
       reparar.addEventListener('click', async () => {
-        if (!confirm('A correção cria somente tabelas e índices ausentes no banco da Regulação. Nenhum paciente ou guia existente será apagado. Deseja continuar?')) return;
+        if (!confirm('A correção cria somente tabelas, índices e campos ausentes no banco da Regulação. Nenhum paciente ou guia existente será apagado. Deseja continuar?')) return;
         reparar.disabled = true;
         reparar.textContent = 'Corrigindo…';
         const resp = await apiFetch('/api/admin/reparar-regulacao', { method:'POST', body:'{}' });

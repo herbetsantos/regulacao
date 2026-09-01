@@ -166,3 +166,25 @@ Depois da migração, use **Administração > Acessos e responsabilidades** no e
 ### Cadastro de cidadãos
 
 Para cadastrar ou editar um cidadão, o usuário precisa da responsabilidade **Cadastrante**. Para emitir uma guia, além de ser Cadastrante, precisa possuir ao menos uma unidade autorizada em **Unidades autorizadas para emissão**. Reguladores e Executores continuam podendo consultar cidadãos, mas não alterá-los, salvo se acumularem também a responsabilidade Cadastrante.
+
+## Atualização v2.8 — endereço estruturado / BrasilAPI
+
+Depois de publicar a v2.8, entre como Administrador da Regulação em **Administração > Diagnóstico**. Se aparecer aviso sobre campos de endereço ausentes, clique em **Corrigir estrutura do banco da Regulação**. O reparo é não destrutivo e adiciona apenas as colunas ausentes na tabela `pacientes`.
+
+Como alternativa, execute uma única vez no banco `regulacao-vagas-db`:
+
+```bash
+wrangler d1 execute regulacao-vagas-db --remote --file=./migration_regulacao_endereco_v2_8.sql
+```
+
+A BrasilAPI não exige token ou secret para a consulta de CEP; não é necessário configurar variável adicional no Cloudflare.
+
+## v2.9 — integração com e-SUS PEC
+
+A integração requer a coluna opcional `cns` em `pacientes`.
+
+Forma recomendada: publique a v2.9 e, como Administrador da Regulação, abra **Administração → Diagnóstico**. Se o diagnóstico apontar `cns` ausente, use **Corrigir estrutura do banco da Regulação**. O reparo é não destrutivo.
+
+Alternativamente, execute UMA VEZ no `regulacao-vagas-db` o arquivo `migration_regulacao_integracao_esus_v2_9.sql`.
+
+O endpoint `POST /api/integracoes/esus/paciente` usa a sessão normal do eMulti e exige responsabilidade **Cadastrante** ou **Administrador da Regulação**.

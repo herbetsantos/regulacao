@@ -3,6 +3,8 @@
 // cadastro de pacientes e fornece um bootstrap NÃO DESTRUTIVO do banco de
 // conteúdo (DB_REGULACAO).
 
+import { PACIENTE_ENDERECO_COLUMNS, getPacienteEnderecoColumnStatus } from './_address.js';
+
 export const KNOWN_APS_CODES = [
   'portal', 'km43', 'beloplanalto', 'marialuiza', 'guaturinho',
   'parquesaoroberto', 'ponunduva', 'cajamarcento', 'jordanesia',
@@ -93,6 +95,8 @@ export async function getRegulacaoSchemaStatus(env) {
       schemaOk: false,
       tabelasExistentes: [],
       tabelasFaltantes: [...REGULACAO_TABLES],
+      colunasPacienteEnderecoFaltantes: [...PACIENTE_ENDERECO_COLUMNS],
+      colunasPacienteIntegracaoFaltantes: ['cns'],
       erro: 'Binding DB_REGULACAO não configurado no projeto Cloudflare Pages.',
     };
   }
@@ -104,11 +108,22 @@ export async function getRegulacaoSchemaStatus(env) {
     ).bind(...REGULACAO_TABLES).all();
     const existentes = new Set((results || []).map((r) => r.name));
     const faltantes = REGULACAO_TABLES.filter((t) => !existentes.has(t));
+    let colunasPacienteEnderecoFaltantes = [];
+    let colunasPacienteIntegracaoFaltantes = [];
+    if (existentes.has('pacientes')) {
+      const enderecoStatus = await getPacienteEnderecoColumnStatus(env);
+      colunasPacienteEnderecoFaltantes = enderecoStatus.faltantes;
+      const info = await env.DB_REGULACAO.prepare("PRAGMA table_info('pacientes')").all();
+      const cols = new Set((info.results || []).map((c) => c.name));
+      if (!cols.has('cns')) colunasPacienteIntegracaoFaltantes.push('cns');
+    }
     return {
       bindingOk: true,
-      schemaOk: faltantes.length === 0,
+      schemaOk: faltantes.length === 0 && colunasPacienteEnderecoFaltantes.length === 0 && colunasPacienteIntegracaoFaltantes.length === 0,
       tabelasExistentes: [...existentes],
       tabelasFaltantes: faltantes,
+      colunasPacienteEnderecoFaltantes,
+      colunasPacienteIntegracaoFaltantes,
       erro: null,
     };
   } catch (err) {
@@ -117,6 +132,8 @@ export async function getRegulacaoSchemaStatus(env) {
       schemaOk: false,
       tabelasExistentes: [],
       tabelasFaltantes: [...REGULACAO_TABLES],
+      colunasPacienteEnderecoFaltantes: [...PACIENTE_ENDERECO_COLUMNS],
+      colunasPacienteIntegracaoFaltantes: ['cns'],
       erro: messageOf(err),
     };
   }
@@ -139,6 +156,7 @@ export async function ensureRegulacaoSchema(env) {
     )`,
     `CREATE TABLE IF NOT EXISTS pacientes (
       cpf TEXT PRIMARY KEY,
+      cns TEXT,
       nome TEXT NOT NULL,
       data_nascimento TEXT NOT NULL,
       sexo TEXT NOT NULL CHECK (sexo IN ('F','M')),
@@ -147,6 +165,13 @@ export async function ensureRegulacaoSchema(env) {
       tel3 TEXT,
       unidade_referencia_code TEXT NOT NULL,
       endereco TEXT,
+      cep TEXT,
+      logradouro TEXT,
+      numero TEXT,
+      complemento TEXT,
+      bairro TEXT,
+      municipio TEXT,
+      uf TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     )`,
@@ -228,6 +253,21 @@ export async function ensureRegulacaoSchema(env) {
 
   for (const sql of statements) {
     await env.DB_REGULACAO.prepare(sql).run();
+  }
+
+  // Evolução não destrutiva da tabela de pacientes. O SQLite/D1 não possui
+  // ADD COLUMN IF NOT EXISTS em todas as versões, então consultamos o schema
+  // e adicionamos apenas o que estiver faltando.
+  const enderecoStatus = await getPacienteEnderecoColumnStatus(env);
+  for (const coluna of enderecoStatus.faltantes) {
+    await env.DB_REGULACAO.prepare(`ALTER TABLE pacientes ADD COLUMN ${coluna} TEXT`).run();
+  }
+
+  // v2.9 — CNS opcional para integração com e-SUS PEC.
+  const pacienteInfo = await env.DB_REGULACAO.prepare("PRAGMA table_info('pacientes')").all();
+  const pacienteCols = new Set((pacienteInfo.results || []).map((c) => c.name));
+  if (!pacienteCols.has('cns')) {
+    await env.DB_REGULACAO.prepare('ALTER TABLE pacientes ADD COLUMN cns TEXT').run();
   }
 
   const especialidades = [
