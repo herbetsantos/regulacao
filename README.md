@@ -50,3 +50,15 @@ Para persistir CEP, logradouro, número, complemento, bairro, município e UF se
 
 ## Integração e-SUS PEC — v2.9
 A v2.9 inclui `POST /api/integracoes/esus/paciente`, destinado à extensão **eSUS PEC → eMulti**. O endpoint exige um usuário autenticado no eMulti com responsabilidade Cadastrante e usa CPF como identificador do cidadão. Se o CPF já existir, o cadastro não é sobrescrito automaticamente.
+
+
+## v2.9.1
+A interface passa a exibir nomes formais das unidades e mantém o campo Motivo do encaminhamento em altura inicial compacta. Não requer SQL adicional.
+
+## v2.9.2
+
+- Corrige a tela de detalhe da guia que podia ficar vazia.
+- Organiza o detalhe em três quadros: dados pessoais, dados do encaminhamento e andamento da guia.
+- Exibe CNS/endereço quando disponíveis sem derrubar a página em bases ainda não reparadas.
+- Mantém nomes formais das unidades na interface.
+- Não requer nova migração SQL além das já previstas nas versões anteriores.

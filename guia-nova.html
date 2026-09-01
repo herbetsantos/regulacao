@@ -14,6 +14,8 @@
   .reg-aviso { background:#fff7e6; border:1px solid #f0c36d; border-radius:8px; padding:14px 18px; margin:16px 0; font-size:14px; }
   .cpf-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
   .cpf-row .field { max-width:280px; margin-bottom:0; flex:1; min-width:220px; }
+  #gMotivo { width:100%; box-sizing:border-box; min-height:110px; height:110px; padding:11px 13px; border:1.5px solid var(--line); border-radius:8px; font:inherit; color:var(--ink); background:#fff; resize:vertical; }
+  #gMotivo:focus { border-color:var(--primary); outline:none; box-shadow:0 0 0 3px rgba(32,59,143,0.14); }
 </style>
 <link rel="stylesheet" href="/css/theme.css">
 </head>
@@ -67,10 +69,12 @@
   const unidSel = document.getElementById('gUnidadeSolicitante');
   const especSel = document.getElementById('gEspecialidade');
   let podeEmitir = false;
+  let unidadeNome = {};
 
   if (!unidResp.ok) {
     document.getElementById('configAlert').innerHTML = `<div class="notice-box is-error">Não foi possível carregar as unidades. ${escapeHtml(unidResp.data?.error || 'Verifique a configuração do banco do Portal.')}</div>`;
   } else {
+    unidadeNome = Object.fromEntries((unidResp.data.todas || []).map((u) => [u.code, u.nome]));
     const lista = unidResp.data.isAdmin ? (unidResp.data.todas || []) : (unidResp.data.minhasEmissoras || []);
     podeEmitir = lista.length > 0;
     lista.forEach((u) => unidSel.insertAdjacentHTML('beforeend', `<option value="${u.code}">${escapeHtml(u.nome)}</option>`));
@@ -108,7 +112,7 @@
     }
 
     pacienteAtual = pacientes[0];
-    box.innerHTML = `<div class="reg-paciente-box"><strong>${escapeHtml(pacienteAtual.nome)}</strong> — ${formatDateBR(pacienteAtual.data_nascimento)}, ${pacienteAtual.sexo === 'F' ? 'Feminino' : 'Masculino'}<br>Unidade de referência: ${escapeHtml(pacienteAtual.unidade_referencia_code)}</div>`;
+    box.innerHTML = `<div class="reg-paciente-box"><strong>${escapeHtml(pacienteAtual.nome)}</strong> — ${formatDateBR(pacienteAtual.data_nascimento)}, ${pacienteAtual.sexo === 'F' ? 'Feminino' : 'Masculino'}<br>Unidade de referência: ${escapeHtml(unidadeNome[pacienteAtual.unidade_referencia_code] || pacienteAtual.unidade_referencia_code)}</div>`;
     form.style.display = '';
     document.getElementById('btnSalvar').disabled = !podeEmitir || !especResp.ok;
   }

@@ -82,6 +82,10 @@
     apiFetch('/api/equipes'),
   ]);
 
+  const unidadeNome = unidResp.ok
+    ? Object.fromEntries((unidResp.data.todas || []).map((u) => [u.code, u.nome]))
+    : {};
+
   if (equipesResp.ok) {
     equipesResp.data.equipes.forEach((eq) => {
       equipeSel.insertAdjacentHTML('beforeend', `<option value="${eq.id}">${escapeHtml(eq.nome)}</option>`);
@@ -140,8 +144,8 @@
               <tr>
                 <td>${escapeHtml(g.paciente_nome)}</td>
                 <td>${escapeHtml(g.especialidade_nome)}</td>
-                <td>${escapeHtml(g.unidade_solicitante_code)}</td>
-                <td>${g.unidade_executante_code ? escapeHtml(g.unidade_executante_code) : '<span class="badge badge--user">Aguardando triagem</span>'}</td>
+                <td>${escapeHtml(unidadeNome[g.unidade_solicitante_code] || g.unidade_solicitante_code)}</td>
+                <td>${g.unidade_executante_code ? escapeHtml(unidadeNome[g.unidade_executante_code] || g.unidade_executante_code) : '<span class="badge badge--user">Aguardando triagem</span>'}</td>
                 <td>${situacaoBadgeHtml(g.situacao)}</td>
                 <td>${new Date(g.created_at).toLocaleDateString('pt-BR')}</td>
                 <td><a class="btn btn--outline btn--sm" href="/guia-detalhe.html?id=${g.id}">Abrir</a></td>

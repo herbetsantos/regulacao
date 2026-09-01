@@ -15,9 +15,23 @@ export async function onRequestGet({ request, env, params }) {
   if (error) return error;
 
   const id = Number(params.id);
+
+  // Campos de endereço/CNS foram adicionados gradualmente. Montar a projeção
+  // conforme a estrutura existente evita que uma base ainda não reparada
+  // deixe a tela inteira de detalhe em branco.
+  const pacienteInfo = await env.DB_REGULACAO.prepare("PRAGMA table_info('pacientes')").all();
+  const pacienteCols = new Set((pacienteInfo.results || []).map((c) => c.name));
+  const opcionais = ['cns', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'municipio', 'uf'];
+  const opcionaisSql = opcionais.map((c) =>
+    pacienteCols.has(c) ? `p.${c} AS paciente_${c}` : `NULL AS paciente_${c}`
+  ).join(', ');
+
   const guia = await env.DB_REGULACAO.prepare(
-    `SELECT g.*, e.nome AS especialidade_nome, p.nome AS paciente_nome, p.data_nascimento, p.sexo,
-            p.tel1, p.tel2, p.tel3
+    `SELECT g.*, e.nome AS especialidade_nome,
+            p.nome AS paciente_nome, p.data_nascimento AS paciente_data_nascimento, p.sexo AS paciente_sexo,
+            p.tel1 AS paciente_tel1, p.tel2 AS paciente_tel2, p.tel3 AS paciente_tel3,
+            p.unidade_referencia_code AS paciente_unidade_referencia_code, p.endereco AS paciente_endereco,
+            ${opcionaisSql}
      FROM guias g
      JOIN especialidades e ON e.id = g.especialidade_id
      JOIN pacientes p ON p.cpf = g.cpf

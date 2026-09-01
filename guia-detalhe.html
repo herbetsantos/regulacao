@@ -22,6 +22,18 @@
   .fila-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; font-size:13px; }
   .fila-item:hover { background:#f5f7fa; }
   .reg-aviso { background:#fff7e6; border:1px solid #f0c36d; border-radius:8px; padding:12px 16px; font-size:13px; margin:12px 0; }
+  .detail-stack { display:grid; gap:18px; }
+  .detail-card { margin:0; }
+  .reg-info-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:34px; }
+  .reg-info-grid li { min-width:0; }
+  .reg-info-grid li.full { grid-column:1 / -1; }
+  .reg-info-grid li span:last-child { overflow-wrap:anywhere; }
+  .workflow-block { margin-top:18px; padding-top:18px; border-top:1px solid #e7eaf0; }
+  .workflow-block__title { color:var(--primary-dark); font-size:15px; font-weight:700; margin-bottom:10px; }
+  .workflow-row { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; }
+  .workflow-field { width:min(360px,100%); margin-bottom:0; }
+  .workflow-action { display:flex; gap:10px; align-items:center; min-height:42px; padding-bottom:1px; }
+  @media (max-width:760px) { .reg-info-grid { grid-template-columns:1fr; } .reg-info-grid li.full { grid-column:auto; } }
 </style>
 <link rel="stylesheet" href="/css/theme.css">
 </head>
@@ -35,14 +47,32 @@
     <h1 class="page__title" id="pageTitle">Guia #—</h1>
   </div>
 
-  <div class="reg-grid-2">
-    <div>
-      <div class="panel-section">
-        <div class="panel-section__head"><div class="panel-section__title">Dados da guia</div></div>
-        <ul class="reg-info-list" id="infoList"></ul>
+  <div class="detail-stack">
+    <section class="panel-section is-active detail-card" aria-labelledby="pacienteTitle">
+      <div class="panel-section__head">
+        <div class="panel-section__title" id="pacienteTitle">1. Dados pessoais do paciente</div>
+      </div>
+      <ul class="reg-info-list reg-info-grid" id="pacienteInfo"></ul>
+    </section>
 
-        <form id="situacaoForm" style="margin-top:16px">
-          <div class="field">
+    <section class="panel-section is-active detail-card" aria-labelledby="encaminhamentoTitle">
+      <div class="panel-section__head">
+        <div class="panel-section__title" id="encaminhamentoTitle">2. Dados do encaminhamento</div>
+      </div>
+      <ul class="reg-info-list reg-info-grid" id="encaminhamentoInfo"></ul>
+    </section>
+
+    <section class="panel-section is-active detail-card" aria-labelledby="andamentoTitle">
+      <div class="panel-section__head">
+        <div class="panel-section__title" id="andamentoTitle">3. Andamento da guia</div>
+      </div>
+
+      <ul class="reg-info-list reg-info-grid" id="andamentoInfo"></ul>
+
+      <form id="situacaoForm" class="workflow-block" style="margin-top:18px">
+        <div class="workflow-block__title">Atualizar situação</div>
+        <div class="workflow-row">
+          <div class="field workflow-field">
             <label for="fSituacao">Situação</label>
             <select id="fSituacao">
               <option value="aguardando_autorizacao">Aguardando autorização</option>
@@ -52,13 +82,65 @@
               <option value="negado">Negado</option>
             </select>
           </div>
-          <button class="btn btn--outline btn--sm" type="submit">Salvar situação</button>
-          <span class="form-msg" id="situacaoMsg"></span>
-        </form>
+          <div class="workflow-action">
+            <button class="btn btn--outline btn--sm" type="submit">Salvar situação</button>
+            <span class="form-msg" id="situacaoMsg"></span>
+          </div>
+        </div>
+      </form>
+
+      <div class="workflow-block" id="transferirSection" style="display:none">
+        <div class="workflow-block__title">Equipe responsável</div>
+        <div class="panel-section__desc" id="equipeAtualDesc"></div>
+        <button class="btn btn--outline btn--sm" type="button" id="btnMostrarTransferir">Transferir para outra equipe</button>
+        <div id="transferirForm" style="display:none; margin-top:14px">
+          <div class="reg-grid-2" style="gap:14px">
+            <div class="field">
+              <label for="tEquipe">Nova equipe</label>
+              <select id="tEquipe"><option value="">Selecione</option></select>
+            </div>
+            <div class="field">
+              <label for="tUnidade">Nova unidade executante</label>
+              <select id="tUnidade"><option value="">Selecione a equipe primeiro</option></select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="tMotivo">Motivo da transferência</label>
+            <textarea id="tMotivo" rows="2" placeholder="Ex.: paciente mudou de endereço"></textarea>
+          </div>
+          <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Confirmar transferência</button>
+          <span class="form-msg" id="transferirMsg"></span>
+        </div>
       </div>
 
-      <div class="panel-section" id="acompanhamentoSection" style="display:none">
-        <div class="panel-section__head"><div class="panel-section__title">Acompanhamento</div></div>
+      <div class="workflow-block" id="iniciarSection" style="display:none">
+        <div class="workflow-block__title">Iniciar atendimento</div>
+        <div class="panel-section__desc">Escolha a equipe responsável e a unidade executante. Se necessário, outras guias da mesma especialidade podem ser reunidas em um atendimento em grupo.</div>
+        <div class="reg-grid-2" style="gap:14px">
+          <div class="field">
+            <label for="iEquipe">Equipe</label>
+            <select id="iEquipe"><option value="">Selecione</option></select>
+          </div>
+          <div class="field">
+            <label for="iUnidade">Unidade executante</label>
+            <select id="iUnidade"><option value="">Selecione a equipe primeiro</option></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="iLocal">Local de execução (se diferente da unidade)</label>
+          <input type="text" id="iLocal" placeholder="Ex.: Escola Municipal X, quadra do bairro Y...">
+        </div>
+        <div class="field">
+          <button class="btn btn--outline btn--sm" type="button" id="btnBuscarFila">Buscar guias da fila para juntar em grupo</button>
+          <div id="filaResultado" style="margin-top:8px"></div>
+        </div>
+        <div id="iniciarMsg" class="reg-aviso" style="display:none"></div>
+        <button class="btn btn--accent" type="button" id="btnIniciar">Iniciar atendimento</button>
+        <span class="form-msg" id="iniciarFormMsg"></span>
+      </div>
+
+      <div class="workflow-block" id="acompanhamentoSection" style="display:none">
+        <div class="workflow-block__title">Acompanhamento</div>
         <div id="acompanhamentoInfo"></div>
 
         <div id="novaSessaoBox" style="margin-top:16px">
@@ -79,65 +161,9 @@
           <button class="btn btn--accent btn--sm" type="button" id="btnAddSessao">Registrar sessão</button>
           <span class="form-msg" id="sessaoMsg"></span>
         </div>
-
         <div id="sessoesList" style="margin-top:20px"></div>
       </div>
-    </div>
-
-    <div>
-      <!-- Transferência: só faz sentido antes do acompanhamento começar -->
-      <div class="panel-section" id="transferirSection" style="display:none">
-        <div class="panel-section__head">
-          <div class="panel-section__title">Equipe responsável</div>
-          <div class="panel-section__desc" id="equipeAtualDesc"></div>
-        </div>
-        <button class="btn btn--outline btn--sm" type="button" id="btnMostrarTransferir">Transferir para outra equipe</button>
-        <div id="transferirForm" style="display:none; margin-top:12px">
-          <div class="field">
-            <label for="tEquipe">Nova equipe</label>
-            <select id="tEquipe"><option value="">Selecione</option></select>
-          </div>
-          <div class="field">
-            <label for="tUnidade">Nova unidade executante</label>
-            <select id="tUnidade"><option value="">Selecione a equipe primeiro</option></select>
-          </div>
-          <div class="field">
-            <label for="tMotivo">Motivo da transferência</label>
-            <textarea id="tMotivo" rows="2" placeholder="Ex.: paciente mudou de endereço"></textarea>
-          </div>
-          <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Confirmar transferência</button>
-          <span class="form-msg" id="transferirMsg"></span>
-        </div>
-      </div>
-
-      <div class="panel-section" id="iniciarSection" style="display:none">
-        <div class="panel-section__head">
-          <div class="panel-section__title">Iniciar atendimento</div>
-          <div class="panel-section__desc">Escolha a equipe responsável. Opcionalmente, junte outras guias da fila (mesma especialidade) num grupo — mesmo que sejam de outra unidade, desde que da mesma equipe.</div>
-        </div>
-        <div class="field">
-          <label for="iEquipe">Equipe</label>
-          <select id="iEquipe"><option value="">Selecione</option></select>
-        </div>
-        <div class="field">
-          <label for="iUnidade">Unidade executante</label>
-          <select id="iUnidade"><option value="">Selecione a equipe primeiro</option></select>
-        </div>
-        <div class="field">
-          <label for="iLocal">Local de execução (se diferente da unidade)</label>
-          <input type="text" id="iLocal" placeholder="Ex.: Escola Municipal X, quadra do bairro Y...">
-        </div>
-
-        <div class="field">
-          <button class="btn btn--outline btn--sm" type="button" id="btnBuscarFila">Buscar guias da fila para juntar em grupo</button>
-          <div id="filaResultado" style="margin-top:8px"></div>
-        </div>
-
-        <div id="iniciarMsg" class="reg-aviso" style="display:none"></div>
-        <button class="btn btn--accent" type="button" id="btnIniciar">Iniciar atendimento</button>
-        <span class="form-msg" id="iniciarFormMsg"></span>
-      </div>
-    </div>
+    </section>
   </div>
 </main>
 
@@ -157,8 +183,22 @@
   const guiaId = new URLSearchParams(window.location.search).get('id');
   if (!guiaId) { window.location.href = '/'; return; }
 
-  const equipesResp = await apiFetch('/api/equipes');
+  const [equipesResp, unidadesResp] = await Promise.all([
+    apiFetch('/api/equipes'),
+    apiFetch('/api/unidades'),
+  ]);
   const minhasEquipes = equipesResp.ok ? equipesResp.data.equipes : [];
+  const unidadeNome = unidadesResp.ok
+    ? Object.fromEntries((unidadesResp.data.todas || []).map((u) => [u.code, u.nome]))
+    : {};
+  const nomeUnidade = (code) => code ? (unidadeNome[code] || code) : '—';
+  const formatDateTimeBR = (value) => {
+    if (!value) return '—';
+    const normalized = String(value).includes('T') ? String(value) : `${value.replace(' ', 'T')}Z`;
+    const d = new Date(normalized);
+    if (Number.isNaN(d.getTime())) return escapeHtml(String(value));
+    return new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short' }).format(d);
+  };
 
   function preencherSelectEquipes(sel) {
     sel.innerHTML = '<option value="">Selecione</option>';
@@ -189,19 +229,42 @@
 
     guiaAtual = data.guia;
     document.getElementById('pageTitle').textContent = `Guia #${guiaAtual.id} — ${guiaAtual.paciente_nome}`;
-    document.getElementById('infoList').innerHTML = `
-      <li><span>Paciente</span><span>${escapeHtml(guiaAtual.paciente_nome)}</span></li>
+    const enderecoPartes = [
+      guiaAtual.paciente_logradouro,
+      guiaAtual.paciente_numero ? `nº ${guiaAtual.paciente_numero}` : '',
+      guiaAtual.paciente_complemento,
+      guiaAtual.paciente_bairro,
+      [guiaAtual.paciente_municipio, guiaAtual.paciente_uf].filter(Boolean).join('/'),
+      guiaAtual.paciente_cep ? `CEP ${guiaAtual.paciente_cep}` : '',
+    ].filter(Boolean);
+    const enderecoFormatado = enderecoPartes.join(' · ') || guiaAtual.paciente_endereco || '—';
+
+    document.getElementById('pacienteInfo').innerHTML = `
+      <li><span>Nome</span><span>${escapeHtml(guiaAtual.paciente_nome)}</span></li>
       <li><span>CPF</span><span>${maskCPF(guiaAtual.cpf)}</span></li>
-      <li><span>Nascimento</span><span>${formatDateBR(guiaAtual.data_nascimento)} · ${guiaAtual.sexo === 'F' ? 'Feminino' : 'Masculino'}</span></li>
-      <li><span>Telefones</span><span>${[guiaAtual.tel1, guiaAtual.tel2, guiaAtual.tel3].filter(Boolean).map(maskPhone).join(' · ') || '—'}</span></li>
+      <li><span>CNS</span><span>${escapeHtml(guiaAtual.paciente_cns || '—')}</span></li>
+      <li><span>Data de nascimento</span><span>${formatDateBR(guiaAtual.paciente_data_nascimento)}</span></li>
+      <li><span>Sexo</span><span>${guiaAtual.paciente_sexo === 'F' ? 'Feminino' : guiaAtual.paciente_sexo === 'M' ? 'Masculino' : escapeHtml(guiaAtual.paciente_sexo || '—')}</span></li>
+      <li><span>Telefones</span><span>${[guiaAtual.paciente_tel1, guiaAtual.paciente_tel2, guiaAtual.paciente_tel3].filter(Boolean).map(maskPhone).join(' · ') || '—'}</span></li>
+      <li><span>Unidade de referência</span><span>${escapeHtml(nomeUnidade(guiaAtual.paciente_unidade_referencia_code))}</span></li>
+      <li class="full"><span>Endereço</span><span>${escapeHtml(enderecoFormatado)}</span></li>
+    `;
+
+    document.getElementById('encaminhamentoInfo').innerHTML = `
       <li><span>Especialidade</span><span>${escapeHtml(guiaAtual.especialidade_nome)}</span></li>
-      <li><span>Unidade solicitante</span><span>${escapeHtml(guiaAtual.unidade_solicitante_code)}</span></li>
-      <li><span>Médico solicitante</span><span>${escapeHtml(guiaAtual.medico_solicitante)}</span></li>
       <li><span>CID-10</span><span>${escapeHtml(guiaAtual.cid10 || '—')}</span></li>
-      <li><span>Motivo</span><span>${escapeHtml(guiaAtual.motivo)}</span></li>
+      <li><span>Unidade solicitante</span><span>${escapeHtml(nomeUnidade(guiaAtual.unidade_solicitante_code))}</span></li>
+      <li><span>Médico solicitante</span><span>${escapeHtml(guiaAtual.medico_solicitante)}</span></li>
+      <li class="full"><span>Motivo do encaminhamento</span><span>${escapeHtml(guiaAtual.motivo)}</span></li>
+      <li><span>Guia criada em</span><span>${formatDateTimeBR(guiaAtual.created_at)}</span></li>
+      <li><span>Última atualização</span><span>${formatDateTimeBR(guiaAtual.updated_at)}</span></li>
+    `;
+
+    document.getElementById('andamentoInfo').innerHTML = `
       <li><span>Situação atual</span><span>${situacaoBadgeHtml(guiaAtual.situacao)}</span></li>
-      <li><span>Equipe</span><span>${data.equipeAtual ? escapeHtml(data.equipeAtual.nome) : '— ainda não triada —'}</span></li>
-      <li><span>Unidade executante</span><span>${guiaAtual.unidade_executante_code ? escapeHtml(guiaAtual.unidade_executante_code) : '—'}</span></li>
+      <li><span>Equipe responsável</span><span>${data.equipeAtual ? escapeHtml(data.equipeAtual.nome) : '— ainda não triada —'}</span></li>
+      <li><span>Unidade executante</span><span>${guiaAtual.unidade_executante_code ? escapeHtml(nomeUnidade(guiaAtual.unidade_executante_code)) : '—'}</span></li>
+      <li><span>Atendimento</span><span>${data.acompanhamento ? (data.acompanhamento.tipo === 'grupo' ? 'Em grupo' : 'Individual') : 'Ainda não iniciado'}</span></li>
     `;
     document.getElementById('fSituacao').value = guiaAtual.situacao;
 
@@ -239,7 +302,7 @@
     document.getElementById('acompanhamentoInfo').innerHTML = `
       <p style="font-size:14px;margin:0 0 8px">
         Tipo: <strong>${data.acompanhamento.tipo === 'grupo' ? 'Atendimento em grupo' : 'Atendimento individual'}</strong>
-        · Unidade: <strong>${escapeHtml(data.acompanhamento.unidade_executante_code)}</strong>
+        · Unidade: <strong>${escapeHtml(nomeUnidade(data.acompanhamento.unidade_executante_code))}</strong>
         ${data.acompanhamento.local_execucao ? ` · Local: <strong>${escapeHtml(data.acompanhamento.local_execucao)}</strong>` : ''}
       </p>
       ${data.acompanhamento.tipo === 'grupo' ? `<p style="font-size:14px;margin:0 0 8px">Pacientes: ${data.guias.map((g) => escapeHtml(g.paciente_nome)).join(', ')}</p>` : ''}
@@ -333,7 +396,7 @@
     area.innerHTML = candidatas.map((g) => `
       <label class="fila-item">
         <input type="checkbox" value="${g.id}" ${guiasParaGrupo.includes(g.id) ? 'checked' : ''}>
-        <span>#${g.id} — ${escapeHtml(g.paciente_nome)} (${escapeHtml(g.unidade_solicitante_code)})</span>
+        <span>#${g.id} — ${escapeHtml(g.paciente_nome)} (${escapeHtml(nomeUnidade(g.unidade_solicitante_code))})</span>
       </label>
     `).join('');
     area.querySelectorAll('input[type=checkbox]').forEach((cb) => {
