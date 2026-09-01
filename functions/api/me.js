@@ -22,7 +22,7 @@ export async function onRequestGet({ request, env }) {
     ).bind(user.id).first();
   } catch { /* migração ainda não aplicada */ }
 
-  let theme = 'light';
+  let theme = null;
   try {
     const row = await env.DB.prepare('SELECT theme FROM users WHERE id = ?').bind(user.id).first();
     if (['auto', 'light', 'dark', 'contrast'].includes(row?.theme)) theme = row.theme;

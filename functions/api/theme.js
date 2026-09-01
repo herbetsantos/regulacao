@@ -3,18 +3,20 @@ import { json, getAuthUser } from './_utils.js';
 const ALLOWED_THEMES = new Set(['auto', 'light', 'dark', 'contrast']);
 
 async function getTheme(env, userId) {
-  try {
-    const row = await env.DB.prepare('SELECT theme FROM users WHERE id = ?').bind(userId).first();
-    return ALLOWED_THEMES.has(row?.theme) ? row.theme : 'light';
-  } catch {
-    return 'auto';
-  }
+  const row = await env.DB.prepare('SELECT theme FROM users WHERE id = ?').bind(userId).first();
+  return ALLOWED_THEMES.has(row?.theme) ? row.theme : 'light';
 }
 
 export async function onRequestGet({ request, env }) {
   const user = await getAuthUser(request, env);
   if (!user) return json({ error: 'Não autenticado.' }, 401);
-  return json({ theme: await getTheme(env, user.id) });
+  try {
+    return json({ theme: await getTheme(env, user.id) });
+  } catch {
+    // Nunca transforma uma falha de banco em uma preferência válida.
+    // O cliente mantém o tema atual e tenta sincronizar novamente depois.
+    return json({ error: 'Não foi possível consultar a preferência de aparência.' }, 503);
+  }
 }
 
 export async function onRequestPut({ request, env }) {

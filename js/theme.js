@@ -11,6 +11,13 @@
     return ALLOWED.has(value) ? value : 'light';
   }
 
+  const LABELS = {
+    auto: 'Automático',
+    light: 'Claro',
+    dark: 'Escuro',
+    contrast: 'Alto contraste',
+  };
+
   function resolve(value) {
     const pref = normalize(value);
     if (pref === 'contrast') return 'contrast';
@@ -53,7 +60,13 @@
     catch { return 'light'; }
   }
 
+  let remoteSavePending = 0;
+  let ignoreRemoteUntil = 0;
+
   async function saveRemote(pref) {
+    remoteSavePending += 1;
+    // Evita que uma leitura do valor antigo no D1 desfaça a escolha recém-feita.
+    ignoreRemoteUntil = Date.now() + 3000;
     try {
       const res = await fetch('/api/theme', {
         method: 'PUT',
@@ -67,6 +80,8 @@
       }
     } catch (err) {
       console.warn('Não foi possível sincronizar a aparência com a conta.', err);
+    } finally {
+      remoteSavePending = Math.max(0, remoteSavePending - 1);
     }
   }
 
@@ -74,6 +89,22 @@
     const pref = apply(value, true);
     if (!options || options.sync !== false) saveRemote(pref);
     return pref;
+  }
+
+  function getResolved() {
+    return root.dataset.themeResolved || resolve(getPreference());
+  }
+
+  function getLabel(value) {
+    return LABELS[normalize(value)] || LABELS.light;
+  }
+
+  function toggleLightDark() {
+    // O atalho sempre termina em uma preferência explícita. Se o usuário
+    // estiver em Automático, considera o tema efetivamente exibido naquele
+    // momento; em Alto contraste, o primeiro clique leva ao Escuro.
+    const current = getResolved();
+    return setPreference(current === 'dark' ? 'light' : 'dark');
   }
 
   function syncFromUser(user) {
@@ -100,6 +131,7 @@
   let lastRemoteCheck = 0;
   async function refreshFromRemote() {
     const now = Date.now();
+    if (remoteSavePending > 0 || now < ignoreRemoteUntil) return;
     if (now - lastRemoteCheck < 2000) return;
     lastRemoteCheck = now;
     try {
@@ -141,7 +173,9 @@
 
   window.SaudeTheme = {
     getPreference,
-    getResolved: () => root.dataset.themeResolved || resolve(getPreference()),
+    getResolved,
+    getLabel,
+    toggleLightDark,
     setPreference,
     syncFromUser,
     bindControls,

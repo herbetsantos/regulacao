@@ -37,3 +37,7 @@ A v2.5 remove duas dependências indevidas que podiam bloquear o cadastro de pac
 A v2.6 separa o papel do usuário no Portal das responsabilidades no eMulti. Um usuário `user` comum pode ser Cadastrante, Regulador e/ou Executor. A Administração do eMulti permite combinar essas responsabilidades e sincroniza apenas a permissão de abertura da ferramenta com o Portal.
 
 Antes do deploy, execute `migration_regulacao_acessos_v2_6.sql` no `portal-saude-db`.
+
+## Aparência v2.7
+
+O seletor de aparência foi movido para um controle compacto no cabeçalho, à esquerda do usuário. O botão principal alterna Claro/Escuro e a seta mantém acesso a Automático e Alto contraste. Não há nova migração de banco para esta versão.

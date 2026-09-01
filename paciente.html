@@ -111,7 +111,10 @@
     const title = document.getElementById('formTitle');
     const atalho = document.getElementById('btnNovaGuiaAtalho');
     const form = document.getElementById('pacienteForm');
-    section.style.display = '';
+    // .panel-section é ocultada globalmente pelo CSS administrativo.
+    // O formulário de paciente precisa forçar sua exibição ao ser aberto.
+    section.classList.add('is-active');
+    section.style.display = 'block';
     form.reset();
     document.getElementById('formMsg').className = 'form-msg';
     document.getElementById('formMsg').textContent = '';
