@@ -98,3 +98,19 @@ A unidade executante deve ser escolhida manualmente e é obrigatória nos fluxos
 
 ## v2.16.0
 Painel orientado às responsabilidades e navegação por fluxo.
+
+
+## v2.16.1
+Restauração da paleta clara: lateral branca e fundo geral #f2f4f7.
+
+
+
+## v2.17.1
+
+- Escalas passam a ser configuradas exclusivamente por Administradores.
+- Especialistas têm acesso somente de leitura à própria escala.
+- Administrador seleciona equipe, profissional e especialidade para montar a escala.
+- Sem nova migração de banco além da migração de agenda da v2.17.0.
+
+## v2.17.0
+Agenda, escalas, atendimentos individuais, grupos vazios e encontros programados.

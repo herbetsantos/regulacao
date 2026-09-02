@@ -24,7 +24,9 @@ export async function onRequestPost({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: 'JSON inválido.' }, 400); }
   const nome = (body.nome || '').trim();
+  const duracao = Number(body.duracao_padrao_min || 30);
   if (!nome) return json({ error: 'Nome é obrigatório.' }, 400);
+  if (!Number.isInteger(duracao) || duracao < 5 || duracao > 480) return json({ error: 'Duração padrão deve estar entre 5 e 480 minutos.' }, 400);
 
   const existente = await env.DB_REGULACAO.prepare('SELECT id FROM especialidades WHERE nome = ?').bind(nome).first();
   if (existente) return json({ error: 'Já existe uma especialidade com esse nome.' }, 409);
@@ -33,8 +35,8 @@ export async function onRequestPost({ request, env }) {
   const sort_order = (maxOrder?.m || 0) + 1;
 
   const result = await env.DB_REGULACAO.prepare(
-    'INSERT INTO especialidades (nome, sort_order) VALUES (?, ?)'
-  ).bind(nome, sort_order).run();
+    'INSERT INTO especialidades (nome, sort_order, duracao_padrao_min) VALUES (?, ?, ?)'
+  ).bind(nome, sort_order, duracao).run();
 
   await logAudit(env, user, 'create', 'especialidade', result.meta.last_row_id, { nome });
 

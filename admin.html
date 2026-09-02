@@ -90,10 +90,10 @@
     <section class="panel-section section-anchor is-active" id="especialidadesSection">
       <div class="panel-section__head">
         <div class="panel-section__title">Especialidades</div>
-        <div class="panel-section__desc">Cadastre, renomeie, ordene ou desative especialidades disponíveis para encaminhamento.</div>
+        <div class="panel-section__desc">Cadastre, renomeie, ordene ou desative especialidades e defina a duração padrão de cada horário de atendimento.</div>
       </div>
       <div class="inline-row" style="margin-bottom:14px">
-        <div class="field"><label for="novaEspNome">Nova especialidade</label><input type="text" id="novaEspNome" placeholder="Ex.: Terapia Ocupacional"></div>
+        <div class="field"><label for="novaEspNome">Nova especialidade</label><input type="text" id="novaEspNome" placeholder="Ex.: Terapia Ocupacional"></div><div class="field" style="max-width:180px"><label for="novaEspDuracao">Duração padrão (min)</label><input type="number" id="novaEspDuracao" value="30" min="5" max="480" step="5"></div>
         <button class="btn btn--accent btn--sm" type="button" id="btnCriarEsp">Adicionar</button>
       </div>
       <div class="form-msg" id="espMsg"></div>
@@ -346,10 +346,10 @@
     const area = document.getElementById('especialidadesList');
     if (!ok) { area.innerHTML = '<div class="empty-state">Erro ao carregar especialidades.</div>'; return; }
     const itens = data.especialidades || [];
-    area.innerHTML = itens.length ? `<table class="adm-table"><thead><tr><th>Nome</th><th>Ordem</th><th>Ativa</th><th></th></tr></thead><tbody>${itens.map((e) => `<tr data-esp-id="${e.id}"><td><input type="text" data-nome value="${escapeAttr(e.nome)}"></td><td style="width:100px"><input type="number" data-ordem value="${e.sort_order}"></td><td style="width:80px"><input type="checkbox" data-ativo ${e.ativo ? 'checked' : ''}></td><td style="width:100px"><button class="btn btn--outline btn--sm" data-save>Salvar</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhuma especialidade cadastrada.</div>';
+    area.innerHTML = itens.length ? `<table class="adm-table"><thead><tr><th>Nome</th><th>Duração padrão</th><th>Ordem</th><th>Ativa</th><th></th></tr></thead><tbody>${itens.map((e) => `<tr data-esp-id="${e.id}"><td><input type="text" data-nome value="${escapeAttr(e.nome)}"></td><td style="width:140px"><input type="number" data-duracao min="5" max="480" step="5" value="${e.duracao_padrao_min || 30}"></td><td style="width:100px"><input type="number" data-ordem value="${e.sort_order}"></td><td style="width:80px"><input type="checkbox" data-ativo ${e.ativo ? 'checked' : ''}></td><td style="width:100px"><button class="btn btn--outline btn--sm" data-save>Salvar</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhuma especialidade cadastrada.</div>';
     area.querySelectorAll('[data-esp-id]').forEach((row) => row.querySelector('[data-save]').addEventListener('click', async () => {
       const id = row.dataset.espId;
-      const payload = { nome:row.querySelector('[data-nome]').value.trim(), sort_order:Number(row.querySelector('[data-ordem]').value)||0, ativo:row.querySelector('[data-ativo]').checked };
+      const payload = { nome:row.querySelector('[data-nome]').value.trim(), duracao_padrao_min:Number(row.querySelector('[data-duracao]').value)||30, sort_order:Number(row.querySelector('[data-ordem]').value)||0, ativo:row.querySelector('[data-ativo]').checked };
       const r = await apiFetch(`/api/especialidades/${id}`, { method:'PUT', body:JSON.stringify(payload) });
       if (!r.ok) alert(r.data?.error || 'Erro ao salvar especialidade.');
       else await carregarEspecialidades();
@@ -359,7 +359,7 @@
   document.getElementById('btnCriarEsp').addEventListener('click', async () => {
     const nome = document.getElementById('novaEspNome').value.trim();
     if (!nome) return showMsg('espMsg', 'Informe o nome da especialidade.');
-    const { ok, data } = await apiFetch('/api/especialidades', { method:'POST', body:JSON.stringify({ nome }) });
+    const duracao_padrao_min = Number(document.getElementById('novaEspDuracao').value || 30); const { ok, data } = await apiFetch('/api/especialidades', { method:'POST', body:JSON.stringify({ nome, duracao_padrao_min }) });
     if (!ok) return showMsg('espMsg', data?.error || 'Erro ao adicionar especialidade.');
     document.getElementById('novaEspNome').value = '';
     showMsg('espMsg', 'Especialidade adicionada.', true);

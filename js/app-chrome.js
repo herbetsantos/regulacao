@@ -3,7 +3,7 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.16.0';
+const APP_VERSION = '2.17.1';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {
@@ -130,6 +130,9 @@ function renderChrome() {
         <a class="side-nav__item" data-path="/guia-nova.html" href="/guia-nova.html" title="Nova guia">
           <span class="side-nav__icon">${appIconSvg('newguide')}</span><span class="side-nav__label">Nova guia</span>
         </a>
+        <a class="side-nav__item" id="navAgendaItem" data-path="/agenda.html" href="/agenda.html" title="Agenda e atendimentos" hidden>
+          <span class="side-nav__icon">${appIconSvg('calendar')}</span><span class="side-nav__label">Agenda</span>
+        </a>
         <button class="side-nav__item side-nav__button" id="bellBtn" type="button" title="Notificações">
           <span class="side-nav__icon">${appIconSvg('bell')}<span class="side-nav__badge" id="bellBadge" hidden>0</span></span>
           <span class="side-nav__label">Notificações</span>
@@ -197,6 +200,9 @@ function renderUser(user) {
 
   const regulacaoItem = document.getElementById('navRegulacaoItem');
   if (regulacaoItem) regulacaoItem.hidden = !(access.regulador || access.administrador || access.cadastrante || access.executor);
+
+  const agendaItem = document.getElementById('navAgendaItem');
+  if (agendaItem) agendaItem.hidden = !(access.executor || access.administrador || access.regulador);
 
   const adminItem = document.getElementById('navAdminItem');
   if (adminItem) adminItem.hidden = !access.administrador;

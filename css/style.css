@@ -20,7 +20,7 @@
   --muted: #5b6480;
   --line: #dde3f0;
   --surface: #f4f6fb;
-  --bg: #ffffff;
+  --bg: #f2f4f7;
   --danger: #c0392b;
   --radius: 10px;
   --shadow: 0 2px 10px rgba(32, 59, 143, 0.08);
@@ -857,9 +857,9 @@ table.data-table {
   --app-topbar-h: 66px;
   --side-w: 70px;
   --side-w-open: 238px;
-  --side-bg: #dcecf8;
+  --side-bg: #ffffff;
   --side-ink: #173e72;
-  --side-hover: #c8e1f4;
+  --side-hover: #eef5fb;
 }
 
 body { min-height: 100vh; }
@@ -999,8 +999,8 @@ body { min-height: 100vh; }
   bottom: 0;
   width: var(--side-w);
   background: var(--side-bg);
-  border-right: 1px solid #bdd8ec;
-  box-shadow: 2px 0 8px rgba(35,78,120,.05);
+  border-right: 1px solid #dbe3ec;
+  box-shadow: 2px 0 10px rgba(20,44,80,.045);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1255,3 +1255,10 @@ body { min-height: 100vh; }
 }
 
 .side-nav.is-pinned-open{width:var(--side-w-open)}.side-nav.is-pinned-open .side-nav__label{opacity:1;transform:translateX(0)}.side-nav__toggle{margin:10px 9px 0;width:42px;height:36px;border:0;border-radius:9px;background:transparent;color:var(--side-ink);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px}.side-nav__toggle:hover{background:var(--side-hover)}
+
+/* v2.16.1 — restaura a paleta clara aprovada */
+html:not([data-theme-resolved="dark"]):not([data-theme-resolved="contrast"]) body { background:#f2f4f7; }
+html:not([data-theme-resolved="dark"]):not([data-theme-resolved="contrast"]) .side-nav { background:#fff; }
+html:not([data-theme-resolved="dark"]):not([data-theme-resolved="contrast"]) :is(.panel-section,.card,.update-card,.account-card,.about-card,.adm-card,.reg-paciente-box,.sessao-card,.metric,.role-card) { background:#fff; }
+html:not([data-theme-resolved="dark"]):not([data-theme-resolved="contrast"]) .side-nav__item:hover { background:#eef5fb; }
+html:not([data-theme-resolved="dark"]):not([data-theme-resolved="contrast"]) .side-nav__item.is-active { background:#dcecf8; }
