@@ -26,6 +26,7 @@ export async function onRequestGet({ request, env }) {
     tabelas_regulacao_faltantes: [],
     colunas_endereco_faltantes: [],
     colunas_integracao_esus_faltantes: [],
+    colunas_fluxo_v210_faltantes: [],
     reparo_regulacao_disponivel: false,
     pacientes: null,
     guias: null,
@@ -52,6 +53,7 @@ export async function onRequestGet({ request, env }) {
   diagnostico.tabelas_regulacao_faltantes = schema.tabelasFaltantes || [];
   diagnostico.colunas_endereco_faltantes = schema.colunasPacienteEnderecoFaltantes || [];
   diagnostico.colunas_integracao_esus_faltantes = schema.colunasPacienteIntegracaoFaltantes || [];
+  diagnostico.colunas_fluxo_v210_faltantes = schema.colunasFluxoV210Faltantes || [];
   diagnostico.reparo_regulacao_disponivel = schema.bindingOk && !schema.schemaOk;
 
   if (!schema.bindingOk) {
@@ -62,6 +64,9 @@ export async function onRequestGet({ request, env }) {
     }
     if ((schema.colunasPacienteEnderecoFaltantes || []).length) {
       diagnostico.avisos.push(`Cadastro de endereço ainda está no formato legado. Campos estruturados ausentes em pacientes: ${schema.colunasPacienteEnderecoFaltantes.join(', ')}. Use o reparo não destrutivo para habilitar a integração completa com CEP.`);
+    }
+    if ((schema.colunasFluxoV210Faltantes || []).length) {
+      diagnostico.avisos.push(`Fluxo v2.10 incompleto. Estruturas ausentes: ${schema.colunasFluxoV210Faltantes.join(', ')}. Use o reparo não destrutivo.`);
     }
     if ((schema.colunasPacienteIntegracaoFaltantes || []).length) {
       diagnostico.avisos.push(`Integração e-SUS PEC ainda não está completa. Campos ausentes em pacientes: ${schema.colunasPacienteIntegracaoFaltantes.join(', ')}. Use o reparo não destrutivo para habilitar o CNS.`);

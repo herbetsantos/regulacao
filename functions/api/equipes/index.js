@@ -3,6 +3,7 @@
 
 import { json } from '../_utils.js';
 import { requireRegulacaoAccess, getUserEquipeIds, getEquipeInfo } from '../_shared.js';
+import { getEquipeProfissionais } from '../_professionals.js';
 
 export async function onRequestGet({ request, env }) {
   const { user, access, error } = await requireRegulacaoAccess(request, env);
@@ -19,7 +20,7 @@ export async function onRequestGet({ request, env }) {
   const equipes = [];
   for (const id of equipeIds) {
     const info = await getEquipeInfo(env, id);
-    if (info) equipes.push(info);
+    if (info) { info.profissionais = await getEquipeProfissionais(env, id); equipes.push(info); }
   }
   equipes.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 

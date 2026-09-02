@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="/js/theme.js"></script>
-<title>Sobre — eMulti</title>
+<title>Sobre o eMulti Regulação</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
@@ -22,7 +22,7 @@
 <main class="page">
   <div class="page__header">
     <div class="eyebrow">eMulti Cajamar</div>
-    <h1 class="page__title">Sobre</h1>
+    <h1 class="page__title">Sobre o eMulti Regulação</h1>
     <p class="page__subtitle">Informações do módulo de Regulação de Vagas.</p>
   </div>
   <section class="about-card">
@@ -32,13 +32,13 @@
     <div class="about-meta">
       <div><strong>Módulo</strong><span>eMulti — Regulação de Vagas</span></div>
       <div><strong>Integração</strong><span>Portal Saúde Cajamar</span></div>
-      <div><strong>Versão desta revisão</strong><span>2.3</span></div>
+      <div><strong>Versão desta revisão</strong><span id="aboutVersion">2.14.0</span></div>
     </div>
   </section>
 </main>
 <script src="/js/app-chrome.js"></script>
 <script>
-(async () => { await initPortalChrome(); })();
+(async () => { await initPortalChrome(); const el=document.getElementById('aboutVersion'); if(el&&window.EMULTI_VERSION) el.textContent=window.EMULTI_VERSION; })();
 </script>
 </body>
 </html>

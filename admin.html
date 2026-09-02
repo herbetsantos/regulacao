@@ -22,6 +22,7 @@
   table.adm-table { width:100%; font-size:13px; border-collapse:collapse; }
   table.adm-table th, table.adm-table td { padding:9px 8px; text-align:left; border-bottom:1px solid #e6eaf1; vertical-align:middle; }
   table.adm-table input[type="text"], table.adm-table input[type="number"], table.adm-table select { padding:7px 9px; border:1px solid var(--line); border-radius:7px; font-family:inherit; width:100%; }
+  .prof-editor,.prof-add{display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(150px,1fr) minmax(180px,1fr) auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e6eaf1}.prof-editor input,.prof-editor select,.prof-add input,.prof-add select{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:7px;font-family:inherit}.prof-add{grid-template-columns:minmax(180px,1.5fr) minmax(150px,1fr) minmax(180px,1fr) auto}@media(max-width:900px){.prof-editor,.prof-add{grid-template-columns:1fr}}
   .section-anchor { scroll-margin-top:90px; }
   #adminContent .panel-section { margin-bottom:16px; }
 </style>
@@ -124,6 +125,7 @@
   let todasUnidades = [];
   let todosUsuarios = [];
   let equipesCache = [];
+  let especialidadesCache = [];
 
   function showMsg(id, text, ok = false) {
     const el = document.getElementById(id);
@@ -174,9 +176,10 @@
   }
 
   async function carregarListasBase() {
-    const [unidResp, usResp] = await Promise.all([apiFetch('/api/unidades'), apiFetch('/api/admin/usuarios')]);
+    const [unidResp, usResp, espResp] = await Promise.all([apiFetch('/api/unidades'), apiFetch('/api/admin/usuarios'), apiFetch('/api/especialidades?all=1')]);
     todasUnidades = unidResp.ok ? (unidResp.data.todas || []) : [];
     todosUsuarios = usResp.ok ? (usResp.data.usuarios || []) : [];
+    especialidadesCache = espResp.ok ? (espResp.data.especialidades || []).filter((e) => e.ativo) : [];
 
     document.getElementById('agUnidade').innerHTML = '<option value="">Selecione</option>' +
       todasUnidades.map((u) => `<option value="${u.code}">${escapeHtml(u.nome)}${u.tipo === 'aps' ? ' (APS)' : ''}</option>`).join('');
@@ -245,9 +248,9 @@
         <div style="font-size:13px;color:#667085;margin-bottom:4px">Unidades cobertas</div>
         <div>${eq.unidades.map((u) => `<span class="adm-tag">${escapeHtml(u.nome)} <button type="button" data-remove-unidade="${u.code}">×</button></span>`).join('') || '<span style="font-size:13px;color:#999">Nenhuma unidade vinculada</span>'}</div>
         ${eq.ativo ? `<div class="inline-row" style="margin-top:8px"><select class="add-unidade-sel"><option value="">+ vincular unidade APS</option>${unidadesAps.filter((u) => !eq.unidades.some((x) => x.code === u.code)).map((u) => `<option value="${u.code}">${escapeHtml(u.nome)}</option>`).join('')}</select></div>` : ''}
-        <div style="font-size:13px;color:#667085;margin:14px 0 4px">Profissionais</div>
-        <div>${eq.profissionais.map((p) => `<span class="adm-tag">${escapeHtml(p.name)} <button type="button" data-remove-prof="${p.id}">×</button></span>`).join('') || '<span style="font-size:13px;color:#999">Nenhum profissional vinculado</span>'}</div>
-        ${eq.ativo ? `<div class="inline-row" style="margin-top:8px"><select class="add-prof-sel"><option value="">+ vincular profissional</option>${todosUsuarios.filter((u) => !assigned.has(Number(u.id))).map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}</select></div>` : ''}
+        <div style="font-size:13px;color:#667085;margin:14px 0 7px">Profissionais especialistas</div>
+        <div class="prof-list">${eq.profissionais.map((p) => `<div class="prof-editor" data-prof-id="${p.id}"><strong>${escapeHtml(p.name)}</strong><input type="text" data-prof-cargo value="${escapeHtml(p.cargo || '')}" placeholder="Cargo/profissão"><select data-prof-esps multiple size="${Math.min(4, Math.max(2, especialidadesCache.length))}">${especialidadesCache.map((e) => `<option value="${e.id}" ${(p.especialidade_ids || []).includes(Number(e.id)) ? 'selected' : ''}>${escapeHtml(e.nome)}</option>`).join('')}</select><button class="btn btn--outline btn--sm" type="button" data-save-prof>Salvar</button><button class="btn btn--outline btn--sm" type="button" data-remove-prof="${p.id}">Remover</button></div>`).join('') || '<span style="font-size:13px;color:#999">Nenhum profissional vinculado</span>'}</div>
+        ${eq.ativo ? `<div class="prof-add" style="margin-top:10px"><select class="add-prof-sel"><option value="">+ profissional</option>${todosUsuarios.filter((u) => !assigned.has(Number(u.id))).map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}</select><input class="add-prof-cargo" type="text" placeholder="Cargo/profissão"><select class="add-prof-esps" multiple size="${Math.min(4, Math.max(2, especialidadesCache.length))}">${especialidadesCache.map((e) => `<option value="${e.id}">${escapeHtml(e.nome)}</option>`).join('')}</select><button class="btn btn--accent btn--sm add-prof-btn" type="button">Vincular</button></div>` : ''}
       </div>`).join('') || '<div class="empty-state">Nenhuma equipe cadastrada.</div>';
 
     area.querySelectorAll('[data-equipe-id]').forEach((card) => {
@@ -283,10 +286,19 @@
         if (!r.ok) alert(r.data?.error || 'Erro ao vincular unidade.');
         await carregarEquipes(); await carregarDiagnostico();
       });
-      const ps = card.querySelector('.add-prof-sel');
-      if (ps) ps.addEventListener('change', async (e) => {
-        if (!e.target.value) return;
-        const r = await apiFetch(`/api/admin/equipes/${equipeId}/profissionais`, { method:'POST', body:JSON.stringify({ user_id:Number(e.target.value) }) });
+      card.querySelectorAll('[data-save-prof]').forEach((btn) => btn.addEventListener('click', async () => {
+        const row = btn.closest('[data-prof-id]');
+        const especialidade_ids = [...row.querySelector('[data-prof-esps]').selectedOptions].map((o) => Number(o.value));
+        const r = await apiFetch(`/api/admin/equipes/${equipeId}/profissionais`, { method:'PUT', body:JSON.stringify({ user_id:Number(row.dataset.profId), cargo:row.querySelector('[data-prof-cargo]').value.trim(), especialidade_ids }) });
+        if (!r.ok) alert(r.data?.error || 'Erro ao salvar profissional.'); else await carregarEquipes();
+      }));
+      const addBtn = card.querySelector('.add-prof-btn');
+      if (addBtn) addBtn.addEventListener('click', async () => {
+        const ps = card.querySelector('.add-prof-sel');
+        const cargo = card.querySelector('.add-prof-cargo').value.trim();
+        const especialidade_ids = [...card.querySelector('.add-prof-esps').selectedOptions].map((o) => Number(o.value));
+        if (!ps.value || !cargo || !especialidade_ids.length) return alert('Selecione profissional, cargo e ao menos uma especialidade.');
+        const r = await apiFetch(`/api/admin/equipes/${equipeId}/profissionais`, { method:'POST', body:JSON.stringify({ user_id:Number(ps.value), cargo, especialidade_ids }) });
         if (!r.ok) alert(r.data?.error || 'Erro ao vincular profissional.');
         await carregarEquipes(); await carregarDiagnostico();
       });

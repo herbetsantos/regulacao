@@ -19,21 +19,24 @@ export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const situacao = url.searchParams.get('situacao');
   const especialidadeId = url.searchParams.get('especialidade_id');
-  const unidadeExecutante = url.searchParams.get('unidade_executante');
+  const unidadeExecutante = (url.searchParams.get('unidade_executante') || '').trim();
+  const unidadeSolicitante = (url.searchParams.get('unidade_solicitante') || '').trim();
+  const equipeId = Number(url.searchParams.get('equipe_id') || 0);
+  const medicoSolicitante = (url.searchParams.get('medico_solicitante') || '').trim();
+  const dataDe = (url.searchParams.get('data_de') || '').trim();
+  const dataAte = (url.searchParams.get('data_ate') || '').trim();
+  const q = (url.searchParams.get('q') || '').trim();
   const cpf = onlyDigits(url.searchParams.get('cpf') || '');
+  const excludeId = Number(url.searchParams.get('exclude_id') || 0);
+  const ordem = url.searchParams.get('ordem') === 'antigas' ? 'antigas' : 'recentes';
+  const page = Math.max(1, Number(url.searchParams.get('page') || 1));
+  const requestedPageSize = Number(url.searchParams.get('page_size') || 20);
+  const pageSize = [1, 10, 20, 50, 100].includes(requestedPageSize) ? requestedPageSize : 20;
+  const offset = (page - 1) * pageSize;
 
-  // Escopo: o usuário vê uma guia se:
-  //  (a) a unidade solicitante ou a unidade executante dela está entre as
-  //      unidades onde ele emite/executa (acesso direto OU via equipe,
-  //      já unificados dentro de scope.executantes); OU
-  //  (b) a guia AINDA NÃO tem unidade executante definida (fila de
-  //      triagem) e o usuário tem QUALQUER acesso de execução — é assim
-  //      que os profissionais das equipes multidisciplinares enxergam o
-  //      que chegou pra triar (decidir se vira atendimento individual, em
-  //      grupo, e em qual unidade), antes de alguém "assumir" a guia.
   const codigosVisiveis = Array.from(new Set([...scope.emissoras, ...scope.executantes]));
   if (!scope.isAdmin && codigosVisiveis.length === 0) {
-    return json({ guias: [] }); // usuário sem nenhuma unidade/equipe vinculada ainda
+    return json({ guias: [], total: 0, page, page_size: pageSize, total_pages: 1 });
   }
 
   const where = [];
@@ -50,34 +53,56 @@ export async function onRequestGet({ request, env }) {
       binds.push(...b, ...b);
     }
   }
-  if (situacao && SITUACOES_VALIDAS.includes(situacao)) {
-    where.push('g.situacao = ?');
-    binds.push(situacao);
-  }
-  if (especialidadeId) {
-    where.push('g.especialidade_id = ?');
-    binds.push(especialidadeId);
-  }
-  if (unidadeExecutante) {
-    where.push('g.unidade_executante_code = ?');
-    binds.push(unidadeExecutante);
-  }
-  if (cpf) {
-    where.push('g.cpf = ?');
-    binds.push(cpf);
+  if (situacao && SITUACOES_VALIDAS.includes(situacao)) { where.push('g.situacao = ?'); binds.push(situacao); }
+  if (especialidadeId) { where.push('g.especialidade_id = ?'); binds.push(especialidadeId); }
+  if (unidadeExecutante) { where.push('g.unidade_executante_code = ?'); binds.push(unidadeExecutante); }
+  if (unidadeSolicitante) { where.push('g.unidade_solicitante_code = ?'); binds.push(unidadeSolicitante); }
+  if (equipeId) { where.push('g.equipe_id = ?'); binds.push(equipeId); }
+  if (medicoSolicitante) { where.push('LOWER(g.medico_solicitante) LIKE LOWER(?)'); binds.push(`%${medicoSolicitante}%`); }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataDe)) { where.push('date(g.created_at) >= date(?)'); binds.push(dataDe); }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataAte)) { where.push('date(g.created_at) <= date(?)'); binds.push(dataAte); }
+  if (cpf) { where.push('g.cpf = ?'); binds.push(cpf); }
+  if (excludeId) { where.push('g.id <> ?'); binds.push(excludeId); }
+  if (q) {
+    const qDigits = onlyDigits(q);
+    const like = `%${q}%`;
+    if (qDigits.length >= 3) {
+      where.push('(LOWER(p.nome) LIKE LOWER(?) OR g.codigo_guia LIKE ? OR g.cpf LIKE ?)');
+      binds.push(like, like, `%${qDigits}%`);
+    } else {
+      where.push('(LOWER(p.nome) LIKE LOWER(?) OR g.codigo_guia LIKE ?)');
+      binds.push(like, like);
+    }
   }
 
+  const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
+  const countRow = await env.DB_REGULACAO.prepare(`
+    SELECT COUNT(*) AS total
+    FROM guias g
+    JOIN especialidades e ON e.id = g.especialidade_id
+    JOIN pacientes p ON p.cpf = g.cpf
+    ${whereSql}`
+  ).bind(...binds).first();
+  const total = Number(countRow?.total || 0);
+
+  const orderSql = ordem === 'antigas' ? 'g.created_at ASC, g.id ASC' : 'g.created_at DESC, g.id DESC';
   const sql = `
     SELECT g.*, e.nome AS especialidade_nome, p.nome AS paciente_nome
     FROM guias g
     JOIN especialidades e ON e.id = g.especialidade_id
     JOIN pacientes p ON p.cpf = g.cpf
-    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-    ORDER BY g.created_at DESC
-    LIMIT 300`;
+    ${whereSql}
+    ORDER BY ${orderSql}
+    LIMIT ? OFFSET ?`;
 
-  const { results } = await env.DB_REGULACAO.prepare(sql).bind(...binds).all();
-  return json({ guias: results });
+  const { results } = await env.DB_REGULACAO.prepare(sql).bind(...binds, pageSize, offset).all();
+  return json({
+    guias: results,
+    total,
+    page,
+    page_size: pageSize,
+    total_pages: Math.max(1, Math.ceil(total / pageSize)),
+  });
 }
 
 export async function onRequestPost({ request, env }) {
@@ -137,6 +162,11 @@ export async function onRequestPost({ request, env }) {
   ).bind(cpf, unidade_solicitante_code, medico_solicitante, especialidade_id, motivo, cid10, user.id).run();
 
   const guiaId = result.meta.last_row_id;
+  const ano = new Date().getUTCFullYear();
+  const codigoGuia = `${ano}-${String(guiaId).padStart(6, '0')}`;
+  try {
+    await env.DB_REGULACAO.prepare('UPDATE guias SET codigo_guia = ? WHERE id = ?').bind(codigoGuia, guiaId).run();
+  } catch { /* base anterior ao reparo: o id continua válido */ }
   await logAudit(env, user, 'create', 'guia', guiaId, { cpf, especialidade_id });
 
   const guia = await env.DB_REGULACAO.prepare('SELECT * FROM guias WHERE id = ?').bind(guiaId).first();

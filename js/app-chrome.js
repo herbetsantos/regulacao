@@ -3,6 +3,8 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
+const APP_VERSION = '2.14.0';
+window.EMULTI_VERSION = APP_VERSION;
 
 const ICONS = {
   queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 4h10M7 12h10M7 16h6"/></svg>',
@@ -75,6 +77,7 @@ function renderChrome() {
       <div class="topbar__inner app-topbar__inner">
         <a class="brand app-brand" href="/" aria-label="Página inicial da Regulação">
           <img src="/assets/imagotipo.png" alt="Prefeitura de Cajamar">
+          <span class="app-brand__text"><strong>eMulti</strong><span class="app-brand__divider" aria-hidden="true"></span><span>Regulação</span></span>
         </a>
         <div class="app-topbar__actions">
           ${themeControlHtml()}
@@ -89,7 +92,9 @@ function renderChrome() {
           <div class="account-menu" id="accountMenu" hidden>
             <a href="/minha-conta.html">${appIconSvg('key')}<span>Alterar senha</span></a>
             <a href="/links-uteis.html">${appIconSvg('links')}<span>Links úteis</span></a>
-            <a href="/sobre.html">${appIconSvg('info')}<span>Sobre</span></a>
+            <a href="/suporte.html">${appIconSvg('message')}<span>Suporte</span></a>
+            <a href="/termos-de-uso.html">${appIconSvg('document')}<span>Termos de Uso e Privacidade</span></a>
+            <a href="/sobre.html">${appIconSvg('info')}<span>Sobre o eMulti Regulação</span></a>
             <div class="account-menu__divider"></div>
             <button type="button" id="logoutBtn">${appIconSvg('logout')}<span>Sair</span></button>
           </div>
@@ -132,6 +137,7 @@ function renderChrome() {
       <div class="bell-panel__list" id="bellList"><div class="empty-state">Nenhuma notificação.</div></div>
     </div>`;
 }
+
 
 function setFavicon(url) {
   let link = document.querySelector("link[rel~='icon']");

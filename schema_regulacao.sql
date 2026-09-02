@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS pacientes (
 -- Guias de encaminhamento.
 CREATE TABLE IF NOT EXISTS guias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  codigo_guia TEXT UNIQUE,                      -- código público: AAAA-000001
   cpf TEXT NOT NULL,                            -- FK "lógica" -> pacientes.cpf
   unidade_solicitante_code TEXT NOT NULL,       -- qualquer unidade (não só APS)
   medico_solicitante TEXT NOT NULL,
@@ -97,11 +98,29 @@ CREATE TABLE IF NOT EXISTS guias (
   FOREIGN KEY (cpf) REFERENCES pacientes(cpf) ON DELETE RESTRICT,
   FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_guias_codigo ON guias(codigo_guia);
 CREATE INDEX IF NOT EXISTS idx_guias_cpf ON guias(cpf);
 CREATE INDEX IF NOT EXISTS idx_guias_situacao ON guias(situacao);
 CREATE INDEX IF NOT EXISTS idx_guias_unidade_executante ON guias(unidade_executante_code);
 CREATE INDEX IF NOT EXISTS idx_guias_equipe ON guias(equipe_id);
 CREATE INDEX IF NOT EXISTS idx_guias_especialidade ON guias(especialidade_id);
+
+
+-- Histórico de atribuição da guia a profissionais especialistas.
+CREATE TABLE IF NOT EXISTS guia_atribuicoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guia_id INTEGER NOT NULL,
+  profissional_user_id INTEGER NOT NULL,
+  equipe_id INTEGER NOT NULL,
+  cargo TEXT,
+  atribuido_por INTEGER,
+  atribuido_em TEXT DEFAULT (datetime('now')),
+  encerrado_em TEXT,
+  motivo_encerramento TEXT,
+  FOREIGN KEY (guia_id) REFERENCES guias(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_guia_atribuicoes_guia ON guia_atribuicoes(guia_id);
+CREATE INDEX IF NOT EXISTS idx_guia_atribuicoes_prof ON guia_atribuicoes(profissional_user_id);
 
 -- Acompanhamentos: agrupam 1 guia (atendimento individual) ou 2+ guias
 -- (atendimento em grupo) sob uma mesma agenda/sessões. Um grupo PODE
@@ -127,6 +146,8 @@ CREATE TABLE IF NOT EXISTS acompanhamentos (
   -- acima (ex.: escola, quadra, outro espaço público). Opcional — quando
   -- NULL, entende-se que o atendimento acontece na própria unidade.
   local_execucao TEXT,
+  data_inicio TEXT,
+  horario_inicio TEXT,
   created_by INTEGER,
   created_at TEXT DEFAULT (datetime('now')),
   encerrado_em TEXT,
@@ -157,6 +178,7 @@ CREATE TABLE IF NOT EXISTS acompanhamento_sessoes (
   presentes TEXT,                -- JSON com lista de guia_id presentes (grupo); NULL = todos
   evolucao TEXT NOT NULL,
   created_by INTEGER,
+  profissional_user_id INTEGER,                 -- profissional que realizou a sessão (Portal)
   created_at TEXT DEFAULT (datetime('now')),
   FOREIGN KEY (acompanhamento_id) REFERENCES acompanhamentos(id) ON DELETE CASCADE
 );

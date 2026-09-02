@@ -55,10 +55,23 @@ A v2.9 inclui `POST /api/integracoes/esus/paciente`, destinado à extensão **eS
 ## v2.9.1
 A interface passa a exibir nomes formais das unidades e mantém o campo Motivo do encaminhamento em altura inicial compacta. Não requer SQL adicional.
 
-## v2.9.2
+## v2.10
 
 - Corrige a tela de detalhe da guia que podia ficar vazia.
 - Organiza o detalhe em três quadros: dados pessoais, dados do encaminhamento e andamento da guia.
 - Exibe CNS/endereço quando disponíveis sem derrubar a página em bases ainda não reparadas.
 - Mantém nomes formais das unidades na interface.
 - Não requer nova migração SQL além das já previstas nas versões anteriores.
+
+## v2.10
+Veja AJUSTES_V2.10.md.
+
+## v2.11
+Fila operacional paginada, filtros avançados, navegação para a próxima guia após regulação e cabeçalho com `eMulti | Regulação`.
+
+## v2.12 — Rodapé, suporte e documentos institucionais
+O chrome compartilhado agora exibe o rodapé com a versão do sistema e links para Suporte, Política de Privacidade e Termos de Uso. A versão é controlada pela constante `APP_VERSION` em `js/app-chrome.js`.
+
+
+## v2.14
+Revisão dos Termos de Uso e da Política de Privacidade, sem DPO nominal, e remoção definitiva do código residual do rodapé.

@@ -95,14 +95,6 @@ html[data-theme-resolved="contrast"] :is(.badge--admin,.badge--user,.badge--inac
 html[data-theme-resolved="dark"] .login-shell { background:var(--bg) !important; }
 html[data-theme-resolved="contrast"] .login-shell { background:#000 !important; }
 
-/* O logo (.brand) tem fundo branco fixo para servir de "etiqueta" sobre a
-   barra colorida do cabeçalho. Dentro do card de login, em temas escuro e
-   alto contraste, isso deixa um retângulo branco destacado — aqui removemos
-   só esse fundo, deixando a imagem (que já é transparente) flutuar sobre o
-   card escuro. O .brand do cabeçalho normal não é afetado. */
-html[data-theme-resolved="dark"] .login-card .brand { background:transparent !important; }
-html[data-theme-resolved="contrast"] .login-card .brand { background:transparent !important; }
-
 /* eMulti: menu lateral também acompanha o tema. */
 html[data-theme-resolved="dark"] {
   --side-bg:#19283b;

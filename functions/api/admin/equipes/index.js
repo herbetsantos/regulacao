@@ -4,10 +4,13 @@
 
 import { json, logAudit } from '../../_utils.js';
 import { requireAdminAccess } from '../../_shared.js';
+import { getEquipeProfissionais, ensureProfissionalSchema } from '../../_professionals.js';
 
 export async function onRequestGet({ request, env }) {
   const { error } = await requireAdminAccess(request, env);
   if (error) return error;
+
+  await ensureProfissionalSchema(env);
 
   const { results: equipes } = await env.DB.prepare(
     'SELECT id, nome, ativo FROM regulacao_equipes ORDER BY nome ASC'
@@ -20,11 +23,7 @@ export async function onRequestGet({ request, env }) {
        JOIN unidades u ON u.code = eu.unidade_code
        WHERE eu.equipe_id = ? ORDER BY u.nome`
     ).bind(eq.id).all();
-    const { results: profissionais } = await env.DB.prepare(
-      `SELECT us.id, us.name, us.username FROM regulacao_equipe_profissionais ep
-       JOIN users us ON us.id = ep.user_id
-       WHERE ep.equipe_id = ? ORDER BY us.name`
-    ).bind(eq.id).all();
+    const profissionais = await getEquipeProfissionais(env, eq.id);
     detalhadas.push({ ...eq, unidades, profissionais });
   }
 

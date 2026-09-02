@@ -7,6 +7,7 @@ import {
   requireRegulacaoAccess, getRegulacaoScope, isEquipeMember, getEquipeInfo,
   inserirNotificacao,
 } from '../_shared.js';
+import { getEquipeProfissionais, getProfissionalNaEquipe } from '../_professionals.js';
 
 const SITUACOES_VALIDAS = ['aguardando_autorizacao', 'lista_espera', 'em_atendimento', 'concluido', 'negado'];
 
@@ -54,9 +55,24 @@ export async function onRequestGet({ request, env, params }) {
   ).bind(id).first();
 
   let equipeAtual = null;
-  if (guia.equipe_id) equipeAtual = await getEquipeInfo(env, guia.equipe_id);
+  let profissionaisEquipe = [];
+  if (guia.equipe_id) {
+    equipeAtual = await getEquipeInfo(env, guia.equipe_id);
+    profissionaisEquipe = await getEquipeProfissionais(env, guia.equipe_id);
+    profissionaisEquipe = profissionaisEquipe
+      .map((p) => ({ ...p, compativel: p.especialidade_ids.includes(Number(guia.especialidade_id)) }))
+      .sort((a,b) => Number(b.compativel) - Number(a.compativel) || a.name.localeCompare(b.name, 'pt-BR'));
+  }
+  let profissionalAtual = null;
+  try {
+    const attr = await env.DB_REGULACAO.prepare(`SELECT * FROM guia_atribuicoes WHERE guia_id = ? AND encerrado_em IS NULL ORDER BY id DESC LIMIT 1`).bind(id).first();
+    if (attr) {
+      const prof = await env.DB.prepare('SELECT id, name FROM users WHERE id = ?').bind(attr.profissional_user_id).first();
+      profissionalAtual = prof ? { ...prof, cargo:attr.cargo, atribuido_em:attr.atribuido_em } : { id:attr.profissional_user_id, cargo:attr.cargo };
+    }
+  } catch {}
 
-  return json({ guia, acompanhamento: acompanhamento || null, equipeAtual });
+  return json({ guia, acompanhamento: acompanhamento || null, equipeAtual, profissionaisEquipe, profissionalAtual });
 }
 
 export async function onRequestPatch({ request, env, params }) {
@@ -92,6 +108,7 @@ export async function onRequestPatch({ request, env, params }) {
   const binds = [];
   let notificacaoParaEquipeId = null;
   let notificacaoMensagem = null;
+  let atribuiuProfissional = false;
 
   // --- situação (sem mudança de comportamento) ---
   if (body.situacao !== undefined) {
@@ -149,7 +166,7 @@ export async function onRequestPatch({ request, env, params }) {
         const equipeOrigem = await getEquipeInfo(env, equipeAtualId);
         const motivo = (body.motivo_transferencia || '').trim();
         notificacaoParaEquipeId = novaEquipeId;
-        notificacaoMensagem = `Guia #${id} (${guia.paciente_nome}) foi transferida da equipe ${equipeOrigem ? equipeOrigem.nome : `#${equipeAtualId}`} para a sua equipe.`
+        notificacaoMensagem = `Guia ${guia.codigo_guia || '#' + id} (${guia.paciente_nome}) foi transferida da equipe ${equipeOrigem ? equipeOrigem.nome : `#${equipeAtualId}`} para a sua equipe.`
           + (motivo ? ` Motivo: ${motivo}` : '');
       }
     } else if (body.unidade_executante_code !== undefined) {
@@ -181,9 +198,48 @@ export async function onRequestPatch({ request, env, params }) {
     binds.push(code);
   }
 
-  if (updates.length === 0) return json({ error: 'Nada para atualizar.' }, 400);
+  // --- profissional responsável ---
+  if (body.profissional_responsavel_id !== undefined) {
+    if (!access.regulador && !access.administrador) {
+      return json({ error: 'Apenas Reguladores podem atribuir o encaminhamento a um profissional.' }, 403);
+    }
+    const equipeFinalId = body.equipe_id !== undefined ? Number(body.equipe_id) : Number(guia.equipe_id);
+    const profissionalId = Number(body.profissional_responsavel_id);
+    if (!equipeFinalId) return json({ error: 'Defina a equipe responsável antes do profissional.' }, 400);
+    if (!profissionalId) return json({ error: 'Selecione o profissional responsável.' }, 400);
+    const prof = await getProfissionalNaEquipe(env, equipeFinalId, profissionalId);
+    if (!prof) return json({ error: 'O profissional selecionado não pertence à equipe responsável.' }, 400);
+    if (!prof.cargo) return json({ error: 'O profissional selecionado ainda não possui cargo/profissão cadastrado.' }, 400);
+    if (!prof.especialidade_ids.includes(Number(guia.especialidade_id))) {
+      return json({ error: 'O profissional selecionado não está habilitado para a especialidade desta guia.' }, 400);
+    }
+    try {
+      await env.DB_REGULACAO.prepare(`UPDATE guia_atribuicoes SET encerrado_em = datetime('now'), motivo_encerramento = 'Redistribuição'
+        WHERE guia_id = ? AND encerrado_em IS NULL`).bind(id).run();
+      await env.DB_REGULACAO.prepare(`INSERT INTO guia_atribuicoes
+        (guia_id, profissional_user_id, equipe_id, cargo, atribuido_por) VALUES (?, ?, ?, ?, ?)`)
+        .bind(id, profissionalId, equipeFinalId, prof.cargo, user.id).run();
+      atribuiuProfissional = true;
+    } catch (e) {
+      return json({ error: 'A estrutura de atribuição profissional ainda não está pronta. Execute o reparo do banco em Administração > Diagnóstico.' }, 503);
+    }
+  }
 
-  updates.push("updated_at = datetime('now')");
+  if (body.situacao === 'em_atendimento') {
+    const equipeFinalId = body.equipe_id !== undefined ? Number(body.equipe_id) : Number(guia.equipe_id);
+    const unidadeFinal = body.unidade_executante_code !== undefined ? String(body.unidade_executante_code || '').trim() : guia.unidade_executante_code;
+    if (!equipeFinalId || !unidadeFinal) return json({ error: 'Para colocar a guia Em atendimento, equipe e unidade executante são obrigatórias.' }, 400);
+    let atribuicao = null;
+    try { atribuicao = await env.DB_REGULACAO.prepare('SELECT id FROM guia_atribuicoes WHERE guia_id = ? AND encerrado_em IS NULL').bind(id).first(); } catch {}
+    if (!atribuicao && body.profissional_responsavel_id === undefined) {
+      return json({ error: 'Para colocar a guia Em atendimento, atribua primeiro um profissional especialista.' }, 400);
+    }
+  }
+
+  if (updates.length === 0 && !atribuiuProfissional) return json({ error: 'Nada para atualizar.' }, 400);
+  if (updates.length === 0 && atribuiuProfissional) updates.push("updated_at = datetime('now')");
+
+  if (!updates.some((u) => u.startsWith('updated_at'))) updates.push("updated_at = datetime('now')");
   binds.push(id);
   await env.DB_REGULACAO.prepare(`UPDATE guias SET ${updates.join(', ')} WHERE id = ?`).bind(...binds).run();
 

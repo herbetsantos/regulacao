@@ -48,9 +48,9 @@ export async function onRequestPost({ request, env, params }) {
   }
 
   const result = await env.DB_REGULACAO.prepare(
-    `INSERT INTO acompanhamento_sessoes (acompanhamento_id, data_sessao, horario, presentes, evolucao, created_by)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).bind(acompanhamentoId, data_sessao, horario, presentes, evolucao, user.id).run();
+    `INSERT INTO acompanhamento_sessoes (acompanhamento_id, data_sessao, horario, presentes, evolucao, created_by, profissional_user_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(acompanhamentoId, data_sessao, horario, presentes, evolucao, user.id, user.id).run();
 
   await logAudit(env, user, 'create', 'sessao', result.meta.last_row_id, { acompanhamentoId });
 
