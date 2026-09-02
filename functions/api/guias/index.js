@@ -76,7 +76,7 @@ export async function onRequestGet({ request, env }) {
       )`);
       binds.push(like, guideDigitsLike, guideDigitsLike, `%${qDigits}%`);
     } else {
-      where.push('(LOWER(p.nome) LIKE LOWER(?) OR REPLACE(COALESCE(g.codigo_guia, ''), '-', '') LIKE ?)');
+      where.push(`(LOWER(p.nome) LIKE LOWER(?) OR REPLACE(COALESCE(g.codigo_guia, ''), '-', '') LIKE ?)`);
       binds.push(like, guideDigitsLike || like);
     }
   }

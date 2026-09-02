@@ -12,9 +12,32 @@
   .reg-grid-2 { display:grid; grid-template-columns:1.3fr 1fr; gap:24px; align-items:start; }
   @media (max-width:900px) { .reg-grid-2 { grid-template-columns:1fr; } }
   .reg-info-list { list-style:none; padding:0; margin:0; }
-  .reg-info-list li { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #eee; font-size:14px; gap:12px; }
-  .reg-info-list li span:first-child { color:#666; flex-shrink:0; }
-  .reg-info-list li span:last-child { text-align:right; }
+  .reg-info-list li {
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    gap:5px;
+    min-height:66px;
+    padding:12px 14px;
+    border:1px solid #e2e7ef;
+    border-radius:9px;
+    background:var(--surface, #fff);
+    font-size:14px;
+  }
+  .reg-info-list li span:first-child {
+    color:var(--muted, #667085);
+    flex-shrink:0;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.035em;
+    text-transform:uppercase;
+  }
+  .reg-info-list li span:last-child {
+    color:var(--text, #122052);
+    text-align:left;
+    font-weight:500;
+    line-height:1.4;
+  }
   .sessao-card { background:#f5f7fa; border-radius:8px; padding:14px 18px; margin-bottom:12px; }
   .sessao-card__head { display:flex; justify-content:space-between; font-weight:600; margin-bottom:6px; font-size:14px; }
   .sessao-card__evolucao { font-size:14px; white-space:pre-wrap; }
@@ -22,12 +45,32 @@
   .fila-item { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; font-size:13px; }
   .fila-item:hover { background:#f5f7fa; }
   .reg-aviso { background:#fff7e6; border:1px solid #f0c36d; border-radius:8px; padding:12px 16px; font-size:13px; margin:12px 0; }
-  .detail-stack { display:grid; gap:18px; }
-  .detail-card { margin:0; }
-  .reg-info-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:34px; }
+  .detail-stack { display:grid; gap:16px; }
+  .detail-card { margin:0; padding:18px; }
+  .detail-card .panel-section__head { margin-bottom:14px; }
+  .detail-card .panel-section__title { font-weight:700; }
+  .reg-info-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
   .reg-info-grid li { min-width:0; }
   .reg-info-grid li.full { grid-column:1 / -1; }
+  .reg-info-grid li.wide { grid-column:span 2; }
   .reg-info-grid li span:last-child { overflow-wrap:anywhere; }
+  .guide-hero {
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:18px;
+    padding:16px 18px;
+    margin-bottom:16px;
+    border:1px solid #dce3ed;
+    border-radius:12px;
+    background:var(--surface, #fff);
+  }
+  .guide-hero__main { min-width:0; }
+  .guide-hero__label { color:var(--muted, #667085); font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; margin-bottom:5px; }
+  .guide-hero__code { color:var(--primary-dark, #0e2a73); font-size:22px; font-weight:800; letter-spacing:.025em; line-height:1.15; }
+  .guide-hero__patient { margin-top:5px; color:var(--text, #122052); font-size:14px; font-weight:600; }
+  .guide-hero__meta { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
+  .guide-meta-pill { padding:7px 10px; border-radius:999px; background:#f3f6fa; border:1px solid #dfe5ed; color:var(--text, #122052); font-size:12px; font-weight:600; white-space:nowrap; }
   .workflow-block { margin-top:18px; padding-top:18px; border-top:1px solid #e7eaf0; }
   .workflow-block__title { color:var(--primary-dark); font-size:15px; font-weight:700; margin-bottom:10px; }
   .workflow-row { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; }
@@ -38,7 +81,13 @@
   .post-regulation__text strong { display:block; color:var(--primary-dark); margin-bottom:3px; }
   .post-regulation__text span { color:var(--muted); font-size:13px; }
   .post-regulation__actions { display:flex; gap:8px; flex-wrap:wrap; }
-  @media (max-width:760px) { .reg-info-grid { grid-template-columns:1fr; } .reg-info-grid li.full { grid-column:auto; } }
+  @media (max-width:1100px) { .reg-info-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:760px) {
+    .reg-info-grid { grid-template-columns:1fr; }
+    .reg-info-grid li.full, .reg-info-grid li.wide { grid-column:auto; }
+    .guide-hero { flex-direction:column; }
+    .guide-hero__meta { justify-content:flex-start; }
+  }
 </style>
 <link rel="stylesheet" href="/css/theme.css">
 </head>
@@ -50,6 +99,18 @@
   <div class="page__header">
     <div class="eyebrow">Regulação de Vagas</div>
     <h1 class="page__title" id="pageTitle">Guia —</h1>
+  </div>
+
+  <div class="guide-hero" id="guideHero" style="display:none">
+    <div class="guide-hero__main">
+      <div class="guide-hero__label">Identificador da guia</div>
+      <div class="guide-hero__code" id="guideHeroCode">—</div>
+      <div class="guide-hero__patient" id="guideHeroPatient">—</div>
+    </div>
+    <div class="guide-hero__meta">
+      <span class="guide-meta-pill" id="guideHeroSpecialty">—</span>
+      <span id="guideHeroStatus"></span>
+    </div>
   </div>
 
   <div class="detail-stack">
@@ -105,8 +166,8 @@
               <select id="tEquipe"><option value="">Selecione</option></select>
             </div>
             <div class="field">
-              <label for="tUnidade">Unidade executante</label>
-              <select id="tUnidade"><option value="">Selecione a equipe primeiro</option></select>
+              <label for="tUnidade">Unidade executante *</label>
+              <select id="tUnidade" required><option value="">Selecione a equipe primeiro</option></select>
             </div>
             <div class="field">
               <label for="tProfissional">Profissional responsável *</label>
@@ -131,8 +192,8 @@
             <select id="iEquipe"><option value="">Selecione</option></select>
           </div>
           <div class="field">
-            <label for="iUnidade">Unidade executante</label>
-            <select id="iUnidade"><option value="">Selecione a equipe primeiro</option></select>
+            <label for="iUnidade">Unidade executante *</label>
+            <select id="iUnidade" required><option value="">Selecione a equipe primeiro</option></select>
           </div>
         </div>
         <div class="reg-grid-2" style="gap:14px">
@@ -235,8 +296,12 @@
   function preencherSelectUnidadesDaEquipe(sel, equipeId) {
     const eq = minhasEquipes.find((e) => String(e.id) === String(equipeId));
     sel.innerHTML = eq
-      ? eq.unidades.map((u) => `<option value="${u.code}">${escapeHtml(u.nome)}</option>`).join('')
+      ? '<option value="">Selecione a unidade executante</option>'
+        + eq.unidades.map((u) => `<option value="${u.code}">${escapeHtml(u.nome)}</option>`).join('')
       : '<option value="">Selecione a equipe primeiro</option>';
+    // A unidade executante nunca é escolhida automaticamente.
+    // O usuário deve confirmar explicitamente a unidade em cada ação de regulação.
+    sel.value = '';
   }
 
   const iEquipeSel = document.getElementById('iEquipe');
@@ -279,7 +344,12 @@
     if (!ok) { document.getElementById('pageTitle').textContent = 'Guia não encontrada'; return; }
 
     guiaAtual = data.guia;
-    document.getElementById('pageTitle').textContent = `Guia ${formatGuideCode(guiaAtual)} — ${guiaAtual.paciente_nome}`;
+    document.getElementById('pageTitle').textContent = 'Detalhes da guia';
+    document.getElementById('guideHero').style.display = '';
+    document.getElementById('guideHeroCode').textContent = formatGuideCode(guiaAtual);
+    document.getElementById('guideHeroPatient').textContent = guiaAtual.paciente_nome || '—';
+    document.getElementById('guideHeroSpecialty').textContent = guiaAtual.especialidade_nome || '—';
+    document.getElementById('guideHeroStatus').innerHTML = situacaoBadgeHtml(guiaAtual.situacao);
     profissionaisEquipeAtual = data.profissionaisEquipe || [];
     const enderecoPartes = [
       guiaAtual.paciente_logradouro,
@@ -292,21 +362,21 @@
     const enderecoFormatado = enderecoPartes.join(' · ') || guiaAtual.paciente_endereco || '—';
 
     document.getElementById('pacienteInfo').innerHTML = `
-      <li><span>Nome</span><span>${escapeHtml(guiaAtual.paciente_nome)}</span></li>
+      <li class="wide"><span>Nome</span><span>${escapeHtml(guiaAtual.paciente_nome)}</span></li>
       <li><span>CPF</span><span>${maskCPF(guiaAtual.cpf)}</span></li>
       <li><span>CNS</span><span>${escapeHtml(guiaAtual.paciente_cns || '—')}</span></li>
       <li><span>Data de nascimento</span><span>${formatDateBR(guiaAtual.paciente_data_nascimento)}</span></li>
       <li><span>Sexo</span><span>${guiaAtual.paciente_sexo === 'F' ? 'Feminino' : guiaAtual.paciente_sexo === 'M' ? 'Masculino' : escapeHtml(guiaAtual.paciente_sexo || '—')}</span></li>
       <li><span>Telefones</span><span>${[guiaAtual.paciente_tel1, guiaAtual.paciente_tel2, guiaAtual.paciente_tel3].filter(Boolean).map(maskPhone).join(' · ') || '—'}</span></li>
-      <li><span>Unidade de referência</span><span>${escapeHtml(nomeUnidade(guiaAtual.paciente_unidade_referencia_code))}</span></li>
+      <li class="wide"><span>Unidade de referência</span><span>${escapeHtml(nomeUnidade(guiaAtual.paciente_unidade_referencia_code))}</span></li>
       <li class="full"><span>Endereço</span><span>${escapeHtml(enderecoFormatado)}</span></li>
     `;
 
     document.getElementById('encaminhamentoInfo').innerHTML = `
       <li><span>Especialidade</span><span>${escapeHtml(guiaAtual.especialidade_nome)}</span></li>
       <li><span>CID-10</span><span>${escapeHtml(guiaAtual.cid10 || '—')}</span></li>
-      <li><span>Unidade solicitante</span><span>${escapeHtml(nomeUnidade(guiaAtual.unidade_solicitante_code))}</span></li>
-      <li><span>Médico solicitante</span><span>${escapeHtml(guiaAtual.medico_solicitante)}</span></li>
+      <li class="wide"><span>Unidade solicitante</span><span>${escapeHtml(nomeUnidade(guiaAtual.unidade_solicitante_code))}</span></li>
+      <li class="wide"><span>Profissional solicitante</span><span>${escapeHtml(guiaAtual.medico_solicitante)}</span></li>
       <li class="full"><span>Motivo do encaminhamento</span><span>${escapeHtml(guiaAtual.motivo)}</span></li>
       <li><span>Guia criada em</span><span>${formatDateTimeBR(guiaAtual.created_at)}</span></li>
       <li><span>Última atualização</span><span>${formatDateTimeBR(guiaAtual.updated_at)}</span></li>
@@ -342,11 +412,15 @@
         // o erro de "guia já pertence a outra equipe" ao só confirmar.
         iEquipeSel.value = String(data.equipeAtual.id);
         preencherSelectUnidadesDaEquipe(iUnidadeSel, data.equipeAtual.id);
-        if (guiaAtual.unidade_executante_code) iUnidadeSel.value = guiaAtual.unidade_executante_code;
-        if (guiaAtual.situacao === 'em_atendimento') { iEquipeSel.disabled = true; iUnidadeSel.disabled = true; }
+        // Se o atendimento já foi iniciado, apenas exibimos a unidade que já está gravada.
+        // Antes disso, a seleção permanece vazia e obrigatória para confirmação manual.
+        if (guiaAtual.situacao === 'em_atendimento' && guiaAtual.unidade_executante_code) {
+          iUnidadeSel.value = guiaAtual.unidade_executante_code;
+          iEquipeSel.disabled = true;
+          iUnidadeSel.disabled = true;
+        }
         tEquipeSel.value = String(data.equipeAtual.id);
         preencherSelectUnidadesDaEquipe(tUnidadeSel, data.equipeAtual.id);
-        if (guiaAtual.unidade_executante_code) tUnidadeSel.value = guiaAtual.unidade_executante_code;
         await preencherProfissionaisEquipe(tProfissionalSel, data.equipeAtual.id);
         if (data.profissionalAtual?.id) tProfissionalSel.value = String(data.profissionalAtual.id);
       } else {

@@ -79,3 +79,12 @@ Revisão dos Termos de Uso e da Política de Privacidade, sem DPO nominal, e rem
 
 ## v2.15.2
 Identificador de guia padronizado como `AAAA000001`, com ano do cadastro e pesquisa por código completo ou pelos seis dígitos finais.
+
+## v2.15.3
+- Correção de sintaxe em `functions/api/guias/index.js` que impedia o build das Pages Functions no Cloudflare.
+- Mantida a busca de guias pelo identificador completo (`2026000001`) ou pelos 6 dígitos finais (`000001`).
+- Nenhuma nova migração de banco em relação à v2.15.2.
+
+
+## v2.15.5
+A unidade executante deve ser escolhida manualmente e é obrigatória nos fluxos de regulação que a exigem; nenhuma unidade é pré-selecionada ao escolher a equipe.
