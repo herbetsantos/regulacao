@@ -201,7 +201,7 @@
           <tbody>${guias.map((g) => {
             const href = `/guia-detalhe.html?id=${g.id}&retorno=${encodeURIComponent(retorno)}`;
             return `<tr>
-              <td><span class="guide-code">${escapeHtml(g.codigo_guia || '#' + g.id)}</span></td>
+              <td><span class="guide-code">${escapeHtml(formatGuideCode(g))}</span></td>
               <td class="patient-cell"><strong>${escapeHtml(g.paciente_nome)}</strong><small>CPF ${maskCPF(g.cpf)}</small></td>
               <td>${escapeHtml(g.especialidade_nome)}</td>
               <td class="request-cell"><strong>${formatDateTimeBR(g.created_at)}</strong><small>${escapeHtml(g.medico_solicitante || 'Profissional não informado')}</small></td>

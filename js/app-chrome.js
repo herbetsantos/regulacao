@@ -3,8 +3,19 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.15.0';
+const APP_VERSION = '2.15.2';
 window.EMULTI_VERSION = APP_VERSION;
+
+function formatGuideCode(guia) {
+  if (!guia) return '';
+  const raw = String(guia.codigo_guia || '').replace(/\D/g, '');
+  if (raw.length >= 10) return raw.slice(0, 4) + raw.slice(-6);
+  const yearMatch = String(guia.created_at || '').match(/^(\d{4})/);
+  const year = yearMatch ? yearMatch[1] : String(new Date().getFullYear());
+  const id = String(guia.id || '').replace(/\D/g, '').padStart(6, '0').slice(-6);
+  return `${year}${id}`;
+}
+window.formatGuideCode = formatGuideCode;
 
 const ICONS = {
   queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 4h10M7 12h10M7 16h6"/></svg>',

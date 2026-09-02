@@ -66,12 +66,18 @@ export async function onRequestGet({ request, env }) {
   if (q) {
     const qDigits = onlyDigits(q);
     const like = `%${q}%`;
+    const guideDigitsLike = `%${qDigits}%`;
     if (qDigits.length >= 3) {
-      where.push('(LOWER(p.nome) LIKE LOWER(?) OR g.codigo_guia LIKE ? OR g.cpf LIKE ?)');
-      binds.push(like, like, `%${qDigits}%`);
+      where.push(`(
+        LOWER(p.nome) LIKE LOWER(?)
+        OR REPLACE(COALESCE(g.codigo_guia, ''), '-', '') LIKE ?
+        OR (substr(COALESCE(g.created_at, ''), 1, 4) || printf('%06d', g.id)) LIKE ?
+        OR g.cpf LIKE ?
+      )`);
+      binds.push(like, guideDigitsLike, guideDigitsLike, `%${qDigits}%`);
     } else {
-      where.push('(LOWER(p.nome) LIKE LOWER(?) OR g.codigo_guia LIKE ?)');
-      binds.push(like, like);
+      where.push('(LOWER(p.nome) LIKE LOWER(?) OR REPLACE(COALESCE(g.codigo_guia, ''), '-', '') LIKE ?)');
+      binds.push(like, guideDigitsLike || like);
     }
   }
 
@@ -162,10 +168,14 @@ export async function onRequestPost({ request, env }) {
   ).bind(cpf, unidade_solicitante_code, medico_solicitante, especialidade_id, motivo, cid10, user.id).run();
 
   const guiaId = result.meta.last_row_id;
-  const ano = new Date().getUTCFullYear();
-  const codigoGuia = `${ano}-${String(guiaId).padStart(6, '0')}`;
+  // O ano do identificador vem do próprio created_at gravado no banco.
+  // Formato público: AAAA + ID com 6 dígitos, ex.: 2026000001.
   try {
-    await env.DB_REGULACAO.prepare('UPDATE guias SET codigo_guia = ? WHERE id = ?').bind(codigoGuia, guiaId).run();
+    await env.DB_REGULACAO.prepare(`
+      UPDATE guias
+      SET codigo_guia = substr(created_at, 1, 4) || printf('%06d', id)
+      WHERE id = ?
+    `).bind(guiaId).run();
   } catch { /* base anterior ao reparo: o id continua válido */ }
   await logAudit(env, user, 'create', 'guia', guiaId, { cpf, especialidade_id });
 

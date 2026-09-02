@@ -317,7 +317,7 @@ export async function ensureRegulacaoSchema(env) {
     await env.DB_REGULACAO.prepare('ALTER TABLE guias ADD COLUMN codigo_guia TEXT').run();
   }
   await env.DB_REGULACAO.prepare(`UPDATE guias
-    SET codigo_guia = strftime('%Y', COALESCE(created_at, datetime('now'))) || '-' || printf('%06d', id)
+    SET codigo_guia = substr(COALESCE(created_at, datetime('now')), 1, 4) || printf('%06d', id)
     WHERE codigo_guia IS NULL OR trim(codigo_guia) = ''`).run();
   await env.DB_REGULACAO.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_guias_codigo ON guias(codigo_guia)').run();
 

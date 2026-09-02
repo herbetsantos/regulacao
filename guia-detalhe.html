@@ -279,7 +279,7 @@
     if (!ok) { document.getElementById('pageTitle').textContent = 'Guia não encontrada'; return; }
 
     guiaAtual = data.guia;
-    document.getElementById('pageTitle').textContent = `Guia ${guiaAtual.codigo_guia || '#' + guiaAtual.id} — ${guiaAtual.paciente_nome}`;
+    document.getElementById('pageTitle').textContent = `Guia ${formatGuideCode(guiaAtual)} — ${guiaAtual.paciente_nome}`;
     profissionaisEquipeAtual = data.profissionaisEquipe || [];
     const enderecoPartes = [
       guiaAtual.paciente_logradouro,
@@ -460,7 +460,7 @@
     area.innerHTML = candidatas.map((g) => `
       <label class="fila-item">
         <input type="checkbox" value="${g.id}" ${guiasParaGrupo.includes(g.id) ? 'checked' : ''}>
-        <span>${escapeHtml(g.codigo_guia || '#' + g.id)} — ${escapeHtml(g.paciente_nome)} (${escapeHtml(nomeUnidade(g.unidade_solicitante_code))})</span>
+        <span>${escapeHtml(formatGuideCode(g))} — ${escapeHtml(g.paciente_nome)} (${escapeHtml(nomeUnidade(g.unidade_solicitante_code))})</span>
       </label>
     `).join('');
     area.querySelectorAll('input[type=checkbox]').forEach((cb) => {
