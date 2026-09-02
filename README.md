@@ -94,3 +94,7 @@ A unidade executante deve ser escolhida manualmente e é obrigatória nos fluxos
 - Fila com colunas alinhadas à esquerda e demarcadas por bordas.
 - Exportação CSV de todas as guias que correspondem aos filtros atuais.
 - Importação CSV para criação de novas guias, restrita a Cadastrante/Administrador e submetida às validações normais do sistema.
+
+
+## v2.16.0
+Painel orientado às responsabilidades e navegação por fluxo.

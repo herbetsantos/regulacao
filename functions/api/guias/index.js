@@ -28,6 +28,7 @@ export async function onRequestGet({ request, env }) {
   const q = (url.searchParams.get('q') || '').trim();
   const cpf = onlyDigits(url.searchParams.get('cpf') || '');
   const excludeId = Number(url.searchParams.get('exclude_id') || 0);
+  const meus = url.searchParams.get('meus') === '1';
   const ordem = url.searchParams.get('ordem') === 'antigas' ? 'antigas' : 'recentes';
   const page = Math.max(1, Number(url.searchParams.get('page') || 1));
   const requestedPageSize = Number(url.searchParams.get('page_size') || 20);
@@ -63,6 +64,7 @@ export async function onRequestGet({ request, env }) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(dataAte)) { where.push('date(g.created_at) <= date(?)'); binds.push(dataAte); }
   if (cpf) { where.push('g.cpf = ?'); binds.push(cpf); }
   if (excludeId) { where.push('g.id <> ?'); binds.push(excludeId); }
+  if (meus) { where.push('g.created_by = ?'); binds.push(user.id); }
   if (q) {
     const qDigits = onlyDigits(q);
     const like = `%${q}%`;

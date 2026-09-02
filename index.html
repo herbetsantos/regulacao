@@ -53,8 +53,8 @@
 <main class="page">
   <div class="page__header">
     <div class="eyebrow">Regulação de Vagas</div>
-    <h1 class="page__title">Fila de Encaminhamentos</h1>
-    <p class="page__subtitle">Visualização compacta para pesquisa, regulação e acompanhamento das guias.</p>
+    <h1 class="page__title">Regulação e Pesquisa de Guias</h1>
+    <p class="page__subtitle">Consulte encaminhamentos e trabalhe as filas conforme sua responsabilidade.</p>
   </div>
 
   <div class="queue-toolbar">
@@ -150,6 +150,7 @@
     if (els.profissional.value.trim()) p.set('medico_solicitante', els.profissional.value.trim());
     if (els.dataDe.value) p.set('data_de', els.dataDe.value);
     if (els.dataAte.value) p.set('data_ate', els.dataAte.value);
+    if (new URLSearchParams(location.search).get('meus') === '1') p.set('meus', '1');
     p.set('ordem', els.ordem.value || 'recentes');
     if (includePage) { p.set('page', String(page)); p.set('page_size', String(pageSize)); }
     return p;

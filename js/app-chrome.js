@@ -3,7 +3,7 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.15.6';
+const APP_VERSION = '2.16.0';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {
@@ -18,6 +18,7 @@ function formatGuideCode(guia) {
 window.formatGuideCode = formatGuideCode;
 
 const ICONS = {
+  dashboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
   queue: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 4h10M7 12h10M7 16h6"/></svg>',
   patients: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   newguide: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M12 11v6M9 14h6"/></svg>',
@@ -86,7 +87,7 @@ function renderChrome() {
   mount.innerHTML = `
     <header class="topbar app-topbar">
       <div class="topbar__inner app-topbar__inner">
-        <a class="brand app-brand" href="/" aria-label="Página inicial da Regulação">
+        <a class="brand app-brand" href="/painel.html" aria-label="Painel do eMulti Regulação">
           <img src="/assets/imagotipo.png" alt="Prefeitura de Cajamar">
           <span class="app-brand__text"><strong>eMulti</strong><span class="app-brand__divider" aria-hidden="true"></span><span>Regulação</span></span>
         </a>
@@ -115,9 +116,13 @@ function renderChrome() {
     </header>
 
     <aside class="side-nav" id="sideNav" aria-label="Menu principal">
+      <button class="side-nav__toggle" id="sideNavToggle" type="button" aria-label="Expandir ou recolher menu" title="Expandir/recolher menu">☰</button>
       <div class="side-nav__items">
-        <a class="side-nav__item" data-path="/" href="/" title="Fila de guias">
-          <span class="side-nav__icon">${appIconSvg('queue')}</span><span class="side-nav__label">Fila de guias</span>
+        <a class="side-nav__item" data-path="/painel.html" href="/painel.html" title="Painel">
+          <span class="side-nav__icon">${appIconSvg('dashboard')}</span><span class="side-nav__label">Painel</span>
+        </a>
+        <a class="side-nav__item" id="navRegulacaoItem" data-path="/" href="/" title="Regulação">
+          <span class="side-nav__icon">${appIconSvg('queue')}</span><span class="side-nav__label">Regulação</span>
         </a>
         <a class="side-nav__item" data-path="/paciente.html" href="/paciente.html" title="Pacientes">
           <span class="side-nav__icon">${appIconSvg('patients')}</span><span class="side-nav__label">Pacientes</span>
@@ -189,6 +194,9 @@ function renderUser(user) {
     else if (access.executor) teamEl.textContent = 'Execução';
     else teamEl.textContent = 'eMulti';
   }
+
+  const regulacaoItem = document.getElementById('navRegulacaoItem');
+  if (regulacaoItem) regulacaoItem.hidden = !(access.regulador || access.administrador || access.cadastrante || access.executor);
 
   const adminItem = document.getElementById('navAdminItem');
   if (adminItem) adminItem.hidden = !access.administrador;
