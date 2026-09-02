@@ -75,3 +75,9 @@ O chrome compartilhado agora exibe o rodapé com a versão do sistema e links pa
 
 ## v2.14
 Revisão dos Termos de Uso e da Política de Privacidade, sem DPO nominal, e remoção definitiva do código residual do rodapé.
+
+
+## v2.15
+- Menu lateral branco no tema claro.
+- Fundo geral levemente acinzentado para ampliar a separação visual entre navegação e conteúdo.
+- Versão do sistema: 2.15.0.
