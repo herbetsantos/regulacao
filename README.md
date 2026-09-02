@@ -88,3 +88,9 @@ Identificador de guia padronizado como `AAAA000001`, com ano do cadastro e pesqu
 
 ## v2.15.5
 A unidade executante deve ser escolhida manualmente e é obrigatória nos fluxos de regulação que a exigem; nenhuma unidade é pré-selecionada ao escolher a equipe.
+
+
+## v2.15.6
+- Fila com colunas alinhadas à esquerda e demarcadas por bordas.
+- Exportação CSV de todas as guias que correspondem aos filtros atuais.
+- Importação CSV para criação de novas guias, restrita a Cadastrante/Administrador e submetida às validações normais do sistema.

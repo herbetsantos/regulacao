@@ -3,7 +3,7 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.15.5';
+const APP_VERSION = '2.15.6';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {

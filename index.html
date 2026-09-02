@@ -19,8 +19,14 @@
   .advanced-grid .field { margin:0; }
   .advanced-footer { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
   .queue-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:4px 0 10px; color:var(--muted); font-size:13px; }
-  .queue-table { table-layout:fixed; width:100%; min-width:930px; }
-  .queue-table th, .queue-table td { vertical-align:middle; }
+  .queue-table { table-layout:fixed; width:100%; min-width:930px; border-collapse:separate; border-spacing:0; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); }
+  .queue-table th, .queue-table td { vertical-align:middle; text-align:left !important; padding:12px 14px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .queue-table thead th { background:color-mix(in srgb, var(--surface) 92%, var(--primary) 8%); font-size:12px; font-weight:700; color:var(--ink); }
+  .queue-table th:last-child, .queue-table td:last-child { border-right:0; }
+  .queue-table tbody tr:last-child td { border-bottom:0; }
+  .queue-table tbody tr:hover td { background:color-mix(in srgb, var(--surface) 96%, var(--primary) 4%); }
+  .queue-table td:last-child { text-align:center !important; }
+  .table-wrap { overflow-x:auto; border-radius:10px; }
   .queue-table th:nth-child(1) { width:14%; }
   .queue-table th:nth-child(2) { width:27%; }
   .queue-table th:nth-child(3) { width:17%; }
@@ -61,6 +67,9 @@
     </div>
     <div class="queue-actions">
       <button class="btn btn--outline" type="button" id="btnAdvanced" aria-expanded="false">Filtros avançados</button>
+      <button class="btn btn--outline" type="button" id="btnExportar">Exportar CSV</button>
+      <button class="btn btn--outline" type="button" id="btnImportar">Importar CSV</button>
+      <input id="arquivoImportacao" type="file" accept=".csv,text/csv" hidden>
       <a class="btn btn--accent" id="btnNovaGuiaHome" href="/guia-nova.html">+ Nova guia</a>
     </div>
   </div>
@@ -104,6 +113,8 @@
   const access = user.regulacao || {};
   const btnNova = document.getElementById('btnNovaGuiaHome');
   if (btnNova) btnNova.style.display = (access.cadastrante || access.administrador) ? '' : 'none';
+  const btnImportar = document.getElementById('btnImportar');
+  if (btnImportar) btnImportar.style.display = (access.cadastrante || access.administrador) ? '' : 'none';
 
   const els = {
     busca: document.getElementById('fBusca'), situacao: document.getElementById('fSituacao'),
@@ -234,6 +245,120 @@
   document.getElementById('btnLimpar').addEventListener('click', () => {
     [els.busca,els.situacao,els.especialidade,els.unidade,els.equipe,els.profissional,els.dataDe,els.dataAte].forEach((el) => el.value='');
     els.ordem.value='recentes'; page=1; loadGuias();
+  });
+
+
+
+  function csvEscape(value) {
+    const s = String(value ?? '');
+    return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], field = '', quoted = false;
+    const src = String(text || '').replace(/^\uFEFF/, '');
+    for (let i = 0; i < src.length; i++) {
+      const ch = src[i];
+      if (quoted) {
+        if (ch === '"' && src[i + 1] === '"') { field += '"'; i++; }
+        else if (ch === '"') quoted = false;
+        else field += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === ';') { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field.replace(/\r$/, '')); rows.push(row); row = []; field = ''; }
+      else field += ch;
+    }
+    if (field.length || row.length) { row.push(field.replace(/\r$/, '')); rows.push(row); }
+    return rows.filter((r) => r.some((v) => String(v).trim() !== ''));
+  }
+
+  async function fetchAllFilteredGuides() {
+    const firstParams = buildParams(false);
+    firstParams.set('page', '1');
+    firstParams.set('page_size', '100');
+    const first = await apiFetch(`/api/guias?${firstParams.toString()}`);
+    if (!first.ok) throw new Error(first.data?.error || 'Não foi possível carregar os dados para exportação.');
+    const all = [...(first.data.guias || [])];
+    const totalPages = Math.max(1, Number(first.data.total_pages || 1));
+    for (let pg = 2; pg <= totalPages; pg++) {
+      const params = buildParams(false);
+      params.set('page', String(pg));
+      params.set('page_size', '100');
+      const resp = await apiFetch(`/api/guias?${params.toString()}`);
+      if (!resp.ok) throw new Error(resp.data?.error || `Falha ao carregar a página ${pg}.`);
+      all.push(...(resp.data.guias || []));
+    }
+    return all;
+  }
+
+  document.getElementById('btnExportar').addEventListener('click', async () => {
+    const btn = document.getElementById('btnExportar');
+    const original = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const guias = await fetchAllFilteredGuides();
+      const headers = [
+        'numero_guia','cpf','paciente','especialidade_id','especialidade','unidade_solicitante_code',
+        'medico_solicitante','cid10','motivo','situacao','data_cadastro'
+      ];
+      const lines = [headers.join(';')];
+      guias.forEach((g) => lines.push([
+        formatGuideCode(g), g.cpf, g.paciente_nome, g.especialidade_id, g.especialidade_nome,
+        g.unidade_solicitante_code, g.medico_solicitante, g.cid10 || '', g.motivo || '',
+        g.situacao, g.created_at || ''
+      ].map(csvEscape).join(';')));
+      const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type:'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().slice(0,10);
+      a.download = `emulti-guias-${stamp}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    } catch (err) { alert(err.message || 'Não foi possível exportar os dados.'); }
+    finally { btn.disabled = false; btn.textContent = original; }
+  });
+
+  document.getElementById('btnImportar').addEventListener('click', () => document.getElementById('arquivoImportacao').click());
+  document.getElementById('arquivoImportacao').addEventListener('change', async (event) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const rows = parseCsv(await file.text());
+      if (rows.length < 2) throw new Error('O arquivo CSV não possui registros para importar.');
+      const headers = rows[0].map((h) => String(h).trim().toLowerCase());
+      const required = ['cpf','especialidade_id','unidade_solicitante_code','medico_solicitante','motivo'];
+      const missing = required.filter((h) => !headers.includes(h));
+      if (missing.length) throw new Error(`Colunas obrigatórias ausentes: ${missing.join(', ')}.`);
+      const records = rows.slice(1).map((r) => Object.fromEntries(headers.map((h,i) => [h, r[i] ?? ''])));
+      if (!confirm(`Importar ${records.length} registro(s)? A importação cria novas guias e aplica as validações normais do sistema.`)) return;
+      const btn = document.getElementById('btnImportar');
+      const original = btn.textContent; btn.disabled = true; btn.textContent = 'Importando…';
+      let success = 0; const errors = [];
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        const payload = {
+          cpf: onlyDigits(r.cpf),
+          unidade_solicitante_code: String(r.unidade_solicitante_code || '').trim(),
+          medico_solicitante: String(r.medico_solicitante || '').trim(),
+          especialidade_id: Number(r.especialidade_id || 0),
+          motivo: String(r.motivo || '').trim(),
+          cid10: String(r.cid10 || '').trim(),
+          confirmar_mesmo_assim: false
+        };
+        const resp = await apiFetch('/api/guias', { method:'POST', body:JSON.stringify(payload) });
+        if (resp.ok && resp.data?.aviso) {
+          errors.push(`Linha ${i+2}: paciente já possui guia ativa para a especialidade; registro não importado automaticamente.`);
+        } else if (resp.ok) success++;
+        else errors.push(`Linha ${i+2}: ${resp.data?.error || 'erro ao importar'}`);
+      }
+      btn.disabled = false; btn.textContent = original;
+      const summary = [`Importação concluída: ${success} guia(s) criada(s).`];
+      if (errors.length) summary.push(`${errors.length} registro(s) não importado(s):\n\n${errors.slice(0,12).join('\n')}${errors.length>12?'\n…':''}`);
+      alert(summary.join('\n\n'));
+      page = 1; await loadGuias();
+    } catch (err) { alert(err.message || 'Não foi possível importar o arquivo CSV.'); }
+    finally { input.value = ''; const b=document.getElementById('btnImportar'); if(b){b.disabled=false; if(b.textContent==='Importando…') b.textContent='Importar CSV';} }
   });
 
   restoreFromUrl();
