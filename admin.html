@@ -46,16 +46,27 @@
         <div class="panel-section__desc">Ajuda a identificar por que pacientes ou guias podem não estar sendo cadastrados.</div>
       </div>
       <div id="diagnosticoArea"><div class="skeleton-loading">Verificando configuração…</div></div>
+      <div id="versoesBancoArea" style="margin-top:14px"></div>
     </section>
 
 
     <section class="panel-section section-anchor is-active" id="acessosSection">
       <div class="panel-section__head">
         <div class="panel-section__title">Acessos e responsabilidades</div>
-        <div class="panel-section__desc">O perfil no Portal é independente do eMulti. Cada usuário pode acumular responsabilidades de Cadastrante, Regulador e Executor.</div>
+        <div class="panel-section__desc">O perfil no Portal é independente do eMulti. O acesso pode ser concedido por vínculo com uma equipe eMulti ou por unidade autorizada; as responsabilidades definem o que cada usuário pode fazer.</div>
       </div>
-      <div class="notice-box" style="margin-bottom:14px"><strong>Como funciona:</strong> Cadastrante inclui cidadãos e emite guias; Regulador organiza fila, triagem, transferências e grupos; Executor registra atendimentos e evoluções; Administrador configura todo o módulo.</div>
+      <div class="notice-box" style="margin-bottom:14px"><strong>Como funciona:</strong> o vínculo com equipe ou unidade autoriza a entrada na ferramenta. As classes continuam controlando as ações: Cadastrante inclui cidadãos e emite guias; Regulador organiza fila, triagem, transferências e grupos; Executor registra atendimentos e evoluções; Administrador configura todo o módulo.</div>
       <div id="acessosList"><div class="skeleton-loading">Carregando acessos…</div></div>
+    </section>
+
+
+    <section class="panel-section section-anchor is-active" id="profissionaisBaseSection">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Profissionais eMulti pré-carregados</div>
+        <div class="panel-section__desc">Relação-base importada da escala informada. O cadastro profissional existe independentemente do login; vincule-o a um usuário do Portal quando a conta real estiver disponível.</div>
+      </div>
+      <div class="notice-box" style="margin-bottom:14px"><strong>Importante:</strong> o pré-cadastro não cria usuário nem senha. A escala exibida aqui é a referência original; a configuração operacional da escala permanece exclusiva do Administrador.</div>
+      <div id="profissionaisBaseList"><div class="skeleton-loading">Carregando profissionais…</div></div>
     </section>
 
     <section class="panel-section section-anchor is-active" id="equipesSection">
@@ -133,6 +144,17 @@
     el.textContent = text;
   }
 
+  async function carregarVersoesBanco() {
+    const area = document.getElementById('versoesBancoArea');
+    if (!area) return;
+    const { ok, data } = await apiFetch('/api/admin/versoes');
+    if (!ok) { area.innerHTML = ''; return; }
+    const pv = data.portal?.version || 'Não registrado';
+    const rv = data.regulacao?.version || 'Não registrado';
+    const cls = data.atualizado ? '' : ' is-warning';
+    area.innerHTML = `<div class="notice-box${cls}"><strong>Versões:</strong> Sistema ${escapeHtml(data.app_version)} · Portal DB ${escapeHtml(pv)} · Regulação DB ${escapeHtml(rv)}${data.atualizado ? ' · Bancos atualizados' : ' · Execute os arquivos update.sql correspondentes aos bancos.'}</div>`;
+  }
+
   async function carregarDiagnostico() {
     const area = document.getElementById('diagnosticoArea');
     const { ok, data } = await apiFetch('/api/admin/diagnostico');
@@ -173,6 +195,7 @@
         await carregarDiagnostico();
       });
     }
+    await carregarVersoesBanco();
   }
 
   async function carregarListasBase() {
@@ -225,6 +248,49 @@
       await carregarAcessos();
       await carregarDiagnostico();
     }));
+  }
+
+
+  async function carregarProfissionaisBase() {
+    const area = document.getElementById('profissionaisBaseList');
+    const { ok, data } = await apiFetch('/api/admin/profissionais-base');
+    if (!ok) {
+      area.innerHTML = `<div class="notice-box is-warning">${escapeHtml(data?.error || 'Execute a migração v2.17.2 no portal-saude-db para carregar a relação de profissionais.')}</div>`;
+      return;
+    }
+    const dias = {1:'Seg',2:'Ter',3:'Qua',4:'Qui',5:'Sex'};
+    const itens = data.profissionais || [];
+    area.innerHTML = itens.length ? `
+      <div style="overflow:auto">
+        <table class="adm-table">
+          <thead><tr><th>Profissional</th><th>Especialidade</th><th>Unidades / escala de referência</th><th>Usuário do Portal</th><th></th></tr></thead>
+          <tbody>${itens.map((p) => {
+            const lotacoes = (p.lotacoes || []).map((l) => {
+              const hs = (l.horarios || []).map((h) => `${dias[h.dia_semana] || h.dia_semana} ${h.hora_inicio}–${h.hora_fim}`).join(' · ');
+              return `<div style="margin-bottom:5px"><strong>${escapeHtml(l.unidade_nome)}</strong>${hs ? `<br><span style="color:var(--muted);font-size:11px">${escapeHtml(hs)}</span>` : ''}</div>`;
+            }).join('');
+            return `<tr data-base-prof="${p.id}">
+              <td><strong>${escapeHtml(p.nome)}</strong></td>
+              <td>${escapeHtml(p.especialidade)}</td>
+              <td style="min-width:300px">${lotacoes || '—'}</td>
+              <td style="min-width:230px"><select data-base-user><option value="">Sem vínculo</option>${todosUsuarios.map((u) => `<option value="${u.id}" ${Number(p.user_id)===Number(u.id)?'selected':''}>${escapeHtml(u.name)} (${escapeHtml(u.username)})</option>`).join('')}</select></td>
+              <td><button class="btn btn--outline btn--sm" data-save-base>Salvar vínculo</button></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>` : '<div class="empty-state">Nenhum profissional pré-carregado. Execute a migração v2.17.2.</div>';
+
+    area.querySelectorAll('[data-base-prof]').forEach((row) => {
+      row.querySelector('[data-save-base]').addEventListener('click', async () => {
+        const user_id = row.querySelector('[data-base-user]').value || null;
+        const r = await apiFetch('/api/admin/profissionais-base', {
+          method:'PUT',
+          body:JSON.stringify({ id:Number(row.dataset.baseProf), user_id:user_id ? Number(user_id) : null })
+        });
+        if (!r.ok) return alert(r.data?.error || 'Erro ao salvar vínculo.');
+        await carregarProfissionaisBase();
+      });
+    });
   }
 
   async function carregarEquipes() {
@@ -388,7 +454,7 @@
   }
 
   await carregarListasBase();
-  await Promise.all([carregarDiagnostico(), carregarAcessos(), carregarEquipes(), carregarAgentes(), carregarEspecialidades(), carregarLinkIcons()]);
+  await Promise.all([carregarDiagnostico(), carregarAcessos(), carregarProfissionaisBase(), carregarEquipes(), carregarAgentes(), carregarEspecialidades(), carregarLinkIcons()]);
 })();
 </script>
 </body>

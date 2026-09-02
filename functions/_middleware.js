@@ -40,7 +40,7 @@ export async function onRequest({ request, env, next }) {
     const access = await getRegulacaoAccessProfile(env, user);
     if (!access.acesso) {
       return Response.redirect(
-        `${PORTAL_URL}/portal.html?erro=${encodeURIComponent('Seu usuário não possui responsabilidade ativa no eMulti / Regulação de Vagas.')}`,
+        `${PORTAL_URL}/portal.html?erro=${encodeURIComponent('Seu usuário não possui responsabilidade nem vínculo ativo com equipe/unidade no eMulti / Regulação de Vagas.')}`,
         302
       );
     }

@@ -6,6 +6,7 @@
 import { json, logAudit } from '../../../_utils.js';
 import { requireAdminAccess } from '../../../_shared.js';
 import { ensureProfissionalSchema, setProfissionalEspecialidades } from '../../../_professionals.js';
+import { syncPortalRegulacaoFeature } from '../../../_permissions.js';
 
 async function salvar({ request, env, params, atualizar = false }) {
   const { user, error } = await requireAdminAccess(request, env);
@@ -40,6 +41,7 @@ async function salvar({ request, env, params, atualizar = false }) {
     VALUES (?, ?, ?) ON CONFLICT(equipe_id, user_id) DO UPDATE SET cargo = excluded.cargo`
   ).bind(equipeId, userId, cargo).run();
   await setProfissionalEspecialidades(env, userId, especialidadeIds);
+  await syncPortalRegulacaoFeature(env, userId);
   await logAudit(env, user, atualizar ? 'update' : 'create', 'equipe_profissional', equipeId, { userId, cargo, especialidadeIds });
   return json({ ok: true });
 }
@@ -57,6 +59,7 @@ export async function onRequestDelete({ request, env, params }) {
   if (!userId) return json({ error: 'Informe user_id.' }, 400);
   await env.DB.prepare('DELETE FROM regulacao_profissional_especialidades WHERE user_id = ?').bind(userId).run();
   await env.DB.prepare('DELETE FROM regulacao_equipe_profissionais WHERE equipe_id = ? AND user_id = ?').bind(equipeId, userId).run();
+  await syncPortalRegulacaoFeature(env, userId);
   await logAudit(env, user, 'delete', 'equipe_profissional', equipeId, { userId });
   return json({ ok: true });
 }

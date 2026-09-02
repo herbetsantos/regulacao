@@ -5,6 +5,7 @@
 
 import { json, logAudit } from '../_utils.js';
 import { requireAdminAccess } from '../_shared.js';
+import { syncPortalRegulacaoFeature } from '../_permissions.js';
 
 export async function onRequestGet({ request, env }) {
   const { error } = await requireAdminAccess(request, env);
@@ -47,6 +48,7 @@ export async function onRequestPost({ request, env }) {
      VALUES (?, ?, ?, ?)
      ON CONFLICT(user_id, unidade_code) DO UPDATE SET pode_emitir = excluded.pode_emitir, pode_executar = excluded.pode_executar`
   ).bind(userId, unidadeCode, podeEmitir, podeExecutar).run();
+  await syncPortalRegulacaoFeature(env, userId);
 
   await logAudit(env, user, 'upsert', 'agente_operacional', userId, { unidadeCode, podeEmitir, podeExecutar });
 
@@ -65,6 +67,7 @@ export async function onRequestDelete({ request, env }) {
   await env.DB.prepare(
     'DELETE FROM regulacao_user_unidades WHERE user_id = ? AND unidade_code = ?'
   ).bind(userId, unidadeCode).run();
+  await syncPortalRegulacaoFeature(env, userId);
 
   await logAudit(env, user, 'delete', 'agente_operacional', userId, { unidadeCode });
 

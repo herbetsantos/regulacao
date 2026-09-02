@@ -1,13 +1,12 @@
 -- Regulação de Vagas — Cajamar Saúde
 -- Banco D1 DEDICADO a este projeto (conteúdo clínico: pacientes, guias,
 -- acompanhamentos). O login, as unidades e as equipes multidisciplinares
--- vivem no banco do Portal (portal-saude-db) — ver
--- migration_regulacao_setup.sql nesse outro repositório.
+-- vivem no banco do Portal (portal-saude-db).
 --
 -- Criar o banco:
 --   wrangler d1 create regulacao-vagas-db
 -- Rodar este schema:
---   wrangler d1 execute regulacao-vagas-db --remote --file=./schema_regulacao.sql
+--   wrangler d1 execute regulacao-vagas-db --remote --file=./database/regulacao/schema.sql
 --
 -- v2.5: este arquivo é NÃO DESTRUTIVO e pode ser executado novamente.
 -- Usa CREATE ... IF NOT EXISTS / INSERT OR IGNORE e NUNCA apaga pacientes,
@@ -297,3 +296,13 @@ CREATE TABLE IF NOT EXISTS notificacao_lidas (
   PRIMARY KEY (notificacao_id, user_id),
   FOREIGN KEY (notificacao_id) REFERENCES notificacoes(id) ON DELETE CASCADE
 );
+
+-- Controle de versão do schema eMulti
+CREATE TABLE IF NOT EXISTS emulti_schema_version (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  version TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+INSERT INTO emulti_schema_version (id, version, updated_at)
+VALUES (1, '2.17.5', datetime('now'))
+ON CONFLICT(id) DO UPDATE SET version=excluded.version, updated_at=excluded.updated_at;

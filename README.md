@@ -1,116 +1,25 @@
-# eMulti — Regulação de Vagas
+# eMulti Regulação — Cajamar Saúde
 
-Módulo integrado ao Portal Saúde Cajamar para cadastro de pacientes, emissão e triagem de guias, filas e acompanhamentos das equipes eMulti.
+Versão atual: **2.17.5**.
 
-## Regras principais
+Sistema integrado ao Portal Saúde para cadastro e regulação de guias, equipes eMulti, agenda de especialistas, atendimentos individuais e grupos.
 
-- um profissional pertence a **uma única equipe**;
-- uma equipe pode ter **vários profissionais**;
-- uma equipe pode atender **várias unidades**;
-- o login, usuários, unidades e vínculos operacionais usam o banco do Portal; as responsabilidades do eMulti são independentes do papel do Portal;
-- pacientes, guias, acompanhamentos e notificações ficam no banco próprio da Regulação.
+## Bancos D1
 
-## Interface
+- `DB` → `portal-saude-db`: identidade, usuários, unidades, equipes, vínculos e permissões.
+- `DB_REGULACAO` → `regulacao-vagas-db`: pacientes, guias, fila, agenda, grupos e atendimentos.
 
-- cabeçalho enxuto com imagotipo à esquerda e nome/equipe do usuário à direita;
-- menu lateral azul-claro recolhido por padrão e expandido ao passar o mouse;
-- menu do usuário com Alterar senha, Links úteis, Sobre e Sair;
-- Links úteis reutilizam os mesmos links do Portal e os ícones são escolhidos pelo administrador;
-- Administração inclui diagnóstico de configuração, equipes, emissão de guias, especialidades e ícones.
+## Atualizações de banco simplificadas
 
-Veja `INSTALL.md` para instalação e migrações.
+Os antigos arquivos `migration_*.sql` foram retirados do pacote. Agora cada banco possui somente:
 
-### Aparência
-A versão 2.3 oferece temas Claro, Escuro, Alto contraste e Automático. A preferência fica vinculada à conta no `portal-saude-db` e é compartilhada com o Portal Saúde. Veja `AJUSTES_V2.3.md` e `migration_theme_v3.sql`.
+- `database/<banco>/schema.sql` para instalação nova;
+- `database/<banco>/update.sql` para atualizar a versão imediatamente anterior.
 
+As versões dos schemas ficam registradas em `emulti_schema_version` e podem ser conferidas em **Administração > Diagnóstico da configuração**.
 
-## Versão 2.4
+## Novidades
 
-Consulte `AJUSTES_V2.4.md` para a substituição do imagotipo branco no cabeçalho.
+O histórico de alterações fica centralizado na página **Novidades da Versão**, acessível pelo menu superior, e no arquivo único `NOVIDADES.md`.
 
-## Revisão 2.5 — cadastro de pacientes resiliente
-
-A v2.5 remove duas dependências indevidas que podiam bloquear o cadastro de pacientes: a existência da coluna `unidades.tipo` e a configuração completa das tabelas de escopo do usuário. O eMulti agora possui fallback compatível para reconhecer as unidades APS conhecidas e um diagnóstico/reparo não destrutivo do `DB_REGULACAO` em **Administração**.
-
-## Versão 2.6 — acessos independentes do Portal
-
-A v2.6 separa o papel do usuário no Portal das responsabilidades no eMulti. Um usuário `user` comum pode ser Cadastrante, Regulador e/ou Executor. A Administração do eMulti permite combinar essas responsabilidades e sincroniza apenas a permissão de abertura da ferramenta com o Portal.
-
-Antes do deploy, execute `migration_regulacao_acessos_v2_6.sql` no `portal-saude-db`.
-
-## Aparência v2.7
-
-O seletor de aparência foi movido para um controle compacto no cabeçalho, à esquerda do usuário. O botão principal alterna Claro/Escuro e a seta mantém acesso a Automático e Alto contraste. Não há nova migração de banco para esta versão.
-
-## Endereço por CEP — v2.8
-
-O cadastro de cidadãos integra a **BrasilAPI** para busca de endereço por CEP. A consulta é intermediada pelo endpoint interno `/api/cep/:cep`, e uma indisponibilidade externa nunca bloqueia o preenchimento manual ou o salvamento do cadastro.
-
-Para persistir CEP, logradouro, número, complemento, bairro, município e UF separadamente, use **Administração > Diagnóstico > Corrigir estrutura do banco da Regulação** após o deploy, ou execute uma única vez `migration_regulacao_endereco_v2_8.sql` no `regulacao-vagas-db`.
-
-## Integração e-SUS PEC — v2.9
-A v2.9 inclui `POST /api/integracoes/esus/paciente`, destinado à extensão **eSUS PEC → eMulti**. O endpoint exige um usuário autenticado no eMulti com responsabilidade Cadastrante e usa CPF como identificador do cidadão. Se o CPF já existir, o cadastro não é sobrescrito automaticamente.
-
-
-## v2.9.1
-A interface passa a exibir nomes formais das unidades e mantém o campo Motivo do encaminhamento em altura inicial compacta. Não requer SQL adicional.
-
-## v2.10
-
-- Corrige a tela de detalhe da guia que podia ficar vazia.
-- Organiza o detalhe em três quadros: dados pessoais, dados do encaminhamento e andamento da guia.
-- Exibe CNS/endereço quando disponíveis sem derrubar a página em bases ainda não reparadas.
-- Mantém nomes formais das unidades na interface.
-- Não requer nova migração SQL além das já previstas nas versões anteriores.
-
-## v2.10
-Veja AJUSTES_V2.10.md.
-
-## v2.11
-Fila operacional paginada, filtros avançados, navegação para a próxima guia após regulação e cabeçalho com `eMulti | Regulação`.
-
-## v2.12 — Rodapé, suporte e documentos institucionais
-O chrome compartilhado agora exibe o rodapé com a versão do sistema e links para Suporte, Política de Privacidade e Termos de Uso. A versão é controlada pela constante `APP_VERSION` em `js/app-chrome.js`.
-
-
-## v2.14
-Revisão dos Termos de Uso e da Política de Privacidade, sem DPO nominal, e remoção definitiva do código residual do rodapé.
-
-
-## v2.15.2
-Identificador de guia padronizado como `AAAA000001`, com ano do cadastro e pesquisa por código completo ou pelos seis dígitos finais.
-
-## v2.15.3
-- Correção de sintaxe em `functions/api/guias/index.js` que impedia o build das Pages Functions no Cloudflare.
-- Mantida a busca de guias pelo identificador completo (`2026000001`) ou pelos 6 dígitos finais (`000001`).
-- Nenhuma nova migração de banco em relação à v2.15.2.
-
-
-## v2.15.5
-A unidade executante deve ser escolhida manualmente e é obrigatória nos fluxos de regulação que a exigem; nenhuma unidade é pré-selecionada ao escolher a equipe.
-
-
-## v2.15.6
-- Fila com colunas alinhadas à esquerda e demarcadas por bordas.
-- Exportação CSV de todas as guias que correspondem aos filtros atuais.
-- Importação CSV para criação de novas guias, restrita a Cadastrante/Administrador e submetida às validações normais do sistema.
-
-
-## v2.16.0
-Painel orientado às responsabilidades e navegação por fluxo.
-
-
-## v2.16.1
-Restauração da paleta clara: lateral branca e fundo geral #f2f4f7.
-
-
-
-## v2.17.1
-
-- Escalas passam a ser configuradas exclusivamente por Administradores.
-- Especialistas têm acesso somente de leitura à própria escala.
-- Administrador seleciona equipe, profissional e especialidade para montar a escala.
-- Sem nova migração de banco além da migração de agenda da v2.17.0.
-
-## v2.17.0
-Agenda, escalas, atendimentos individuais, grupos vazios e encontros programados.
+Consulte `INSTALL.md` para os comandos de instalação e atualização.

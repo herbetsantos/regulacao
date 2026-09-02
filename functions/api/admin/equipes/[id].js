@@ -1,5 +1,6 @@
 import { json, logAudit } from '../../_utils.js';
 import { requireAdminAccess } from '../../_shared.js';
+import { syncPortalRegulacaoFeature } from '../../_permissions.js';
 
 export async function onRequestPut({ request, env, params }) {
   const { user, error } = await requireAdminAccess(request, env);
@@ -23,6 +24,18 @@ export async function onRequestPut({ request, env, params }) {
 
   await env.DB.prepare('UPDATE regulacao_equipes SET nome = ?, ativo = ? WHERE id = ?')
     .bind(nome, ativo, equipeId).run();
+
+  // Ativar/desativar uma equipe muda a validade do vínculo que concede acesso.
+  // Recalcula o link do eMulti no Portal para todos os profissionais vinculados.
+  if (Number(atual.ativo) !== ativo) {
+    const { results: membros } = await env.DB.prepare(
+      'SELECT user_id FROM regulacao_equipe_profissionais WHERE equipe_id = ?'
+    ).bind(equipeId).all();
+    for (const membro of (membros || [])) {
+      await syncPortalRegulacaoFeature(env, Number(membro.user_id));
+    }
+  }
+
   await logAudit(env, user, 'update', 'equipe', equipeId, { nome, ativo });
   return json({ ok: true, equipe: { id: equipeId, nome, ativo } });
 }

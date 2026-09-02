@@ -7,6 +7,7 @@
 
 import { json, logAudit } from '../_utils.js';
 import { requireAdminAccess } from '../_shared.js';
+import { syncPortalRegulacaoFeature } from '../_permissions.js';
 
 export async function onRequestGet({ request, env }) {
   const { error } = await requireAdminAccess(request, env);
@@ -61,7 +62,6 @@ export async function onRequestPost({ request, env }) {
   const regulador = body.regulador ? 1 : 0;
   const executor = body.executor ? 1 : 0;
   const administrador = body.administrador ? 1 : 0;
-  const temAcesso = cadastrante || regulador || executor || administrador ? 1 : 0;
 
   try {
     await env.DB.prepare(
@@ -75,15 +75,12 @@ export async function onRequestPost({ request, env }) {
          updated_at = datetime('now')`
     ).bind(userId, cadastrante, regulador, executor, administrador).run();
 
-    // Sincronização apenas do acesso ao link/ferramenta no Portal.
-    await env.DB.prepare(
-      `INSERT INTO user_permissions (user_id, feature_key, enabled)
-       VALUES (?, 'regulacao_vagas', ?)
-       ON CONFLICT(user_id, feature_key) DO UPDATE SET enabled = excluded.enabled`
-    ).bind(userId, temAcesso).run();
+    // O link do Portal permanece ativo se houver responsabilidade OU vínculo
+    // operacional (equipe/unidade). Remover todas as classes não revoga um
+    // acesso que tenha sido concedido pelo administrador por vínculo.
   } catch (err) {
     return json({
-      error: 'Não foi possível salvar os acessos. Verifique se migration_regulacao_acessos_v2_6.sql foi executada no portal-saude-db.',
+      error: 'Não foi possível salvar os acessos. Verifique se o banco do Portal está atualizado em Administração > Diagnóstico.',
       detalhe: String(err?.message || ''),
     }, 503);
   }
@@ -95,5 +92,6 @@ export async function onRequestPost({ request, env }) {
     administrador: !!administrador,
   });
 
-  return json({ ok: true, acesso_portal: !!temAcesso });
+  const sync = await syncPortalRegulacaoFeature(env, userId);
+  return json({ ok: true, acesso_portal: !!sync.enabled, vinculo_equipe: sync.equipe, vinculo_unidade: sync.unidade });
 }

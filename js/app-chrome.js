@@ -3,7 +3,7 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.17.1';
+const APP_VERSION = '2.17.5';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {
@@ -104,6 +104,7 @@ function renderChrome() {
           <div class="account-menu" id="accountMenu" hidden>
             <a href="/minha-conta.html">${appIconSvg('key')}<span>Alterar senha</span></a>
             <a href="/links-uteis.html">${appIconSvg('links')}<span>Links úteis</span></a>
+            <a href="/novidades.html">${appIconSvg('book')}<span>Novidades da Versão</span></a>
             <a href="/suporte.html">${appIconSvg('message')}<span>Suporte</span></a>
             <a href="/termos-de-uso.html">${appIconSvg('document')}<span>Termos de Uso e Privacidade</span></a>
             <a href="/sobre.html">${appIconSvg('info')}<span>Sobre o eMulti Regulação</span></a>
