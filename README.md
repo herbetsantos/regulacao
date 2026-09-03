@@ -1,6 +1,8 @@
 # eMulti Regulação — Cajamar Saúde
 
-Versão atual: **2.17.5**.
+Versão atual: **2.17.6**.
+
+Atualização de banco simplificada: após o deploy, use **Administração > Diagnóstico > Atualizar bancos D1**. Os SQL em `database/` ficam como instalação/contingência.
 
 Sistema integrado ao Portal Saúde para cadastro e regulação de guias, equipes eMulti, agenda de especialistas, atendimentos individuais e grupos.
 

@@ -1,14 +1,17 @@
 # Novidades — eMulti Regulação
 
-## v2.17.5
+## v2.17.6
 
-- Simplificação completa dos arquivos de banco: migrations individuais deixaram de ser distribuídas no pacote.
-- Nova organização em `database/portal/` e `database/regulacao/`, cada uma contendo apenas `schema.sql` e `update.sql`.
-- `schema.sql` passa a representar a estrutura vigente para instalação nova; `update.sql` é reservado à atualização da versão imediatamente anterior.
-- Criado controle de versão de schema pela tabela `emulti_schema_version` nos dois bancos D1.
-- Administração > Diagnóstico agora mostra **Sistema**, **Portal DB** e **Regulação DB**, indicando quando estão na mesma versão.
-- Mensagens internas antigas que pediam migrations específicas foram substituídas por orientação de atualização do banco.
-- Versão da aplicação atualizada para 2.17.5.
+- Estrutura dos dois bancos D1 revisada com base nos schemas reais de `portal-saude-db` e `regulacao-vagas-db` informados pelo administrador.
+- O sistema agora identifica também as estruturas da Agenda v2.17 e as tabelas complementares do pré-cadastro de profissionais.
+- Novo botão **Atualizar bancos D1** em **Administração > Diagnóstico**. O próprio sistema cria apenas tabelas, índices e colunas ausentes, sem apagar pacientes, guias, usuários ou vínculos existentes.
+- A atualização administrativa alcança os dois bancos: Portal e Regulação.
+- O pré-cadastro mantém 28 profissionais, 78 lotações e 105 períodos semanais de referência, sem criar logins ou senhas.
+- Vínculo com equipe eMulti ativa ou unidade autorizada continua sendo suficiente para entrada no módulo; as classes Cadastrante, Regulador, Executor e Administrador continuam sendo definidas separadamente.
+- O vínculo com equipe não atribui automaticamente a classe Executor.
+- Escalas dos especialistas continuam sob gestão exclusiva do Administrador.
+- `schema.sql` e `update.sql` permanecem como arquivos de contingência/instalação, sem voltar ao modelo de dezenas de migrations.
+- Controle de versão dos dois bancos consolidado em `emulti_schema_version`.
 
 # Histórico de versões — eMulti Regulação
 

@@ -3,9 +3,6 @@
 -- user_permissions, links e tabelas regulacao_equipes/regulacao_equipe_*).
 -- Não cria logins e não apaga dados.
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_regulacao_equipe_prof_user_unica
-  ON regulacao_equipe_profissionais(user_id);
-
 CREATE TABLE IF NOT EXISTS regulacao_link_icons (
   link_id INTEGER PRIMARY KEY,
   icon_key TEXT NOT NULL DEFAULT 'links',
@@ -940,18 +937,9 @@ SELECT l.id,4,'07:00','18:00',NULL
 FROM regulacao_profissionais_base_lotacoes l JOIN regulacao_profissionais_base p ON p.id=l.profissional_base_id
 WHERE p.nome='PAULA CRISTINA MARCIANO' AND l.unidade_nome='USF Vereador Joaquim Alves de Castro';
 
--- Compatibilidade inicial das responsabilidades já existentes.
-INSERT OR IGNORE INTO regulacao_user_acessos (user_id)
-SELECT DISTINCT user_id FROM regulacao_user_unidades WHERE pode_emitir = 1;
-UPDATE regulacao_user_acessos
-SET cadastrante = 1, updated_at = datetime('now')
-WHERE EXISTS (SELECT 1 FROM regulacao_user_unidades ru WHERE ru.user_id = regulacao_user_acessos.user_id AND ru.pode_emitir = 1);
-
-INSERT OR IGNORE INTO regulacao_user_acessos (user_id)
-SELECT DISTINCT user_id FROM regulacao_equipe_profissionais;
-UPDATE regulacao_user_acessos
-SET executor = 1, updated_at = datetime('now')
-WHERE EXISTS (SELECT 1 FROM regulacao_equipe_profissionais ep WHERE ep.user_id = regulacao_user_acessos.user_id);
+-- As classes Cadastrante, Regulador, Executor e Administrador são definidas
+-- explicitamente pelo Administrador. O vínculo com equipe/unidade concede
+-- acesso ao eMulti, mas não altera automaticamente essas classes.
 
 INSERT INTO user_permissions (user_id, feature_key, enabled)
 SELECT u.id, 'regulacao_vagas',
@@ -966,5 +954,5 @@ FROM users u WHERE u.active=1
 ON CONFLICT(user_id, feature_key) DO UPDATE SET enabled=excluded.enabled;
 
 INSERT INTO emulti_schema_version (id, version, updated_at)
-VALUES (1, '2.17.5', datetime('now'))
+VALUES (1, '2.17.6', datetime('now'))
 ON CONFLICT(id) DO UPDATE SET version=excluded.version, updated_at=excluded.updated_at;

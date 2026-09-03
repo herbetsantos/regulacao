@@ -1,8 +1,24 @@
-# Instalação e atualização — eMulti Regulação 2.17.5
+# Instalação e atualização — eMulti Regulação 2.17.6
 
-O projeto usa **dois bancos D1**: `portal-saude-db` para usuários, unidades, equipes e permissões; e `regulacao-vagas-db` para pacientes, guias, agenda e atendimentos.
+O projeto usa dois bancos D1 da Cloudflare:
 
-Para simplificar, cada banco possui apenas dois arquivos SQL, sempre nos mesmos caminhos:
+- `portal-saude-db`: usuários, unidades, equipes, vínculos e permissões.
+- `regulacao-vagas-db`: pacientes, guias, fila, agenda, grupos e atendimentos.
+
+## Atualização normal
+
+A partir da v2.17.6, o fluxo recomendado ficou mais simples:
+
+1. Publique a nova versão no Cloudflare Pages.
+2. Entre no eMulti como Administrador.
+3. Abra **Administração > Diagnóstico**.
+4. Clique em **Atualizar bancos D1** quando o botão estiver disponível.
+
+O sistema verifica a estrutura real dos dois D1 e cria somente o que estiver faltando. O processo não apaga pacientes, guias, usuários ou vínculos existentes.
+
+## Arquivos SQL
+
+Os SQL continuam no pacote apenas para instalação e contingência:
 
 ```text
 database/
@@ -14,30 +30,12 @@ database/
     └── update.sql
 ```
 
-## Instalação nova
+`schema.sql` representa a estrutura vigente. O schema do Portal é complementar ao Portal Saúde já existente.
 
-Use `schema.sql` de cada banco:
-
-```bash
-wrangler d1 execute portal-saude-db --remote --file=./database/portal/schema.sql
-wrangler d1 execute regulacao-vagas-db --remote --file=./database/regulacao/schema.sql
-```
-
-O `database/portal/schema.sql` é um complemento do Portal Saúde e pressupõe que o schema-base do Portal já exista.
-
-## Atualização da versão imediatamente anterior
-
-Use somente `update.sql` de cada banco:
-
-```bash
-wrangler d1 execute portal-saude-db --remote --file=./database/portal/update.sql
-wrangler d1 execute regulacao-vagas-db --remote --file=./database/regulacao/update.sql
-```
-
-Depois publique o projeto no Cloudflare Pages.
+Os `update.sql` foram reconstruídos com base na estrutura real dos bancos informada em 02/09/2026. O `portal/update.sql` é reexecutável. O `regulacao/update.sql` é uma alternativa manual para o estado-base informado e deve ser usado uma única vez; para uso normal, prefira o botão administrativo, que verifica as colunas antes de alterá-las.
 
 ## Controle de versão
 
-Os dois bancos registram a versão do schema na tabela `emulti_schema_version`. Em **Administração > Diagnóstico da configuração**, o sistema exibe a versão da aplicação, do banco do Portal e do banco da Regulação.
+Após a atualização, **Administração > Diagnóstico** mostra a versão da aplicação, do Portal DB e do Regulação DB. Os bancos registram a versão em `emulti_schema_version`.
 
-A partir da 2.17.5, migrations individuais não são distribuídas no ZIP. O histórico funcional fica em **Novidades da Versão** e em `NOVIDADES.md`.
+Não são mais distribuídas migrations individuais. O histórico funcional fica em **Novidades da Versão** e em `NOVIDADES.md`.

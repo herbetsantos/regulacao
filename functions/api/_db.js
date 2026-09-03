@@ -87,6 +87,12 @@ const REGULACAO_TABLES = [
   'acompanhamento_sessoes',
   'notificacoes',
   'notificacao_lidas',
+  'agenda_escalas',
+  'agenda_grupos',
+  'agenda_grupo_encontros',
+  'agenda_grupo_pacientes',
+  'agenda_individuais',
+  'emulti_schema_version',
 ];
 
 export async function getRegulacaoSchemaStatus(env) {
@@ -99,6 +105,7 @@ export async function getRegulacaoSchemaStatus(env) {
       colunasPacienteEnderecoFaltantes: [...PACIENTE_ENDERECO_COLUMNS],
       colunasPacienteIntegracaoFaltantes: ['cns'],
       colunasFluxoV210Faltantes: ['guias.codigo_guia','acompanhamentos.data_inicio','acompanhamentos.horario_inicio','acompanhamento_sessoes.profissional_user_id'],
+      colunasAgendaFaltantes: ['especialidades.duracao_padrao_min','guias.desfecho_atendimento'],
       erro: 'Binding DB_REGULACAO não configurado no projeto Cloudflare Pages.',
     };
   }
@@ -113,6 +120,7 @@ export async function getRegulacaoSchemaStatus(env) {
     let colunasPacienteEnderecoFaltantes = [];
     let colunasPacienteIntegracaoFaltantes = [];
     let colunasFluxoV210Faltantes = [];
+    let colunasAgendaFaltantes = [];
     if (existentes.has('pacientes')) {
       const enderecoStatus = await getPacienteEnderecoColumnStatus(env);
       colunasPacienteEnderecoFaltantes = enderecoStatus.faltantes;
@@ -124,6 +132,12 @@ export async function getRegulacaoSchemaStatus(env) {
       const info = await env.DB_REGULACAO.prepare("PRAGMA table_info('guias')").all();
       const cols = new Set((info.results || []).map((c) => c.name));
       if (!cols.has('codigo_guia')) colunasFluxoV210Faltantes.push('guias.codigo_guia');
+      if (!cols.has('desfecho_atendimento')) colunasAgendaFaltantes.push('guias.desfecho_atendimento');
+    }
+    if (existentes.has('especialidades')) {
+      const info = await env.DB_REGULACAO.prepare("PRAGMA table_info('especialidades')").all();
+      const cols = new Set((info.results || []).map((c) => c.name));
+      if (!cols.has('duracao_padrao_min')) colunasAgendaFaltantes.push('especialidades.duracao_padrao_min');
     }
     if (existentes.has('acompanhamentos')) {
       const info = await env.DB_REGULACAO.prepare("PRAGMA table_info('acompanhamentos')").all();
@@ -139,12 +153,13 @@ export async function getRegulacaoSchemaStatus(env) {
 
     return {
       bindingOk: true,
-      schemaOk: faltantes.length === 0 && colunasPacienteEnderecoFaltantes.length === 0 && colunasPacienteIntegracaoFaltantes.length === 0 && colunasFluxoV210Faltantes.length === 0,
+      schemaOk: faltantes.length === 0 && colunasPacienteEnderecoFaltantes.length === 0 && colunasPacienteIntegracaoFaltantes.length === 0 && colunasFluxoV210Faltantes.length === 0 && colunasAgendaFaltantes.length === 0,
       tabelasExistentes: [...existentes],
       tabelasFaltantes: faltantes,
       colunasPacienteEnderecoFaltantes,
       colunasPacienteIntegracaoFaltantes,
       colunasFluxoV210Faltantes,
+      colunasAgendaFaltantes,
       erro: null,
     };
   } catch (err) {
@@ -156,6 +171,7 @@ export async function getRegulacaoSchemaStatus(env) {
       colunasPacienteEnderecoFaltantes: [...PACIENTE_ENDERECO_COLUMNS],
       colunasPacienteIntegracaoFaltantes: ['cns'],
       colunasFluxoV210Faltantes: ['guias.codigo_guia','acompanhamentos.data_inicio','acompanhamentos.horario_inicio','acompanhamento_sessoes.profissional_user_id'],
+      colunasAgendaFaltantes: ['especialidades.duracao_padrao_min','guias.desfecho_atendimento'],
       erro: messageOf(err),
     };
   }
@@ -278,6 +294,85 @@ export async function ensureRegulacaoSchema(env) {
       PRIMARY KEY (notificacao_id, user_id),
       FOREIGN KEY (notificacao_id) REFERENCES notificacoes(id) ON DELETE CASCADE
     )`,
+    `CREATE TABLE IF NOT EXISTS agenda_escalas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profissional_user_id INTEGER NOT NULL,
+      especialidade_id INTEGER NOT NULL,
+      equipe_id INTEGER NOT NULL,
+      unidade_code TEXT NOT NULL,
+      dia_semana INTEGER NOT NULL CHECK (dia_semana BETWEEN 1 AND 7),
+      hora_inicio TEXT NOT NULL,
+      hora_fim TEXT NOT NULL,
+      vigencia_inicio TEXT,
+      vigencia_fim TEXT,
+      ativo INTEGER NOT NULL DEFAULT 1,
+      created_by INTEGER,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS agenda_grupos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome TEXT NOT NULL,
+      profissional_user_id INTEGER NOT NULL,
+      especialidade_id INTEGER NOT NULL,
+      equipe_id INTEGER NOT NULL,
+      unidade_code TEXT NOT NULL,
+      capacidade INTEGER NOT NULL DEFAULT 8,
+      duracao_minutos INTEGER NOT NULL,
+      observacao TEXT,
+      ativo INTEGER NOT NULL DEFAULT 1,
+      created_by INTEGER,
+      created_at TEXT DEFAULT (datetime('now')),
+      encerrado_em TEXT,
+      FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS agenda_grupo_encontros (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      grupo_id INTEGER NOT NULL,
+      data_encontro TEXT NOT NULL,
+      hora_inicio TEXT NOT NULL,
+      duracao_minutos INTEGER NOT NULL,
+      situacao TEXT NOT NULL DEFAULT 'programado' CHECK (situacao IN ('programado','realizado','cancelado')),
+      observacao TEXT,
+      created_by INTEGER,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (grupo_id) REFERENCES agenda_grupos(id) ON DELETE CASCADE
+    )`,
+    `CREATE TABLE IF NOT EXISTS agenda_grupo_pacientes (
+      grupo_id INTEGER NOT NULL,
+      guia_id INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo','concluido','abandono','removido')),
+      entrada_em TEXT DEFAULT (datetime('now')),
+      saida_em TEXT,
+      motivo_saida TEXT,
+      added_by INTEGER,
+      PRIMARY KEY (grupo_id, guia_id),
+      FOREIGN KEY (grupo_id) REFERENCES agenda_grupos(id) ON DELETE CASCADE,
+      FOREIGN KEY (guia_id) REFERENCES guias(id) ON DELETE RESTRICT
+    )`,
+    `CREATE TABLE IF NOT EXISTS agenda_individuais (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      guia_id INTEGER NOT NULL,
+      profissional_user_id INTEGER NOT NULL,
+      especialidade_id INTEGER NOT NULL,
+      equipe_id INTEGER NOT NULL,
+      unidade_code TEXT NOT NULL,
+      data_atendimento TEXT NOT NULL,
+      hora_inicio TEXT NOT NULL,
+      duracao_minutos INTEGER NOT NULL,
+      situacao TEXT NOT NULL DEFAULT 'agendado' CHECK (situacao IN ('agendado','realizado','cancelado')),
+      observacao TEXT,
+      created_by INTEGER,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (guia_id) REFERENCES guias(id) ON DELETE RESTRICT,
+      FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS emulti_schema_version (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      version TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
     `CREATE INDEX IF NOT EXISTS idx_guias_cpf ON guias(cpf)`,
     `CREATE INDEX IF NOT EXISTS idx_guia_atribuicoes_guia ON guia_atribuicoes(guia_id)`,
     `CREATE INDEX IF NOT EXISTS idx_guia_atribuicoes_prof ON guia_atribuicoes(profissional_user_id)`,
@@ -289,6 +384,11 @@ export async function ensureRegulacaoSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_acomp_guias_guia ON acompanhamento_guias(guia_id)`,
     `CREATE INDEX IF NOT EXISTS idx_sessoes_acompanhamento ON acompanhamento_sessoes(acompanhamento_id)`,
     `CREATE INDEX IF NOT EXISTS idx_notificacoes_equipe ON notificacoes(equipe_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_agenda_escalas_prof ON agenda_escalas(profissional_user_id, ativo)`,
+    `CREATE INDEX IF NOT EXISTS idx_agenda_grupos_prof ON agenda_grupos(profissional_user_id, ativo)`,
+    `CREATE INDEX IF NOT EXISTS idx_grupo_encontros_data ON agenda_grupo_encontros(grupo_id, data_encontro, hora_inicio)`,
+    `CREATE INDEX IF NOT EXISTS idx_grupo_pacientes_guia ON agenda_grupo_pacientes(guia_id, status)`,
+    `CREATE INDEX IF NOT EXISTS idx_agenda_ind_data ON agenda_individuais(profissional_user_id, data_atendimento, hora_inicio)`,
   ];
 
   for (const sql of statements) {
@@ -331,6 +431,23 @@ export async function ensureRegulacaoSchema(env) {
   if (!sessaoCols.has('profissional_user_id')) {
     await env.DB_REGULACAO.prepare('ALTER TABLE acompanhamento_sessoes ADD COLUMN profissional_user_id INTEGER').run();
   }
+
+  // v2.17 — agenda e desfecho de atendimento.
+  const espInfo = await env.DB_REGULACAO.prepare("PRAGMA table_info('especialidades')").all();
+  const espCols = new Set((espInfo.results || []).map((c) => c.name));
+  if (!espCols.has('duracao_padrao_min')) {
+    await env.DB_REGULACAO.prepare('ALTER TABLE especialidades ADD COLUMN duracao_padrao_min INTEGER NOT NULL DEFAULT 30').run();
+  }
+
+  const guiaInfoAgenda = await env.DB_REGULACAO.prepare("PRAGMA table_info('guias')").all();
+  const guiaColsAgenda = new Set((guiaInfoAgenda.results || []).map((c) => c.name));
+  if (!guiaColsAgenda.has('desfecho_atendimento')) {
+    await env.DB_REGULACAO.prepare('ALTER TABLE guias ADD COLUMN desfecho_atendimento TEXT').run();
+  }
+
+  await env.DB_REGULACAO.prepare(`INSERT INTO emulti_schema_version (id, version, updated_at)
+    VALUES (1, '2.17.6', datetime('now'))
+    ON CONFLICT(id) DO UPDATE SET version=excluded.version, updated_at=excluded.updated_at`).run();
 
   const especialidades = [
     ['Fisioterapia', 1],

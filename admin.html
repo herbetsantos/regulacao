@@ -152,7 +152,7 @@
     const pv = data.portal?.version || 'Não registrado';
     const rv = data.regulacao?.version || 'Não registrado';
     const cls = data.atualizado ? '' : ' is-warning';
-    area.innerHTML = `<div class="notice-box${cls}"><strong>Versões:</strong> Sistema ${escapeHtml(data.app_version)} · Portal DB ${escapeHtml(pv)} · Regulação DB ${escapeHtml(rv)}${data.atualizado ? ' · Bancos atualizados' : ' · Execute os arquivos update.sql correspondentes aos bancos.'}</div>`;
+    area.innerHTML = `<div class="notice-box${cls}"><strong>Versões:</strong> Sistema ${escapeHtml(data.app_version)} · Portal DB ${escapeHtml(pv)} · Regulação DB ${escapeHtml(rv)}${data.atualizado ? ' · Bancos atualizados' : ' · Atualização disponível em Diagnóstico.'}</div>`;
   }
 
   async function carregarDiagnostico() {
@@ -177,22 +177,25 @@
         ${cards.map(([label, value, good]) => `<div class="admin-summary-card ${good ? 'is-ok' : 'is-warning'}"><strong>${value}</strong><span>${label}</span></div>`).join('')}
       </div>
       ${d.avisos.length ? `<div class="notice-box is-warning"><strong>Pontos a verificar:</strong><br>${d.avisos.map((a) => `• ${escapeHtml(a)}`).join('<br>')}</div>` : '<div class="notice-box">Configuração básica sem alertas.</div>'}
-      ${d.reparo_regulacao_disponivel ? '<div class="inline-form__actions" style="margin-top:12px"><button class="btn btn--accent" type="button" id="btnRepararRegulacao">Corrigir estrutura do banco da Regulação</button></div>' : ''}`;
+      ${d.atualizacao_bancos_disponivel ? '<div class="inline-form__actions" style="margin-top:12px"><button class="btn btn--accent" type="button" id="btnAtualizarBancos">Atualizar bancos D1</button></div>' : ''}`;
 
-    const reparar = document.getElementById('btnRepararRegulacao');
-    if (reparar) {
-      reparar.addEventListener('click', async () => {
-        if (!confirm('A correção cria somente tabelas, índices e campos ausentes no banco da Regulação. Nenhum paciente ou guia existente será apagado. Deseja continuar?')) return;
-        reparar.disabled = true;
-        reparar.textContent = 'Corrigindo…';
-        const resp = await apiFetch('/api/admin/reparar-regulacao', { method:'POST', body:'{}' });
+    const atualizar = document.getElementById('btnAtualizarBancos');
+    if (atualizar) {
+      atualizar.addEventListener('click', async () => {
+        if (!confirm('A atualização cria somente estruturas ausentes, completa os recursos já previstos e sincroniza os acessos por vínculo. Pacientes, guias e usuários existentes não serão apagados. Deseja continuar?')) return;
+        atualizar.disabled = true;
+        atualizar.textContent = 'Atualizando…';
+        const resp = await apiFetch('/api/admin/atualizar-bancos', { method:'POST', body:'{}' });
         if (!resp.ok) {
-          alert(resp.data?.error || 'Não foi possível corrigir a estrutura.');
-          reparar.disabled = false;
-          reparar.textContent = 'Corrigir estrutura do banco da Regulação';
+          alert((resp.data?.error || 'Não foi possível atualizar os bancos.') + (resp.data?.detalhe ? '\n\n' + resp.data.detalhe : ''));
+          atualizar.disabled = false;
+          atualizar.textContent = 'Atualizar bancos D1';
           return;
         }
+        alert(resp.data?.mensagem || 'Bancos atualizados.');
         await carregarDiagnostico();
+        await carregarListasBase();
+        await Promise.all([carregarAcessos(), carregarProfissionaisBase(), carregarEquipes(), carregarAgentes(), carregarEspecialidades(), carregarLinkIcons()]);
       });
     }
     await carregarVersoesBanco();

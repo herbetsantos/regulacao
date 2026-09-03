@@ -20,14 +20,14 @@
         </div>
       </section>
       <section class="panel-section" style="margin-top:16px">
-        <h2>Versão 2.17.5</h2>
-        <p class="muted">Atualização de banco simplificada</p>
+        <h2>Versão 2.17.6</h2>
+        <p class="muted">Bancos D1 ajustados à estrutura real</p>
         <ul>
-          <li>As migrations individuais foram retiradas do pacote.</li>
-          <li>Cada banco agora possui apenas <strong>schema.sql</strong> e <strong>update.sql</strong>.</li>
-          <li>O sistema registra a versão do schema nos dois bancos.</li>
-          <li>Em <strong>Administração &gt; Diagnóstico</strong> é possível comparar a versão do sistema, Portal DB e Regulação DB.</li>
-          <li>O histórico funcional continua centralizado nesta página e no arquivo único <code>NOVIDADES.md</code>.</li>
+          <li>Os schemas foram revisados com base na configuração real do <strong>portal-saude-db</strong> e do <strong>regulacao-vagas-db</strong>.</li>
+          <li>Em <strong>Administração &gt; Diagnóstico</strong>, o novo botão <strong>Atualizar bancos D1</strong> completa automaticamente estruturas ausentes nos dois bancos, sem apagar dados existentes.</li>
+          <li>Agenda, grupos, atendimentos, código público da guia e pré-cadastro de profissionais passam a fazer parte dessa verificação.</li>
+          <li>Vínculo com equipe ou unidade concede entrada no eMulti, mas não atribui automaticamente uma classe operacional.</li>
+          <li>As classes Cadastrante, Regulador, Executor e Administrador continuam independentes, e a escala dos especialistas permanece exclusiva do Administrador.</li>
         </ul>
       </section>
       <section class="panel-section" style="margin-top:16px">
@@ -64,7 +64,7 @@
       ['2.6','Responsabilidades','Introdução das responsabilidades Cadastrante, Regulador, Executor e Administrador.']
     ];
     document.addEventListener('DOMContentLoaded',()=>{
-      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.17.5');
+      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.17.6');
       const h=document.getElementById('history');
       h.innerHTML=releases.map(r=>`<article style="padding:16px 0;border-bottom:1px solid var(--border,#e3e7ee)"><div style="display:flex;gap:10px;align-items:center"><strong>v${r[0]}</strong><span>${r[1]}</span></div><p class="muted" style="margin:6px 0 0">${r[2]}</p></article>`).join('');
     });

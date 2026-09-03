@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS pacientes (
 -- Guias de encaminhamento.
 CREATE TABLE IF NOT EXISTS guias (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  codigo_guia TEXT UNIQUE,                      -- código público: AAAA-000001
+  codigo_guia TEXT UNIQUE,                      -- código público: AAAA000001
   cpf TEXT NOT NULL,                            -- FK "lógica" -> pacientes.cpf
   unidade_solicitante_code TEXT NOT NULL,       -- qualquer unidade (não só APS)
   medico_solicitante TEXT NOT NULL,
@@ -304,5 +304,5 @@ CREATE TABLE IF NOT EXISTS emulti_schema_version (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 INSERT INTO emulti_schema_version (id, version, updated_at)
-VALUES (1, '2.17.5', datetime('now'))
+VALUES (1, '2.17.6', datetime('now'))
 ON CONFLICT(id) DO UPDATE SET version=excluded.version, updated_at=excluded.updated_at;
