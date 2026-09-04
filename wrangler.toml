@@ -2,7 +2,7 @@ name = "emulti"
 compatibility_date = "2024-09-23"
 pages_build_output_dir = "."
 
-# Banco de LOGIN/unidades/equipes — o MESMO banco do Portal Saúde Cajamar
+# Banco de LOGIN/unidades/equipes — o MESMO banco do Portal Saúde Cajamarw
 # (portal-saude-db). Este projeto só LÊ usuários/sessões/unidades/equipes
 # daqui (login em si continua acontecendo só no portal) e ESCREVE sessões
 # novas ao consumir um código de repasse (ver functions/_middleware.js).
