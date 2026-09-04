@@ -1,52 +1,50 @@
-// Guarda de acesso das páginas do eMulti.
-// O Portal entrega a identidade por handoff; a autorização funcional é
-// própria da Regulação e independe do role do usuário no Portal.
+// Guarda de acesso para as páginas estáticas de ferramentas/menus, baseada nas
+// permissões por funcionalidade (ver functions/api/_permissions.js).
+//
+// Cloudflare Pages executa este arquivo para TODA requisição do site (é o
+// _middleware.js da raiz), por isso o primeiro passo é sempre checar se o
+// caminho está no mapa abaixo — se não estiver, devolve next() imediatamente
+// e não custa nada extra (nenhuma chamada ao banco, nenhum atraso).
+//
+// /receituario/* já tem seu próprio middleware específico (com regra própria
+// de unidades) e não entra no mapa aqui, pra não rodar a checagem duas vezes.
 
-import { getAuthUser, consumeHandoffToken, createSession, sessionCookieHeader } from './api/_utils.js';
-import { getRegulacaoAccessProfile } from './api/_permissions.js';
+import { getAuthUser } from './api/_utils.js';
+import { getUserPermissions } from './api/_permissions.js';
 
-const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
+// pathname (sem barra final, com ou sem .html) -> feature_key exigida
+const PROTECTED = {
+  '/guiasmalotes': 'malotes',
+  '/guiasmalotes.html': 'malotes',
+  '/facilitawhats': 'facilitawhats',
+  '/facilitawhats.html': 'facilitawhats',
+  '/documentos': 'documentos',
+  '/documentos.html': 'documentos',
+  '/manuais': 'manuais',
+  '/manuais.html': 'manuais',
+  '/relatorios': 'relatorios',
+  '/relatorios.html': 'relatorios',
+  '/admin': 'administracao',
+  '/admin.html': 'administracao',
+};
 
 export async function onRequest({ request, env, next }) {
   const url = new URL(request.url);
+  const pathname = url.pathname.replace(/\/+$/, '') || '/';
+  const featureKey = PROTECTED[pathname];
 
-  const handoffToken = url.searchParams.get('handoff');
-  if (handoffToken) {
-    const userId = await consumeHandoffToken(env, handoffToken);
-    if (!userId) return Response.redirect(`${PORTAL_URL}/login.html`, 302);
-
-    const sessionToken = await createSession(env, userId);
-    url.searchParams.delete('handoff');
-    try {
-      const row = await env.DB.prepare('SELECT theme FROM users WHERE id = ?').bind(userId).first();
-      if (['auto', 'light', 'dark', 'contrast'].includes(row?.theme)) url.searchParams.set('theme', row.theme);
-    } catch { /* tema é opcional */ }
-
-    return new Response(null, {
-      status: 302,
-      headers: { 'Location': url.toString(), 'Set-Cookie': sessionCookieHeader(sessionToken) },
-    });
-  }
-
-  if (url.pathname.startsWith('/api/')) return next();
+  if (!featureKey) return next();
 
   const user = await getAuthUser(request, env);
   if (!user) {
-    const nextUrl = encodeURIComponent(url.toString());
-    return Response.redirect(`${PORTAL_URL}/login.html?next=${nextUrl}`, 302);
+    const nextParam = encodeURIComponent(url.pathname + url.search);
+    return Response.redirect(`${url.origin}/login.html?next=${nextParam}`, 302);
   }
 
-  try {
-    const access = await getRegulacaoAccessProfile(env, user);
-    if (!access.acesso) {
-      return Response.redirect(
-        `${PORTAL_URL}/portal.html?erro=${encodeURIComponent('Seu usuário não possui responsabilidade nem vínculo ativo com equipe/unidade no eMulti / Regulação de Vagas.')}`,
-        302
-      );
-    }
-  } catch {
+  const permissions = await getUserPermissions(env, user);
+  if (!permissions[featureKey]) {
     return Response.redirect(
-      `${PORTAL_URL}/portal.html?erro=${encodeURIComponent('Não foi possível validar os acessos do eMulti. Verifique a migração de permissões da Regulação.')}`,
+      `${url.origin}/portal.html?erro=${encodeURIComponent('Você não tem acesso a essa ferramenta. Fale com o administrador do portal.')}`,
       302
     );
   }

@@ -1,0 +1,18 @@
+# Dependências / builds locais
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+
+# Segredos e variáveis locais
+.env
+.env.*
+!.env.example
+
+# Sistema operacional / IDE
+.DS_Store
+Thumbs.db
+.vscode/settings.json
+
+# Logs
+*.log

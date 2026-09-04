@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/js/theme.js"></script>
+<title>Guias e Malotes — Portal Saúde Cajamar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+/* ────────────────────────────────────────────────────────
+   VARIÁVEIS — mapeadas para a paleta compartilhada do portal
+   (definida em /css/style.css). Os nomes locais abaixo são
+   mantidos para não quebrar os seletores existentes nesta
+   página; apenas os valores passam a apontar para os tokens
+   do portal.
+──────────────────────────────────────────────────────── */
+:root {
+  --azul:        var(--primary);
+  --azul-m:      var(--primary-dark);
+  --ciano:       var(--accent);
+  --verde:       var(--accent-dark);
+  --vermelho:    var(--danger);
+  --amarelo-bg:  #fffbe6;
+  --amarelo-bd:  #ffe082;
+  --cinza-bg:    var(--surface);
+  --cinza-bd:    var(--line);
+  --branco:      var(--bg);
+  --texto:       var(--ink);
+  --texto-leve:  var(--muted);
+  --sombra:      var(--shadow);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: var(--cinza-bg);
+  color: var(--texto);
+  min-height: 100vh;
+}
+
+/* ────────────────────────────────────────────────────────
+   CABEÇALHO DA APP
+──────────────────────────────────────────────────────── */
+/* O cabeçalho institucional (logo, navegação, usuário) agora vem
+   da topbar compartilhada do portal, definida em /css/style.css. */
+
+/* ────────────────────────────────────────────────────────
+   ABAS DE NAVEGAÇÃO (internas desta ferramenta)
+──────────────────────────────────────────────────────── */
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  background: var(--azul);
+  border-top: 1px solid rgba(255,255,255,0.12);
+  padding: 0 32px;
+  position: sticky;
+  top: 0px;
+  z-index: 90;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tab-btn:hover { color: rgba(255,255,255,0.9); }
+.tab-btn.active {
+  color: #fff;
+  border-bottom-color: var(--ciano);
+}
+
+/* ────────────────────────────────────────────────────────
+   CONTAINER / PAINÉIS
+──────────────────────────────────────────────────────── */
+.container { max-width: 900px; margin: 28px auto; padding: 0 16px; }
+.painel { display: none; }
+.painel.ativo { display: block; }
+
+/* ────────────────────────────────────────────────────────
+   CARDS
+──────────────────────────────────────────────────────── */
+.card {
+  background: var(--branco);
+  border-radius: 10px;
+  box-shadow: var(--sombra);
+  border: 1px solid var(--cinza-bd);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.card-header {
+  background: var(--azul);
+  color: #fff;
+  padding: 12px 20px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.badge {
+  background: var(--ciano);
+  border-radius: 12px;
+  font-size: 0.74rem;
+  padding: 2px 9px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+.card-body { padding: 20px; }
+
+/* ────────────────────────────────────────────────────────
+   FORMULÁRIOS
+──────────────────────────────────────────────────────── */
+.form-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.form-group { flex: 1; min-width: 150px; }
+.form-group label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--azul);
+  margin-bottom: 5px;
+}
+.form-group input, .form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid var(--cinza-bd);
+  border-radius: 6px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.94rem;
+  color: var(--texto);
+  background: #fafbfd;
+  transition: border-color 0.18s;
+  appearance: none;
+}
+.form-group input:focus, .form-group select:focus {
+  outline: none;
+  border-color: var(--ciano);
+  background: #fff;
+}
+
+/* ────────────────────────────────────────────────────────
+   BUSCA DE UNIDADE (combobox com busca por nome/iniciais)
+──────────────────────────────────────────────────────── */
+.dest-cell, .form-group.dest-cell { position: relative; min-width: 210px; }
+.unidade-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 0;
+  min-width: 260px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1.5px solid var(--ciano);
+  border-radius: 7px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.16);
+  z-index: 200;
+  text-align: left;
+}
+.unidade-dropdown.aberto { display: block; }
+.unidade-opcao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 0.84rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f2f5;
+}
+.unidade-opcao:last-child { border-bottom: none; }
+.unidade-opcao:hover, .unidade-opcao.destacada { background: #eaf4fc; }
+.unidade-opcao .uo-nome { flex: 1; color: var(--texto); font-weight: 500; }
+.unidade-opcao .uo-tag {
+  flex-shrink: 0;
+  background: var(--azul);
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.unidade-opcao-nova {
+  color: var(--verde);
+  font-weight: 600;
+  background: #f4faf6;
+}
+.unidade-opcao-nova small { display: block; font-weight: 400; color: var(--texto-leve); font-size: 0.72rem; margin-top:2px; }
+.unidade-opcao-vazia {
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  color: var(--texto-leve);
+}
+
+/* ────────────────────────────────────────────────────────
+   TABELA DE PACIENTES
+──────────────────────────────────────────────────────── */
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th {
+  background: var(--azul);
+  color: #fff;
+  padding: 9px 11px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+.tbl td { padding: 4px 6px; border-bottom: 1px solid var(--cinza-bd); }
+.tbl tr:nth-child(even) td { background: #f5f8fc; }
+.tbl input, .tbl select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1.5px solid transparent;
+  border-radius: 5px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.86rem;
+  background: transparent;
+  color: var(--texto);
+  transition: border-color 0.15s, background 0.15s;
+  appearance: none;
+}
+.tbl input:focus, .tbl select:focus {
+  outline: none;
+  border-color: var(--ciano);
+  background: #fff;
+}
+.num-cell { text-align: center; font-weight: 700; color: var(--azul); width: 32px; }
+
+/* ────────────────────────────────────────────────────────
+   BOTÕES
+──────────────────────────────────────────────────────── */
+.btn-add {
+  background: none;
+  border: 1.5px dashed var(--ciano);
+  color: var(--ciano);
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin: 10px 14px;
+}
+.btn-add:hover { background: #e8f4fc; }
+
+.btn-remove {
+  background: none; border: none;
+  color: #ccc; font-size: 1.1rem;
+  cursor: pointer; padding: 3px 7px;
+  transition: color 0.15s; line-height: 1;
+}
+.btn-remove:hover { color: var(--vermelho); }
+
+.btn-primario {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--azul);
+  color: #fff;
+  border: none;
+  padding: 9px 20px;
+  border-radius: 7px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-primario:hover { background: var(--azul-m); transform: translateY(-1px); }
+.btn-primario:active { transform: translateY(0); }
+
+.btn-gerar {
+  display: block; width: 100%;
+  background: var(--verde);
+  color: #fff; border: none;
+  padding: 13px;
+  border-radius: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.15rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(26,110,52,0.22);
+  transition: background 0.18s, transform 0.1s;
+}
+.btn-gerar:hover { background: #145c2b; transform: translateY(-1px); }
+.btn-gerar:active { transform: translateY(0); }
+
+.btn-gerar-outline {
+  display: block; width: 100%;
+  background: #fff;
+  color: var(--verde); border: 2px solid var(--verde);
+  padding: 11px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.02rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.1s;
+}
+.btn-gerar-outline:hover { background: #eafaf0; transform: translateY(-1px); }
+.btn-gerar-outline:active { transform: translateY(0); }
+.btn-gerar-outline[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+/* ────────────────────────────────────────────────────────
+   AVISOS / STATUS
+──────────────────────────────────────────────────────── */
+.aviso {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.aviso.info { background: var(--amarelo-bg); border: 1px solid var(--amarelo-bd); color: #795548; }
+.aviso.sucesso { background: #e6f4ea; border: 1px solid #a5d6a7; color: var(--verde); }
+.aviso.erro { background: #fdecea; border: 1px solid #ef9a9a; color: var(--vermelho); }
+
+.status-box {
+  margin-top: 12px; padding: 11px 15px;
+  border-radius: 7px; font-size: 0.9rem;
+  display: none; align-items: center; gap: 9px;
+}
+.status-box.sucesso { background: #e6f4ea; color: var(--verde); display: flex; }
+.status-box.erro { background: #fdecea; color: var(--vermelho); display: flex; }
+
+/* ────────────────────────────────────────────────────────
+   LISTA DE DOWNLOADS
+──────────────────────────────────────────────────────── */
+.downloads-lista { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.download-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f0f7ff;
+  border: 1px solid #b3d4f0;
+  border-radius: 7px;
+  padding: 10px 14px;
+  gap: 10px;
+}
+.download-item .dl-nome {
+  font-weight: 600; font-size: 0.9rem; color: var(--azul);
+  flex: 1;
+}
+.download-item .dl-info {
+  font-size: 0.78rem; color: var(--texto-leve);
+}
+.download-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--azul); color: #fff;
+  padding: 7px 16px; border-radius: 5px;
+  text-decoration: none; font-weight: 600; font-size: 0.85rem;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.download-link:hover { background: var(--azul-m); }
+
+footer {
+  text-align: center; padding: 28px;
+  font-size: 0.76rem; color: var(--texto-leve);
+}
+</style>
+<link rel="stylesheet" href="/css/theme.css">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     CABEÇALHO
+══════════════════════════════════════════════════════ -->
+<div id="app-topbar"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     ABAS
+══════════════════════════════════════════════════════ -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="mudarAba('guias',    this)">Guias</button>
+  <button class="tab-btn"        onclick="mudarAba('termos',   this)">Termos de Remessa</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PAINEL 1 — GUIAS / PACIENTES
+══════════════════════════════════════════════════════ -->
+<div class="container">
+<div id="painel-guias" class="painel ativo">
+
+  <div class="card">
+    <div class="card-header"><span>Emissão</span></div>
+    <div class="card-body">
+      <div id="aviso-unidades-api" class="aviso erro" style="display:none"></div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0.5; min-width:160px">
+          <label>Data da Remessa</label>
+          <input type="date" id="data-remessa">
+        </div>
+        <div class="form-group" style="flex:2; min-width:220px">
+          <label>Nome do Emissor</label>
+          <input type="text" id="nome-emissor" placeholder="Ex: HERBET DAVID GOMES DOS SANTOS"
+                 style="text-transform:uppercase"
+                 oninput="this.value=this.value.toUpperCase();salvarEmissor()">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>Pacientes</span>
+      <span class="badge" id="badge-pacientes">0 paciente(s)</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th style="width:32px; text-align:center">#</th>
+            <th>Nome do Paciente</th>
+            <th style="width:190px">Especialidade</th>
+            <th style="width:230px">Unidade de Destino</th>
+            <th style="width:36px"></th>
+          </tr>
+        </thead>
+        <tbody id="pac-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn-add" onclick="addPaciente()">+ Adicionar Paciente</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Gerar Documentos</span></div>
+    <div class="card-body">
+      <p style="font-size:0.9rem; color:var(--texto-leve); margin-bottom:16px; line-height:1.6">
+        Será gerado <strong>um arquivo PDF por unidade de destino</strong>,
+        formatado como folha A4 paisagem com as duas vias A5 lado a lado,
+        pronto para impressão. Ou, se preferir, baixe tudo em
+        <strong>um único PDF</strong>, com uma guia por unidade em cada página.
+      </p>
+      <button class="btn-gerar" id="btn-gerar" onclick="gerarTodos()">🖨 Gerar PDFs por Unidade</button>
+      <button class="btn-gerar-outline" id="btn-gerar-unico" onclick="gerarUnificado()">📎 Baixar PDF Único (todas as guias)</button>
+      <div class="status-box" id="status-box">
+        <span id="status-msg"></span>
+      </div>
+      <div class="downloads-lista" id="downloads-lista"></div>
+    </div>
+  </div>
+
+</div><!-- /painel-guias -->
+
+
+<!-- ══════════════════════════════════════════════════════
+     PAINEL 2 — TERMOS DE REMESSA DE MATERIAIS
+══════════════════════════════════════════════════════ -->
+<div id="painel-termos" class="painel">
+
+  <div class="card">
+    <div class="card-header"><span>Emissão</span></div>
+    <div class="card-body">
+      <div class="aviso info" style="margin-bottom:12px">
+        ℹ️ O <strong>nome do emissor</strong> é compartilhado com a aba Guias — altere lá se necessário.
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0.5; min-width:160px">
+          <label>Data da Remessa</label>
+          <input type="date" id="data-termo">
+        </div>
+        <div class="form-group dest-cell" style="flex:1.5; min-width:220px">
+          <label>Unidade de Destino</label>
+          <input type="text" id="destino-termo-input" placeholder="Buscar unidade (nome ou iniciais)..." autocomplete="off">
+          <div class="unidade-dropdown" id="destino-termo-dropdown"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>Materiais</span>
+      <span class="badge" id="badge-materiais">0 item(ns)</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th style="width:32px; text-align:center">#</th>
+            <th>Descrição do Material</th>
+            <th style="width:110px">Quantidade</th>
+            <th style="width:110px">Unidade</th>
+            <th style="width:180px">Observação</th>
+            <th style="width:36px"></th>
+          </tr>
+        </thead>
+        <tbody id="mat-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn-add" onclick="addMaterial()">+ Adicionar Material</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span>Gerar Termo de Remessa</span></div>
+    <div class="card-body">
+      <p style="font-size:0.9rem; color:var(--texto-leve); margin-bottom:16px; line-height:1.6">
+        Será gerado <strong>um PDF com 2 vias A5</strong> do Termo de Recebimento de Materiais,
+        pronto para impressão e assinatura.
+      </p>
+      <button class="btn-gerar" id="btn-gerar-termo" onclick="gerarTermo()">🖨 Gerar PDF do Termo</button>
+      <div class="status-box" id="status-box-termo">
+        <span id="status-msg-termo"></span>
+      </div>
+      <div class="downloads-lista" id="downloads-lista-termo"></div>
+    </div>
+  </div>
+
+</div><!-- /painel-termos -->
+
+<footer>
+  Prefeitura Municipal de Cajamar — Secretaria de Saúde<br>
+  (11) 4446-0100 · Av. Dr. Antônio João Abdalla, 1500 · Jordanésia · CEP 07776-700
+</footer>
+</div><!-- /container -->
+
+<!-- ══════════════════════════════════════════════════════
+     CHROME DO PORTAL (topbar, sessão, menu Ferramentas)
+══════════════════════════════════════════════════════ -->
+<script src="/js/common.js"></script>
+<script>
+  (async () => {
+    const user = await initPortalChrome('ferramentas');
+    if (!user) return;
+  })();
+</script>
+
+<!-- ══════════════════════════════════════════════════════
+     SCRIPT PRINCIPAL
+══════════════════════════════════════════════════════ -->
+<script>
+/* ──────────────────────────────────────────────────────
+   IMAGENS
+   ──────────────────────────────────────────────────────
+   Logo e brasão (marca d'água) são carregados como arquivos
+   de /assets/, não mais embutidos em base64 no HTML.
+   ────────────────────────────────────────────────────── */
+const LOGO_URL   = "/assets/logo-cajamar-saude-termo.png"; // logo colorido "CAJAMAR PREFEITURA / SAÚDE"
+const BRASAO_URL = "/assets/brasao-marca-dagua.png"; // brasão cinza para marca d'água de fundo
+
+/* ──────────────────────────────────────────────────────
+   ESPECIALIDADES
+────────────────────────────────────────────────────── */
+const ESPECIALIDADES = [
+  "PSICOLOGIA","FONOAUDIOLOGIA","FISIOTERAPIA","NUTRIÇÃO","PSIQUIATRIA",
+  "CARDIOLOGIA","DERMATOLOGIA","ENDOCRINOLOGIA","GASTROENTEROLOGIA",
+  "GERIATRIA","GINECOLOGIA","NEUROLOGIA","OFTALMOLOGIA","ONCOLOGIA",
+  "ORTOPEDIA","OTORRINOLARINGOLOGIA","PEDIATRIA","PNEUMOLOGIA",
+  "REUMATOLOGIA","SAÚDE BUCAL","UROLOGIA","OUTRA"
+];
+
+/* ──────────────────────────────────────────────────────
+   ESTADO (persistido em localStorage)
+────────────────────────────────────────────────────── */
+// Unidades "oficiais": vêm do cadastro real da Secretaria (mesma fonte que
+// alimenta o Receituário), via GET /api/unidades/minhas. Não existe mais
+// cadastro manual de unidades nesta página.
+let unidadesOficiais = [];
+
+// Unidades "avulsas": destinos digitados livremente pelo usuário quando a
+// unidade não está no cadastro oficial (ex.: um envio pontual para outro
+// município/serviço). Ficam restritas a este navegador (localStorage) e
+// nunca são enviadas para o servidor.
+let unidadesOutras = JSON.parse(localStorage.getItem('caj_unidades_outras') || '[]');
+
+let pacientes = [];
+
+function salvarOutras() {
+  localStorage.setItem('caj_unidades_outras', JSON.stringify(unidadesOutras));
+}
+
+function salvarEmissor() {
+  const v = document.getElementById('nome-emissor')?.value || '';
+  localStorage.setItem('caj_emissor', v);
+}
+
+function getNomeEmissor() {
+  return (document.getElementById('nome-emissor')?.value || '').trim()
+      || localStorage.getItem('caj_emissor') || '';
+}
+
+/* ──────────────────────────────────────────────────────
+   ABAS
+────────────────────────────────────────────────────── */
+function mudarAba(id, btn) {
+  document.querySelectorAll('.painel').forEach(p => p.classList.remove('ativo'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('painel-' + id).classList.add('ativo');
+  btn.classList.add('active');
+}
+
+/* ──────────────────────────────────────────────────────
+   UNIDADES — busca por nome, com iniciais calculadas
+   automaticamente (ex.: "UBS Dra Izabel Gratieri" → IG),
+   fonte oficial (API) + destinos avulsos (cache local)
+────────────────────────────────────────────────────── */
+
+// Remove acentos e caixa, para comparações de busca.
+function normalizar(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().trim();
+}
+
+// Palavras ignoradas ao calcular as iniciais (tipo de unidade e títulos),
+// para que a abreviação reflita o nome próprio da unidade/profissional.
+const STOPWORDS_INICIAIS = new Set([
+  'UBS','UBSF','USF','ESF','PSF','NASF','CEO','CER','CAF','SAMU','CEM','CEMEI',
+  'UPA','AME','CAPS','CAPSI','CAPSAD','POLICLINICA','POLICLINICA','CENTRO',
+  'AMBULATORIO','MUNICIPAL','SAUDE','UNIDADE','DE','DA','DO','DAS','DOS','E',
+  'DR','DRA','DR.','DRA.','ENF','ENF.','ENFO','ENFA','SR','SRA','PROF','PROFA'
+]);
+
+function calcularIniciais(nome) {
+  const palavras = normalizar(nome)
+    .replace(/[^A-Z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(Boolean);
+  const relevantes = palavras.filter(p => !STOPWORDS_INICIAIS.has(p));
+  const base = relevantes.length ? relevantes : palavras;
+  return base.map(p => p[0]).join('');
+}
+
+function slugificar(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'destino';
+}
+
+// Lista combinada: unidades oficiais (cadastro da Secretaria) + avulsas
+// (só deste navegador), já com as iniciais calculadas.
+function getUnidadesTodas() {
+  const oficiais = unidadesOficiais.map(u => ({ code: u.code, nome: u.nome, avulsa: false }));
+  const outras   = unidadesOutras.map(u => ({ code: u.code, nome: u.nome, avulsa: true }));
+  return [...oficiais, ...outras].map(u => ({ ...u, iniciais: calcularIniciais(u.nome) }));
+}
+
+function getUnidadePorCodigo(code) {
+  if (!code) return null;
+  return getUnidadesTodas().find(u => u.code === code) || null;
+}
+
+function rotuloUnidade(code) {
+  const u = getUnidadePorCodigo(code);
+  return u ? `${u.nome} (${u.iniciais})` : '';
+}
+
+// Cria (ou reaproveita) um destino avulso a partir do texto digitado.
+function adicionarUnidadeOutra(nomeDigitado) {
+  const nome = (nomeDigitado || '').trim();
+  if (!nome) return null;
+
+  const existente = getUnidadesTodas().find(u => normalizar(u.nome) === normalizar(nome));
+  if (existente) return existente;
+
+  let code = 'outro:' + slugificar(nome);
+  let n = 2;
+  while (getUnidadesTodas().some(u => u.code === code)) {
+    code = `outro:${slugificar(nome)}-${n}`;
+    n++;
+  }
+  const nova = { code, nome };
+  unidadesOutras.push(nova);
+  salvarOutras();
+  return nova;
+}
+
+function matchUnidade(u, qNorm) {
+  if (!qNorm) return true;
+  return normalizar(u.nome).includes(qNorm)
+      || normalizar(u.iniciais).includes(qNorm)
+      || normalizar(u.code).includes(qNorm);
+}
+
+function renderOpcoesUnidade(dropdownEl, query) {
+  const qNorm = normalizar(query);
+  const todas = getUnidadesTodas();
+  const filtradas = todas.filter(u => matchUnidade(u, qNorm)).slice(0, 30);
+
+  let html = filtradas.map(u => `
+    <div class="unidade-opcao" data-code="${esc(u.code)}">
+      <span class="uo-nome">${esc(u.nome)}</span>
+      <span class="uo-tag">${esc(u.iniciais)}${u.avulsa ? ' · avulso' : ''}</span>
+    </div>`).join('');
+
+  const digitado = (query || '').trim();
+  const jaExiste = digitado && todas.some(u => normalizar(u.nome) === normalizar(digitado));
+  if (digitado && !jaExiste) {
+    html += `
+      <div class="unidade-opcao unidade-opcao-nova" data-novo="${esc(digitado)}">
+        ➕ Usar “${esc(digitado)}” como destino avulso
+        <small>Salvo apenas neste navegador — não entra no cadastro oficial.</small>
+      </div>`;
+  }
+  if (!html) {
+    html = `<div class="unidade-opcao-vazia">Nenhuma unidade encontrada. Digite um nome e escolha "usar como avulso".</div>`;
+  }
+  dropdownEl.innerHTML = html;
+}
+
+// Liga um input de busca + seu dropdown de opções ao modelo de dados,
+// via callback aoSelecionar(code). Reutilizado nas linhas de pacientes e
+// no destino do Termo de Remessa.
+function ligarComboUnidade(inputEl, dropdownEl, aoSelecionar) {
+  // O dropdown é "teleportado" para o <body> e posicionado com
+  // position:fixed sobre o input. Isso evita que ele seja cortado pelo
+  // overflow:hidden do .card (ou pelo overflow-x:auto da tabela de
+  // pacientes) quando aberto perto da borda inferior do card.
+  function posicionar() {
+    const r = inputEl.getBoundingClientRect();
+    dropdownEl.style.position = 'fixed';
+    dropdownEl.style.left = r.left + 'px';
+    dropdownEl.style.top = (r.bottom + 3) + 'px';
+    dropdownEl.style.width = r.width + 'px';
+    dropdownEl.style.right = 'auto';
+  }
+  function aoRolarOuRedimensionar() {
+    if (dropdownEl.classList.contains('aberto')) posicionar();
+  }
+  function abrir() {
+    renderOpcoesUnidade(dropdownEl, inputEl.value);
+    if (dropdownEl.parentElement !== document.body) {
+      document.body.appendChild(dropdownEl);
+    }
+    posicionar();
+    dropdownEl.classList.add('aberto');
+    window.addEventListener('scroll', aoRolarOuRedimensionar, true);
+    window.addEventListener('resize', aoRolarOuRedimensionar);
+  }
+  function fechar() {
+    dropdownEl.classList.remove('aberto');
+    window.removeEventListener('scroll', aoRolarOuRedimensionar, true);
+    window.removeEventListener('resize', aoRolarOuRedimensionar);
+  }
+  function selecionar(code) {
+    const u = getUnidadePorCodigo(code);
+    if (!u) return;
+    inputEl.value = `${u.nome} (${u.iniciais})`;
+    aoSelecionar(code);
+  }
+
+  inputEl.addEventListener('focus', abrir);
+  inputEl.addEventListener('input', abrir);
+  inputEl.addEventListener('blur', () => setTimeout(fechar, 150));
+
+  dropdownEl.addEventListener('mousedown', e => {
+    const opt = e.target.closest('.unidade-opcao');
+    if (!opt) return;
+    e.preventDefault();
+    if (opt.dataset.novo !== undefined) {
+      const nova = adicionarUnidadeOutra(opt.dataset.novo);
+      if (nova) selecionar(nova.code);
+    } else if (opt.dataset.code !== undefined) {
+      selecionar(opt.dataset.code);
+    }
+    fechar();
+  });
+
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const primeira = dropdownEl.querySelector('.unidade-opcao');
+      if (primeira) primeira.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    } else if (e.key === 'Escape') {
+      fechar();
+      inputEl.blur();
+    }
+  });
+}
+
+// Busca todas as unidades ativas em GET /api/unidades/todas — endpoint
+// aberto a qualquer usuário autenticado, sem o filtro de atribuição
+// (user_unidades) que /api/unidades/minhas aplica para o Receituário.
+// Aqui o destino da guia/remessa pode ser qualquer unidade, não só a(s)
+// unidade(s) em que o usuário atua.
+async function carregarUnidadesOficiais() {
+  const aviso = document.getElementById('aviso-unidades-api');
+  try {
+    const res = await fetch('/api/unidades/todas', { credentials: 'same-origin' });
+    if (!res.ok) throw new Error('Falha ao carregar unidades.');
+    const data = await res.json();
+    unidadesOficiais = data.unidades || [];
+    aviso.style.display = 'none';
+  } catch (e) {
+    unidadesOficiais = [];
+    aviso.textContent = '⚠ Não foi possível carregar as unidades cadastradas pelo administrador. '
+      + 'Você ainda pode usar destinos avulsos.';
+    aviso.style.display = 'flex';
+  }
+
+  // Atualiza os rótulos exibidos (ex.: quando um destino já preenchido
+  // agora resolve nome/iniciais com a lista oficial recém-carregada).
+  // Campos vazios permanecem vazios — sem pré-seleção automática.
+  renderPacientes();
+  atualizarInputDestinoTermo();
+}
+
+/* ──────────────────────────────────────────────────────
+   PACIENTES
+────────────────────────────────────────────────────── */
+function addPaciente() {
+  pacientes.push({ nome: '', especialidade: 'PSICOLOGIA', destino: '' });
+  renderPacientes();
+  const inputs = document.querySelectorAll('#pac-tbody .p-nome');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function removePaciente(i) {
+  pacientes.splice(i, 1);
+  renderPacientes();
+}
+
+function renderPacientes() {
+  const tbody = document.getElementById('pac-tbody');
+  // Remove dropdowns de unidade que ficaram soltos no <body> de linhas
+  // antigas (ver ligarComboUnidade), antes de recriar as linhas.
+  document.querySelectorAll('body > .dd-paciente').forEach(d => d.remove());
+  tbody.innerHTML = '';
+
+  pacientes.forEach((p, i) => {
+    const eOpts = ESPECIALIDADES.map(e =>
+      `<option value="${e}" ${p.especialidade === e ? 'selected' : ''}>${e}</option>`
+    ).join('');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="num-cell">${i + 1}</td>
+      <td><input type="text" class="p-nome" placeholder="Nome completo" value="${esc(p.nome)}"></td>
+      <td><select class="p-esp">${eOpts}</select></td>
+      <td class="dest-cell">
+        <input type="text" class="p-dest-input" placeholder="Buscar unidade (nome ou iniciais)..."
+               autocomplete="off" value="${esc(rotuloUnidade(p.destino))}">
+        <div class="unidade-dropdown dd-paciente"></div>
+      </td>
+      <td><button class="btn-remove" onclick="removePaciente(${i})">×</button></td>`;
+    tbody.appendChild(tr);
+
+    tr.querySelector('.p-nome').addEventListener('input', e => {
+      pacientes[i].nome = e.target.value; updateBadgePac();
+    });
+    tr.querySelector('.p-nome').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); addPaciente(); }
+    });
+    tr.querySelector('.p-esp').addEventListener('change', e => {
+      pacientes[i].especialidade = e.target.value;
+    });
+
+    const destInput = tr.querySelector('.p-dest-input');
+    const destDrop  = tr.querySelector('.unidade-dropdown');
+    ligarComboUnidade(destInput, destDrop, code => { pacientes[i].destino = code; });
+  });
+
+  updateBadgePac();
+}
+
+function updateBadgePac() {
+  const n = pacientes.filter(p => p.nome.trim()).length;
+  document.getElementById('badge-pacientes').textContent = `${n} paciente(s)`;
+}
+
+/* ──────────────────────────────────────────────────────
+   UTILITÁRIOS
+────────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtDate(iso) {
+  if (!iso) return '__/__/____';
+  const [y, m, d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function showStatus(tipo, msg) {
+  const b = document.getElementById('status-box');
+  b.className = 'status-box ' + tipo;
+  document.getElementById('status-msg').textContent = msg;
+}
+
+
+/* ──────────────────────────────────────────────────────
+   MATERIAIS (Termos de Remessa)
+────────────────────────────────────────────────────── */
+const UNIDADES_MEDIDA = ['un','cx','pc','kg','g','L','mL','resma','rolo','par','m','m²','m³','fardo','pct','bl'];
+let materiais = [];
+
+function addMaterial() {
+  materiais.push({ descricao: '', qtd: '', unidade: 'un', obs: '' });
+  renderMateriais();
+  const inputs = document.querySelectorAll('#mat-tbody .m-desc');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function removeMaterial(i) {
+  materiais.splice(i, 1);
+  renderMateriais();
+}
+
+function renderMateriais() {
+  const tbody = document.getElementById('mat-tbody');
+  tbody.innerHTML = '';
+  const badge = document.getElementById('badge-materiais');
+  badge.textContent = materiais.length + ' item(ns)';
+
+  materiais.forEach((m, i) => {
+    if (!m.unidade) m.unidade = 'un'; // garante que a unidade nunca fique em branco
+    const uOpts = UNIDADES_MEDIDA.map(u =>
+      `<option value="${u}" ${m.unidade === u ? 'selected' : ''}>${u}</option>`
+    ).join('');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="text-align:center;color:var(--texto-leve);font-size:0.82rem">${i + 1}</td>
+      <td><input class="tbl-input m-desc" placeholder="Ex: Papel A4 500 folhas" value="${esc(m.descricao)}"
+            oninput="materiais[${i}].descricao=this.value"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();addMaterial();}"></td>
+      <td><input class="tbl-input" type="number" min="0" step="any" placeholder="0"
+            style="width:100%" value="${esc(m.qtd)}"
+            oninput="materiais[${i}].qtd=this.value"></td>
+      <td><select class="tbl-input" onchange="materiais[${i}].unidade=this.value">${uOpts}</select></td>
+      <td><input class="tbl-input" placeholder="Opcional" value="${esc(m.obs)}"
+            oninput="materiais[${i}].obs=this.value"></td>
+      <td><button class="btn-del" onclick="removeMaterial(${i})" title="Remover">×</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// Código da unidade selecionada como destino do Termo de Remessa.
+let termoDestinoCode = '';
+
+// Atualiza o texto exibido no campo de busca do destino do Termo,
+// sem reconstruir o dropdown (usado ao chegar a lista oficial da API).
+function atualizarInputDestinoTermo() {
+  const input = document.getElementById('destino-termo-input');
+  if (!input) return;
+  input.value = rotuloUnidade(termoDestinoCode);
+}
+
+/* ──────────────────────────────────────────────────────
+   DOCUMENTO — VIA DO TERMO
+────────────────────────────────────────────────────── */
+function montarViaTermo(unidadeNome, dataFmt, itens) {
+  const FONT = "'Montserrat', Arial, sans-serif";
+
+  const logoEl = `<img src="${LOGO_URL}"
+            style="height:112px;width:auto;display:block;margin:0 auto;"
+            alt="Cajamar Prefeitura Saúde">`;
+
+  // Marca d'água centralizada via Flexbox em vez de transform:translate().
+  // html2canvas 1.4.1 tem problemas conhecidos ao capturar elementos com
+  // CSS transform dentro do sandbox fora da tela — o resultado era a
+  // marca d'água não aparecer no PDF gerado, mesmo com a imagem
+  // carregando normalmente. Flexbox centraliza sem precisar de transform.
+  const brasaoEl = `
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                pointer-events:none;z-index:0;overflow:hidden;">
+      <img src="${BRASAO_URL}" style="width:36.25%;opacity:1;" alt="">
+    </div>`;
+
+  let linhas = '';
+  itens.forEach((m, i) => {
+    const bg = i % 2 !== 0 ? 'background:#eaf1fb;' : '';
+    linhas += `
+      <tr>
+        <td style="text-align:center;font-weight:700;border:1px solid #1a3e6e;padding:3px 4px;${bg}width:5%;font-family:${FONT};font-size:7pt;">${i + 1}</td>
+        <td style="border:1px solid #1a3e6e;padding:3px 5px;${bg}width:42%;font-weight:600;font-family:${FONT};font-size:7pt;">${esc(m.descricao.toUpperCase())}</td>
+        <td style="border:1px solid #1a3e6e;padding:3px 5px;${bg}width:12%;text-align:center;font-family:${FONT};font-size:7pt;">${esc(m.qtd)}</td>
+        <td style="border:1px solid #1a3e6e;padding:3px 5px;${bg}width:11%;text-align:center;font-family:${FONT};font-size:7pt;">${esc(m.unidade || 'un')}</td>
+        <td style="border:1px solid #1a3e6e;padding:3px 5px;${bg}width:30%;font-family:${FONT};font-size:7pt;">${esc(m.obs)}</td>
+      </tr>`;
+  });
+
+  return `
+<div style="position:relative;width:148.5mm;height:210mm;
+            padding:5mm 9mm 0 9mm;overflow:hidden;box-sizing:border-box;
+            font-family:${FONT};">
+
+  ${brasaoEl}
+
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%;">
+
+    <div style="text-align:center;margin-bottom:2mm;">
+      ${logoEl}
+    </div>
+
+    <div style="text-align:center;font-size:8pt;font-weight:800;
+                letter-spacing:0.04em;color:#1a3e6e;margin-bottom:2mm;
+                font-family:${FONT};">
+      TERMO DE RECEBIMENTO DE MATERIAIS
+    </div>
+
+    <div style="font-size:8.5pt;line-height:1.2;margin-bottom:3mm;
+                text-align:center;font-family:${FONT};">
+      <div><b>DE:</b> ${esc(getNomeEmissor()) || "—"}</div>
+      <div><b>PARA:</b> ${esc(unidadeNome)}</div>
+      <div><b>DATA:</b> ${dataFmt}</div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-family:${FONT};">
+      <thead>
+        <tr>
+          <th style="background:#1a3e6e;color:#fff;border:1px solid #1a3e6e;
+                     padding:3px 4px;text-align:center;width:5%;font-family:${FONT};font-size:7pt;"></th>
+          <th style="background:#1a3e6e;color:#fff;border:1px solid #1a3e6e;
+                     padding:3px 5px;text-align:left;width:42%;font-family:${FONT};font-size:7pt;">DESCRIÇÃO</th>
+          <th style="background:#1a3e6e;color:#fff;border:1px solid #1a3e6e;
+                     padding:3px 5px;text-align:center;width:12%;font-family:${FONT};font-size:7pt;">QTD</th>
+          <th style="background:#1a3e6e;color:#fff;border:1px solid #1a3e6e;
+                     padding:3px 5px;text-align:center;width:11%;font-family:${FONT};font-size:7pt;">UN</th>
+          <th style="background:#1a3e6e;color:#fff;border:1px solid #1a3e6e;
+                     padding:3px 5px;text-align:left;width:30%;font-family:${FONT};font-size:7pt;">OBS.</th>
+        </tr>
+      </thead>
+      <tbody>${linhas}</tbody>
+    </table>
+
+    <div style="margin-top:3mm;padding:3mm 4mm;border:1px solid #c8d8ee;
+                border-radius:3px;background:#f0f5fc;font-size:6.2pt;
+                line-height:1.5;color:#2a3a55;font-family:${FONT};">
+      <b>OBSERVAÇÃO:</b> Todos os servidores da unidade são corresponsáveis pela
+      guarda, conservação e uso adequado dos materiais recebidos, devendo zelar pela
+      eficiência e economicidade no seu emprego, conforme dispõe a Lei Federal
+      nº 8.666/1993 e demais normas vigentes aplicáveis à Administração Pública Municipal.
+    </div>
+
+    <!-- ESPAÇADOR flexível empurra recebimento + rodapé para baixo,
+         seguindo o mesmo padrão já validado em montarVia (Guia). -->
+    <div style="flex:1;"></div>
+
+    <table style="width:80%;border-collapse:collapse;font-size:7.5pt;
+                  margin:0 auto 3mm auto;font-family:${FONT};">
+      <tr>
+        <td style="border:1px solid #888;padding:4px 8px;width:58%;font-family:${FONT};">
+          DATA DO RECEBIMENTO:
+        </td>
+        <td style="border:1px solid #888;padding:4px 8px;width:42%;font-family:${FONT};">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #888;padding:4px 8px;width:58%;font-family:${FONT};">
+          RESPONS&Aacute;VEL PELO RECEBIMENTO:
+        </td>
+        <td style="border:1px solid #888;padding:4px 8px;width:42%;font-family:${FONT};">&nbsp;</td>
+      </tr>
+    </table>
+
+    <div style="margin:0 -9mm;">
+      <div style="height:3px;background:#1a3e6e;"></div>
+      <div style="font-size:6pt;color:#333;text-align:center;
+                  line-height:1.8;padding:3px 9mm 4px;font-family:${FONT};">
+        (11) 4446 &ndash; 0100 &ndash;
+        AVENIDA DR. ANT&Ocirc;NIO JO&Atilde;O ABDALLA, 1500<br>
+        CRISTAIS &ndash; JORDAN&Eacute;SIA &ndash; CAJAMAR / SP &ndash; CEP 07776-700
+      </div>
+    </div>
+
+  </div><!-- /flex col -->
+
+</div>`;
+}
+/* ──────────────────────────────────────────────────────
+   RENDERIZAÇÃO/COMPOSIÇÃO DO PDF
+   Estratégia: renderizar a via UMA ÚNICA VEZ como imagem
+   e colar essa mesma imagem duas vezes no PDF, usando
+   coordenadas milimétricas exatas do jsPDF. Isso elimina
+   o desalinhamento entre as vias esquerda/direita que
+   ocorria quando cada via era um elemento DOM separado
+   rasterizado individualmente pelo html2canvas (pequenas
+   diferenças de antialiasing/subpixel entre as duas
+   renderizações faziam as vias saírem "descasadas" no
+   PDF final, mesmo com larguras CSS idênticas).
+────────────────────────────────────────────────────── */
+async function renderViaComoImagem(viaHtml) {
+  const via = document.createElement('div');
+  via.style.cssText = 'width:148.5mm;height:210mm;background:#fff;box-sizing:border-box;overflow:hidden;';
+  via.innerHTML = viaHtml;
+
+  const sandbox = document.createElement('div');
+  sandbox.style.cssText = 'position:fixed;left:-9999px;top:0;z-index:-1;';
+  sandbox.appendChild(via);
+  document.body.appendChild(sandbox);
+
+  // Garante que a fonte Montserrat já esteja carregada antes de
+  // capturar, evitando medições de texto inconsistentes.
+  if (document.fonts && document.fonts.ready) {
+    try { await document.fonts.ready; } catch (e) {}
+  }
+
+  // Garante que a logo e o brasão (agora arquivos externos, não mais
+  // base64 embutido) terminaram de carregar antes do html2canvas
+  // capturar a via — evita logo/brasão em branco na primeira geração.
+  // Usa naturalWidth > 0 (não só "complete") para detectar imagens que
+  // falharam ao carregar (404, etc.) mesmo quando o navegador já marcou
+  // o elemento como "completo" — e avisa no console qual src falhou,
+  // para facilitar diagnosticar problemas de imagem no futuro.
+  const imgs = via.querySelectorAll('img');
+  await Promise.all(Array.from(imgs).map(img => {
+    if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+    return new Promise(resolve => {
+      img.addEventListener('load', resolve, { once: true });
+      img.addEventListener('error', () => {
+        console.error('Falha ao carregar imagem no PDF:', img.src);
+        resolve();
+      }, { once: true });
+    });
+  }));
+
+  await new Promise(r => setTimeout(r, 60));
+
+  const canvas = await html2canvas(via, {
+    scale: 3,
+    useCORS: true,
+    logging: false,
+    backgroundColor: '#ffffff'
+  });
+
+  document.body.removeChild(sandbox);
+  return canvas.toDataURL('image/jpeg', 0.98);
+}
+
+function novoPdfPaisagem() {
+  const { jsPDF } = window.jspdf;
+  return new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+}
+
+/* Desenha manualmente uma linha tracejada (sem depender de
+   setLineDashPattern, que varia entre versões do jsPDF) para
+   marcar o local do corte entre as duas vias A5. */
+function linhaTracejadaVertical(pdf, x, y1, y2, tracoMm = 2, vaoMm = 1.5) {
+  pdf.setDrawColor(180, 180, 180);
+  pdf.setLineWidth(0.1);
+  let y = y1;
+  while (y < y2) {
+    const fim = Math.min(y + tracoMm, y2);
+    pdf.line(x, y, x, fim);
+    y += tracoMm + vaoMm;
+  }
+}
+
+/* Cola a MESMA imagem duas vezes, uma em cada metade A5 da
+   página A4 paisagem — garante vias idênticas e alinhadas. */
+function inserirDuasVias(pdf, imgData) {
+  pdf.addImage(imgData, 'JPEG', 0, 0, 148.5, 210);
+  pdf.addImage(imgData, 'JPEG', 148.5, 0, 148.5, 210);
+  linhaTracejadaVertical(pdf, 148.5, 0, 210);
+}
+
+/* ──────────────────────────────────────────────────────
+   GERAR PDF DO TERMO
+────────────────────────────────────────────────────── */
+async function gerarTermo() {
+  const dataVal   = document.getElementById('data-termo').value;
+  const siglaDest = termoDestinoCode;
+  const validos   = materiais.filter(m => m.descricao.trim());
+
+  const sbx = document.getElementById('status-box-termo');
+  const msg = document.getElementById('status-msg-termo');
+  sbx.style.display = 'none';
+
+  function err(t) {
+    sbx.className = 'status-box erro'; msg.textContent = t; sbx.style.display = 'flex';
+  }
+
+  if (!dataVal)   { err('Defina a data da remessa.'); return; }
+  if (!siglaDest) { err('Selecione a unidade de destino.'); return; }
+  if (!validos.length) { err('Adicione ao menos um material com descrição.'); return; }
+
+  const unidade      = getUnidadePorCodigo(siglaDest);
+  const nomeCompleto = unidade ? unidade.nome : siglaDest;
+  const dataFmt      = fmtDate(dataVal);
+  const nomeArq      = `Termo_${unidade ? unidade.iniciais : slugificar(siglaDest)}_${(dataVal||'').replace(/-/g,'')}.pdf`;
+
+  const btn = document.getElementById('btn-gerar-termo');
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando PDF…';
+
+  const via = montarViaTermo(nomeCompleto, dataFmt, validos);
+
+  try {
+    const imgData = await renderViaComoImagem(via);
+    const pdf = novoPdfPaisagem();
+    inserirDuasVias(pdf, imgData);
+    const pdfBlob = pdf.output('blob');
+
+    const url  = URL.createObjectURL(pdfBlob);
+    const dlEl = document.getElementById('downloads-lista-termo');
+    dlEl.innerHTML = '';
+    const item = document.createElement('div');
+    item.className = 'download-item';
+    item.innerHTML = `
+      <div>
+        <div class="dl-nome">${esc(nomeCompleto)}</div>
+        <div class="dl-info">${validos.length} item(ns) · ${dataFmt}</div>
+      </div>
+      <a href="${url}" download="${nomeArq}" class="download-link">⬇ Baixar PDF</a>`;
+    dlEl.appendChild(item);
+
+    sbx.className = 'status-box sucesso';
+    msg.textContent = 'Termo gerado! Clique em "Baixar PDF" para salvar.';
+    sbx.style.display = 'flex';
+  } catch(e) {
+    err('Erro ao gerar PDF: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🖨 Gerar PDF do Termo';
+}
+
+/* ──────────────────────────────────────────────────────
+   GERAÇÃO DO DOCUMENTO IMPRIMÍVEL
+   Layout: A4 paisagem (297×210 mm)
+           duas colunas A5 (148,5×210 mm cada)
+           fiel ao modelo.pdf
+────────────────────────────────────────────────────── */
+function montarVia(unidadeNome, dataFmt, lista) {
+  const FONT = "'Montserrat', Arial, sans-serif";
+
+  /* ─── logo cabeçalho (100% maior = height:112px) ─── */
+  const logoEl = `<img src="${LOGO_URL}"
+            style="height:112px;width:auto;display:block;margin:0 auto;"
+            alt="Cajamar Prefeitura Saúde">`;
+
+  /* ─── brasão marca d'água (29% × 1.25 = 36.25%) ───
+     Centralizada via Flexbox, não mais com transform:translate() — ver
+     explicação completa no comentário equivalente de montarViaTermo()
+     logo acima. Mesma correção aplicada aqui para manter as duas
+     funções consistentes. */
+  const brasaoEl = `
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+                pointer-events:none;z-index:0;overflow:hidden;">
+      <img src="${BRASAO_URL}" style="width:36.25%;opacity:1;" alt="">
+    </div>`;
+
+  /* ─── linhas de pacientes ─── */
+  let linhas = '';
+  lista.forEach((p, i) => {
+    const bg = i % 2 !== 0 ? 'background:#eaf1fb;' : '';
+    linhas += `
+      <tr>
+        <td style="text-align:center;font-weight:700;border:1px solid #1a3e6e;padding:3.5px 5px;${bg}width:6%;font-family:${FONT};">${i + 1}</td>
+        <td style="border:1px solid #1a3e6e;padding:3.5px 6px;${bg}width:56%;font-weight:600;font-family:${FONT};">${esc(p.nome.toUpperCase())}</td>
+        <td style="border:1px solid #1a3e6e;padding:3.5px 6px;${bg}width:38%;font-family:${FONT};">${esc(p.especialidade)}</td>
+      </tr>`;
+  });
+
+  return `
+<div style="position:relative;width:148.5mm;height:210mm;
+            padding:5mm 9mm 0 9mm;overflow:hidden;
+            font-family:${FONT};">
+
+  ${brasaoEl}
+
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%;">
+
+    <!-- LOGO -->
+    <div style="text-align:center;margin-bottom:1mm;">
+      ${logoEl}
+    </div>
+
+    <!-- DE / PARA / DATA — centralizados -->
+    <div style="font-size:8.5pt;line-height:1.2;margin-bottom:2mm;
+                text-align:center;font-family:${FONT};">
+      <div><b>DE:</b> ${esc(getNomeEmissor()) || "—"}</div>
+      <div><b>PARA:</b> ${esc(unidadeNome)}</div>
+      <div><b>DATA:</b> ${dataFmt}</div>
+    </div>
+
+    <!-- TABELA DE PACIENTES -->
+    <table style="width:100%;border-collapse:collapse;font-size:8pt;font-family:${FONT};">
+      <thead>
+        <tr>
+          <th style="background:#1a3e6e;color:#fff;border:1px solid #1a3e6e;
+                     padding:4px 5px;text-align:center;width:6%;font-family:${FONT};"></th>
+          <th style="background:#1a3e6e;color:#fff;border:1px solid #1a3e6e;
+                     padding:4px 6px;text-align:left;width:56%;font-family:${FONT};">NOME</th>
+          <th style="background:#1a3e6e;color:#fff;border:1px solid #1a3e6e;
+                     padding:4px 6px;text-align:left;width:38%;font-family:${FONT};">ESPECIALIDADE</th>
+        </tr>
+      </thead>
+      <tbody>${linhas}</tbody>
+    </table>
+
+    <!-- ESPAÇADOR flexível empurra recebimento + rodapé para baixo -->
+    <div style="flex:1;"></div>
+
+    <!-- CAIXA DE RECEBIMENTO — centralizada, acima do rodapé -->
+    <table style="width:80%;border-collapse:collapse;font-size:7.5pt;
+                  margin:0 auto 3mm auto;font-family:${FONT};">
+      <tr>
+        <td style="border:1px solid #888;padding:4px 8px;width:58%;font-family:${FONT};">
+          DATA DO RECEBIMENTO:
+        </td>
+        <td style="border:1px solid #888;padding:4px 8px;width:42%;font-family:${FONT};">
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/
+        </td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #888;padding:4px 8px;width:58%;font-family:${FONT};">
+          RESPONS&Aacute;VEL PELO RECEBIMENTO:
+        </td>
+        <td style="border:1px solid #888;padding:4px 8px;width:42%;font-family:${FONT};">&nbsp;</td>
+      </tr>
+    </table>
+
+    <!-- RODAPÉ — faixa azul ACIMA do texto -->
+    <div style="margin:0 -9mm;">
+      <div style="height:3px;background:#1a3e6e;"></div>
+      <div style="font-size:6pt;color:#333;text-align:center;
+                  line-height:1.8;padding:3px 9mm 4px;font-family:${FONT};">
+        (11) 4446 &ndash; 0100 &ndash;
+        AVENIDA DR. ANT&Ocirc;NIO JO&Atilde;O ABDALLA, 1500<br>
+        CRISTAIS &ndash; JORDAN&Eacute;SIA &ndash; CAJAMAR / SP &ndash; CEP 07776-700
+      </div>
+    </div>
+
+  </div><!-- /flex col -->
+
+</div>`;
+}
+
+/* ──────────────────────────────────────────────────────
+   GERAÇÃO — agrupa por unidade e cria um arquivo por grupo
+────────────────────────────────────────────────────── */
+async function gerarTodos() {
+  const dataVal = document.getElementById('data-remessa').value;
+  const validos = pacientes.filter(p => p.nome.trim() && p.destino);
+
+  document.getElementById('downloads-lista').innerHTML = '';
+  document.getElementById('status-box').style.display = 'none';
+
+  if (!dataVal)        { showStatus('erro', 'Defina a data da remessa na aba Guias.'); return; }
+  if (!validos.length) { showStatus('erro', 'Nenhum paciente com nome e destino preenchidos.'); return; }
+
+  const dataFmt = fmtDate(dataVal);
+  const btn = document.getElementById('btn-gerar');
+
+  /* Agrupa por sigla de destino */
+  const grupos = {};
+  validos.forEach(p => {
+    if (!grupos[p.destino]) grupos[p.destino] = [];
+    grupos[p.destino].push(p);
+  });
+
+  const siglas = Object.keys(grupos);
+  const listaEl = document.getElementById('downloads-lista');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando PDFs...';
+
+  for (const sigla of siglas) {
+    const unidade      = getUnidadePorCodigo(sigla);
+    const nomeCompleto = unidade ? unidade.nome : sigla;
+    const pacs         = grupos[sigla];
+    const nomeArq      = `Guia_${unidade ? unidade.iniciais : slugificar(sigla)}_${(dataVal||'').replace(/-/g,'')}.pdf`;
+
+    btn.textContent = `⏳ Gerando: ${nomeCompleto}…`;
+
+    const via = montarVia(nomeCompleto, dataFmt, pacs);
+
+    try {
+      const imgData = await renderViaComoImagem(via);
+      const pdf = novoPdfPaisagem();
+      inserirDuasVias(pdf, imgData);
+      const pdfBlob = pdf.output('blob');
+
+      const url = URL.createObjectURL(pdfBlob);
+
+      const item = document.createElement('div');
+      item.className = 'download-item';
+      item.innerHTML = `
+        <div>
+          <div class="dl-nome">${esc(nomeCompleto)}</div>
+          <div class="dl-info">${pacs.length} paciente(s) · ${dataFmt}</div>
+        </div>
+        <a href="${url}" download="${nomeArq}" class="download-link">⬇ Baixar PDF</a>`;
+      listaEl.appendChild(item);
+    } catch(e) {
+      showStatus('erro', `Erro ao gerar PDF de ${nomeCompleto}: ${e.message}`);
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🖨 Gerar PDFs por Unidade';
+
+  showStatus('sucesso',
+    `${siglas.length} PDF(s) pronto(s): ${siglas.join(', ')}. Clique em "Baixar PDF" para salvar.`);
+}
+
+/* ──────────────────────────────────────────────────────
+   GERAÇÃO — PDF único com todas as guias (uma unidade por
+   página, na ordem de cadastro), com etiqueta de
+   identificação em cada página para facilitar a navegação
+────────────────────────────────────────────────────── */
+async function gerarUnificado() {
+  const dataVal = document.getElementById('data-remessa').value;
+  const validos = pacientes.filter(p => p.nome.trim() && p.destino);
+
+  document.getElementById('downloads-lista').innerHTML = '';
+  document.getElementById('status-box').style.display = 'none';
+
+  if (!dataVal)        { showStatus('erro', 'Defina a data da remessa na aba Guias.'); return; }
+  if (!validos.length) { showStatus('erro', 'Nenhum paciente com nome e destino preenchidos.'); return; }
+
+  const dataFmt = fmtDate(dataVal);
+  const btn = document.getElementById('btn-gerar-unico');
+
+  /* Agrupa por sigla de destino, preservando a ordem de cadastro */
+  const grupos = {};
+  const siglas = [];
+  validos.forEach(p => {
+    if (!grupos[p.destino]) { grupos[p.destino] = []; siglas.push(p.destino); }
+    grupos[p.destino].push(p);
+  });
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Montando PDF único...';
+
+  const nomeArq = `Guias_Unificado_${(dataVal || '').replace(/-/g, '')}.pdf`;
+
+  try {
+    // Cada guia é renderizada isoladamente como imagem e colada em
+    // sua própria página do PDF (uma página por unidade, cada uma
+    // com as duas vias A5 idênticas lado a lado). Evita depender de
+    // quebra de página via CSS sobre um contêiner gigante renderizado
+    // de uma vez só — abordagem que era frágil e podia gerar páginas
+    // cortadas, em branco ou desalinhadas.
+    let pdf = null;
+
+    for (let idx = 0; idx < siglas.length; idx++) {
+      const sigla        = siglas[idx];
+      const unidade      = getUnidadePorCodigo(sigla);
+      const nomeCompleto = unidade ? unidade.nome : sigla;
+      const pacs         = grupos[sigla];
+
+      btn.textContent = `⏳ Montando: ${nomeCompleto}…`;
+
+      const via     = montarVia(nomeCompleto, dataFmt, pacs);
+      const imgData = await renderViaComoImagem(via);
+
+      if (!pdf) {
+        pdf = novoPdfPaisagem();
+      } else {
+        pdf.addPage('a4', 'landscape');
+      }
+      inserirDuasVias(pdf, imgData);
+
+      // Etiqueta discreta no canto da página, desenhada como texto
+      // vetorial (sempre perfeitamente posicionada, sem depender de
+      // captura de imagem), para achar rapidamente a guia de cada
+      // unidade dentro do PDF.
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7);
+      pdf.setTextColor(138, 148, 168);
+      pdf.text(`Guia ${idx + 1} de ${siglas.length} — ${nomeCompleto}`, 292, 5, { align: 'right' });
+    }
+
+    const pdfBlob = pdf.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    const listaEl = document.getElementById('downloads-lista');
+    const item = document.createElement('div');
+    item.className = 'download-item';
+    item.innerHTML = `
+      <div>
+        <div class="dl-nome">PDF único — ${siglas.length} unidade(s)</div>
+        <div class="dl-info">${validos.length} paciente(s) · ${dataFmt} · ${esc(siglas.join(', '))}</div>
+      </div>
+      <a href="${url}" download="${nomeArq}" class="download-link">⬇ Baixar PDF</a>`;
+    listaEl.appendChild(item);
+
+    showStatus('sucesso',
+      `PDF único gerado com ${siglas.length} guia(s): ${siglas.join(', ')}. Clique em "Baixar PDF" para salvar.`);
+  } catch (e) {
+    showStatus('erro', `Erro ao gerar o PDF único: ${e.message}`);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '📎 Baixar PDF Único (todas as guias)';
+}
+
+/* ──────────────────────────────────────────────────────
+   BOOT
+────────────────────────────────────────────────────── */
+document.getElementById('data-remessa').valueAsDate = new Date();
+const _emissorSalvo = localStorage.getItem('caj_emissor') || '';
+if (_emissorSalvo) document.getElementById('nome-emissor').value = _emissorSalvo;
+
+ligarComboUnidade(
+  document.getElementById('destino-termo-input'),
+  document.getElementById('destino-termo-dropdown'),
+  code => { termoDestinoCode = code; }
+);
+
+addPaciente();
+addPaciente();
+addPaciente();
+addMaterial();
+addMaterial();
+addMaterial();
+document.getElementById('data-termo').valueAsDate = new Date();
+
+carregarUnidadesOficiais();
+</script>
+
+</body>
+</html>

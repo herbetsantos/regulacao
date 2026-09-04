@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/js/theme.js"></script>
+<title>Apoio - Atenção Primária à Saúde Cajamar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/theme.css">
+</head>
+<body>
+
+<div id="app-topbar"></div>
+
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">Portal interno</div>
+    <h1 class="page__title">Atualizações</h1>
+    <p class="page__subtitle">Avisos e novidades da Secretaria de Saúde de Cajamar. Ferramentas, documentos e manuais ficam no menu superior.</p>
+  </div>
+
+  <div id="updatesFeed">
+    <div class="skeleton-loading">Carregando atualizações…</div>
+  </div>
+</main>
+
+<script src="/js/common.js"></script>
+<script>
+  function formatUpdateDate(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return (y && m && d) ? `${d}/${m}/${y}` : iso;
+  }
+
+  (async () => {
+    const user = await initPortalChrome();
+    // Home não tem item de menu correspondente destacado.
+    if (!user) return;
+
+    const feed = document.getElementById('updatesFeed');
+    try {
+      const res = await fetch('/api/updates', { credentials: 'same-origin' });
+      const data = await res.json();
+      const items = data.updates || [];
+
+      feed.innerHTML = items.length
+        ? `<div class="updates-list">${items.map((u) => `
+            <article class="update-card">
+              <div class="update-card__head">
+                ${u.tag ? `<span class="badge badge--admin">${escapeHtml(u.tag)}</span>` : ''}
+                <time class="update-card__date">${escapeHtml(formatUpdateDate(u.published_at))}</time>
+              </div>
+              ${u.image_url ? `<img class="update-card__image" src="${escapeAttr(u.image_url)}" alt="${escapeAttr(u.image_alt || u.title || 'Atualização')}" loading="lazy">` : ''}
+              <div class="update-card__content"><h2 class="update-card__title">${escapeHtml(u.title)}</h2>
+              <p class="update-card__body">${escapeHtml(u.body)}</p>
+              ${u.link_url ? `<a class="update-card__link" href="${escapeAttr(u.link_url)}" target="_blank" rel="noopener">${escapeHtml(u.link_label || 'Saiba mais')} →</a>` : ''}
+              </div>
+            </article>
+          `).join('')}</div>`
+        : `<div class="empty-state">Nenhuma atualização publicada ainda.</div>`;
+    } catch {
+      feed.innerHTML = '<div class="empty-state">Não foi possível carregar as atualizações.</div>';
+    }
+  })();
+</script>
+</body>
+</html>

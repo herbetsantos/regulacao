@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/js/theme.js"></script>
+<title>Solicitar acesso — Portal Saúde Cajamar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="icon" href="/assets/favicon.png">
+<link rel="stylesheet" href="/css/theme.css">
+</head>
+<body>
+  <div class="login-shell">
+    <div class="login-card login-card--wide">
+      <div class="brand"><img src="/assets/CAJAMAR PREFEITURA.png" alt="Prefeitura de Cajamar — Saúde"></div>
+      <div class="login-title">Solicitar acesso</div>
+      <div class="login-subtitle">Preencha seus dados. Um administrador vai analisar e liberar seu acesso.</div>
+
+      <div id="formMsg" class="form-msg"></div>
+
+      <form id="signupForm">
+        <div class="field">
+          <label for="name">Nome completo</label>
+          <input type="text" id="name" required autofocus>
+        </div>
+        <div class="field">
+          <label for="username">Usuário desejado</label>
+          <input type="text" id="username" required pattern="[a-z0-9._-]{3,32}" title="Letras minúsculas, números, ponto, hífen ou underline">
+        </div>
+        <div class="field">
+          <label for="unidade">Unidade de lotação</label>
+          <select id="unidade" required>
+            <option value="">Carregando unidades…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="password">Senha</label>
+          <input type="password" id="password" required minlength="8">
+        </div>
+        <div class="field">
+          <label for="confirmPassword">Confirmar senha</label>
+          <input type="password" id="confirmPassword" required minlength="8">
+        </div>
+        <div class="field field--turnstile" id="turnstileField" style="display:none">
+          <div id="turnstileWidget"></div>
+        </div>
+        <button type="submit" class="btn btn--accent" id="submitBtn">Enviar solicitação</button>
+      </form>
+
+      <div class="login-foot"><a href="/login.html">Já tenho acesso — voltar ao login</a></div>
+    </div>
+  </div>
+
+  <script>
+    // ──────────────────────────────────────────────────────────────────────
+    // CAPTCHA (Cloudflare Turnstile) — OPCIONAL.
+    //
+    // Preencha TURNSTILE_SITE_KEY com a Site Key do seu widget (gratuita, 2
+    // minutos): Cloudflare Dashboard > Turnstile > Add site > escolha o modo
+    // "Managed" > copie a "Site Key" (a "Secret Key" correspondente vai como
+    // variável de ambiente TURNSTILE_SECRET_KEY no Pages, nunca aqui no HTML).
+    //
+    // Enquanto TURNSTILE_SITE_KEY estiver vazio, o widget simplesmente não
+    // aparece e o formulário funciona normalmente sem CAPTCHA (o backend já
+    // pula a verificação nesse caso). Não precisa mexer em mais nada.
+    // ──────────────────────────────────────────────────────────────────────
+    const TURNSTILE_SITE_KEY = '0x4AAAAAAD91KL5KN7uZc6hX';
+
+    const form = document.getElementById('signupForm');
+    const msg = document.getElementById('formMsg');
+    const submitBtn = document.getElementById('submitBtn');
+    const unidadeSelect = document.getElementById('unidade');
+    let turnstileScriptLoaded = false;
+
+    // Carrega a mesma lista de unidades cadastrada pelo Super Administrador
+    // em Administração > Unidades, para evitar variações/erros de digitação.
+    // Se o carregamento falhar, o select fica desabilitado com um aviso —
+    // o formulário não pode ser enviado sem uma unidade válida da lista.
+    (async () => {
+      try {
+        const res = await fetch('/api/unidades/publicas');
+        if (!res.ok) throw new Error('Falha ao carregar unidades.');
+        const data = await res.json();
+        const nomes = data.unidades || [];
+
+        unidadeSelect.innerHTML = '<option value="">— selecione —</option>'
+          + nomes.map((n) => `<option value="${n.replace(/"/g, '&quot;')}">${n}</option>`).join('');
+      } catch {
+        unidadeSelect.innerHTML = '<option value="">Não foi possível carregar — recarregue a página</option>';
+        unidadeSelect.disabled = true;
+      }
+    })();
+
+    if (TURNSTILE_SITE_KEY) {
+      document.getElementById('turnstileField').style.display = 'flex';
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      s.async = true;
+      s.defer = true;
+      s.onload = () => {
+        turnstileScriptLoaded = true;
+        window.turnstile.render('#turnstileWidget', { sitekey: TURNSTILE_SITE_KEY, theme: 'light' });
+      };
+      document.head.appendChild(s);
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      msg.className = 'form-msg';
+      msg.textContent = '';
+
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      if (password !== confirmPassword) {
+        msg.className = 'form-msg is-error';
+        msg.textContent = 'As senhas não coincidem.';
+        return;
+      }
+
+      const unidade = unidadeSelect.value;
+      if (!unidade) {
+        msg.className = 'form-msg is-error';
+        msg.textContent = 'Informe sua unidade de lotação.';
+        return;
+      }
+
+      let turnstileToken = '';
+      if (TURNSTILE_SITE_KEY) {
+        turnstileToken = (turnstileScriptLoaded && window.turnstile) ? window.turnstile.getResponse() : '';
+        if (!turnstileToken) {
+          msg.className = 'form-msg is-error';
+          msg.textContent = 'Confirme que você não é um robô antes de enviar.';
+          return;
+        }
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Enviando…';
+
+      try {
+        const res = await fetch('/api/signup-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('name').value,
+            username: document.getElementById('username').value.trim().toLowerCase(),
+            unidade,
+            password,
+            turnstileToken,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Não foi possível enviar a solicitação.');
+
+        form.style.display = 'none';
+        msg.className = 'form-msg is-ok';
+        msg.textContent = 'Solicitação enviada! Assim que um administrador aprovar, você poderá entrar normalmente com o usuário e senha escolhidos.';
+      } catch (err) {
+        msg.className = 'form-msg is-error';
+        msg.textContent = err.message;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar solicitação';
+        if (TURNSTILE_SITE_KEY && window.turnstile) window.turnstile.reset();
+      }
+    });
+  </script>
+</body>
+</html>

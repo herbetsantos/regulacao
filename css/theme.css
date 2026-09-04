@@ -95,6 +95,23 @@ html[data-theme-resolved="contrast"] :is(.badge--admin,.badge--user,.badge--inac
 html[data-theme-resolved="dark"] .login-shell { background:var(--bg) !important; }
 html[data-theme-resolved="contrast"] .login-shell { background:#000 !important; }
 
+/* O logo (.brand) tem fundo branco fixo para servir de "etiqueta" sobre a
+   barra colorida do cabeçalho. Dentro do card de login, em temas escuro e
+   alto contraste, isso deixa um retângulo branco destacado — aqui removemos
+   só esse fundo, deixando a imagem flutuar sobre o card escuro. O .brand do
+   cabeçalho normal não é afetado. */
+html[data-theme-resolved="dark"] .login-card .brand { background:transparent !important; }
+html[data-theme-resolved="contrast"] .login-card .brand { background:transparent !important; }
+
+/* Logo do login: versão colorida por padrão (tema claro), versão branca
+   (com opacidade reduzida no fundo do brasão para preservar estrelas, cruz
+   e ornamentos) nos temas escuro e alto contraste. */
+.login-card .brand-logo--white { display:none; }
+html[data-theme-resolved="dark"] .login-card .brand-logo--color,
+html[data-theme-resolved="contrast"] .login-card .brand-logo--color { display:none; }
+html[data-theme-resolved="dark"] .login-card .brand-logo--white,
+html[data-theme-resolved="contrast"] .login-card .brand-logo--white { display:block; }
+
 /* eMulti: menu lateral também acompanha o tema. */
 html[data-theme-resolved="dark"] {
   --side-bg:#19283b;
@@ -168,17 +185,78 @@ html[data-theme-resolved="contrast"] :is(.btn--accent,.btn-wpp,.btn-gerar,.btn-p
   .a4, .a4 * { color-scheme:light !important; }
 }
 
+/* Menu de conta/aparência do Portal principal. */
+.portal-account-wrap { position:relative; }
+.portal-account-button {
+  border:0; background:transparent; color:#fff; display:flex; align-items:center; gap:9px;
+  padding:6px 9px; border-radius:8px; font-family:inherit; cursor:pointer; max-width:330px;
+}
+.portal-account-button:hover,
+.portal-account-button[aria-expanded="true"] { background:rgba(255,255,255,.12); }
+.portal-account-button__name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.portal-account-button__chevron { font-size:18px; line-height:1; transform:translateY(-1px); }
+.portal-account-menu {
+  position:absolute; right:0; top:calc(100% + 8px); z-index:260; min-width:250px; padding:7px;
+  border-radius:10px; background:#fff; border:1px solid var(--line); box-shadow:var(--shadow-lg); color:var(--ink);
+}
+.portal-account-menu[hidden] { display:none; }
+.portal-account-menu button,
+.portal-account-menu a {
+  width:100%; border:0; background:transparent; color:var(--ink); display:flex; align-items:center; gap:9px;
+  padding:9px 11px; border-radius:7px; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; text-align:left;
+}
+.portal-account-menu button:hover,
+.portal-account-menu a:hover { background:var(--surface); color:var(--primary-dark); }
 .theme-choice-list { display:flex; flex-direction:column; gap:2px; }
-html[data-theme-resolved="dark"] .reg-info-list li,
-html[data-theme-resolved="contrast"] .reg-info-list li,
-html[data-theme-resolved="dark"] table.adm-table :is(th,td),
-html[data-theme-resolved="contrast"] table.adm-table :is(th,td) { border-color:var(--line) !important; }
-html[data-theme-resolved="dark"] .reg-info-list li span:first-child { color:var(--muted) !important; }
-html[data-theme-resolved="contrast"] .reg-info-list li span:first-child { color:#fff !important; }
-html[data-theme-resolved="dark"] .fila-item:hover { background:var(--theme-hover) !important; }
-html[data-theme-resolved="contrast"] .fila-item:hover { background:#151515 !important; outline:1px solid #fff; }
-html[data-theme-resolved="dark"] .reg-aviso-existentes { background:#362f1f !important; color:#ffe3a1 !important; border-color:#7c6835 !important; }
-html[data-theme-resolved="contrast"] .reg-aviso-existentes { background:#000 !important; color:#fff !important; border:2px solid #fff !important; }
+html[data-theme-resolved="dark"] .portal-account-menu,
+html[data-theme-resolved="contrast"] .portal-account-menu { background:var(--theme-panel); border-color:var(--line); }
+
+@media (max-width:760px) {
+  .portal-account-button__name { display:none; }
+  .portal-account-button { padding:5px 6px; }
+  .portal-account-menu { right:-2px; min-width:235px; }
+}
+
+/* Ajustes das ferramentas legadas que possuem CSS próprio na página. */
+html[data-theme-resolved="dark"] .layout .painel,
+html[data-theme-resolved="contrast"] .layout .painel { background:var(--theme-panel) !important; border-color:var(--line) !important; }
+html[data-theme-resolved="dark"] .upload-box p { color:var(--muted) !important; }
+html[data-theme-resolved="contrast"] .upload-box p { color:#fff !important; }
+html[data-theme-resolved="dark"] .layout .btn-add { color:var(--ink) !important; border-color:var(--line) !important; }
+html[data-theme-resolved="dark"] .layout .btn-add:hover { background:var(--theme-hover) !important; }
+html[data-theme-resolved="contrast"] .layout .btn-add { color:#fff200 !important; border-color:#fff !important; }
+html[data-theme-resolved="dark"] :is(.warn,.badge-notel) { background:#3a301d !important; color:#ffd787 !important; }
+html[data-theme-resolved="contrast"] :is(.warn,.badge-notel,.info) { background:#000 !important; color:#fff !important; border:1px solid #fff !important; }
+html[data-theme-resolved="dark"] :is(.chip,.tel-badge-multi) { background:#17352e !important; border-color:#356c5d !important; color:#91e9cc !important; }
+html[data-theme-resolved="dark"] .col-chip { background:#2c2943 !important; border-color:#625a93 !important; color:#d7d1ff !important; }
+html[data-theme-resolved="contrast"] :is(.chip,.tel-badge-multi,.col-chip) { background:#000 !important; border:1px solid #fff !important; color:#fff200 !important; }
+html[data-theme-resolved="dark"] code { background:var(--theme-hover) !important; color:var(--ink) !important; }
+html[data-theme-resolved="contrast"] code { background:#000 !important; color:#fff200 !important; border:1px solid #fff; }
+
+html[data-theme-resolved="dark"] :is(.unidade-dropdown,.download-item,.btn-gerar-outline) { background:var(--theme-panel) !important; border-color:var(--line) !important; }
+html[data-theme-resolved="dark"] :is(.unidade-opcao:hover,.unidade-opcao.destacada,.btn-add:hover,.btn-gerar-outline:hover) { background:var(--theme-hover) !important; }
+html[data-theme-resolved="dark"] .unidade-opcao-nova { background:#17352e !important; }
+html[data-theme-resolved="dark"] .download-item .dl-nome { color:#b9d1ff !important; }
+html[data-theme-resolved="dark"] :is(.aviso.info,.aviso.sucesso,.status-box.sucesso) { background:#263425 !important; color:#d8efc8 !important; border-color:#526a4c !important; }
+html[data-theme-resolved="dark"] :is(.aviso.erro,.status-box.erro) { background:#3a2427 !important; color:#ffc2ba !important; border-color:#77423d !important; }
+html[data-theme-resolved="contrast"] :is(.unidade-dropdown,.download-item,.btn-gerar-outline,.aviso,.status-box) { background:#000 !important; color:#fff !important; border:2px solid #fff !important; }
+html[data-theme-resolved="contrast"] :is(.card-header,.tabs) { background:#000 !important; color:#fff !important; border-color:#fff !important; }
+html[data-theme-resolved="contrast"] .tab-btn.active { color:#fff200 !important; border-bottom-color:#fff200 !important; }
+html[data-theme-resolved="contrast"] .download-link { background:#fff200 !important; color:#000 !important; border:2px solid #fff !important; }
+html[data-theme-resolved="contrast"] .login-bg { display:none !important; }
+
+@media (max-width:1080px) and (min-width:761px) {
+  .portal-account-button__name { max-width:130px; }
+}
+
+/* Contraste de ações e cabeçalhos em páginas com CSS local. */
+html[data-theme-resolved="dark"] :is(.btn-wpp,.btn-gerar) { background:#167a5d !important; color:#fff !important; }
+html[data-theme-resolved="dark"] :is(.btn-wpp,.btn-gerar):hover { background:#105f49 !important; }
+html[data-theme-resolved="dark"] :is(.card-header,.tbl th,.unidade-opcao .uo-tag,.btn-primario,.download-link),
+html[data-theme-resolved="dark"] body > .tabs { background:#294b9b !important; color:#fff !important; }
+html[data-theme-resolved="contrast"] :is(.tbl th,.unidade-opcao .uo-tag,.btn-primario,.card-header),
+html[data-theme-resolved="contrast"] body > .tabs { background:#000 !important; color:#fff !important; border-color:#fff !important; }
+html[data-theme-resolved="dark"] .login-bg canvas { filter:brightness(2.2) saturate(.75); opacity:.62; }
 
 
 /* ======================================================================

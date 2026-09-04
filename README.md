@@ -1,27 +1,111 @@
-# eMulti Regulação — Cajamar Saúde
+# Portal Saúde Cajamar
 
-Versão atual: **2.17.6**.
+Versão do pacote: **2.10.1**  
+Banco compartilhado: **Cloudflare D1 `portal-saude-db`**  
+Plataforma: **Cloudflare Pages + Pages Functions + D1**
 
-Atualização de banco simplificada: após o deploy, use **Administração > Diagnóstico > Atualizar bancos D1**. Os SQL em `database/` ficam como instalação/contingência.
+A versão 2.10.1 mantém o comportamento da 2.10.0 e reorganiza o repositório antes do reimplante. As páginas públicas permanecem na raiz para não alterar URLs existentes. Documentação e migrations foram separadas em pastas próprias.
 
-Sistema integrado ao Portal Saúde para cadastro e regulação de guias, equipes eMulti, agenda de especialistas, atendimentos individuais e grupos.
+## Estrutura
 
-## Bancos D1
+```text
+portal-saude-cajamar/
+├── assets/                  # imagens e identidade visual
+├── css/                     # estilos
+├── js/                      # JavaScript do frontend
+├── functions/               # backend Cloudflare Pages Functions
+│   ├── api/
+│   └── receituario/
+├── database/
+│   ├── schema.sql           # banco novo no estado atual
+│   ├── update.sql           # atualização consolidada de banco existente
+│   ├── migrations/          # migrations incrementais
+│   │   └── legacy/          # migrations históricas preservadas
+│   └── archive/             # arquivos antigos somente para histórico
+├── docs/
+│   ├── instalacao/          # guias de instalação e integrações
+│   ├── historico/           # AJUSTES antigos
+│   └── NOVIDADES.md         # changelog consolidado
+├── receituario/             # páginas do receituário
+├── *.html                   # páginas públicas; mantidas na raiz por compatibilidade de URL
+├── _headers
+├── wrangler.toml
+└── README.md
+```
 
-- `DB` → `portal-saude-db`: identidade, usuários, unidades, equipes, vínculos e permissões.
-- `DB_REGULACAO` → `regulacao-vagas-db`: pacientes, guias, fila, agenda, grupos e atendimentos.
+## Antes de reimplantar
 
-## Atualizações de banco simplificadas
+Leia primeiro:
 
-Os antigos arquivos `migration_*.sql` foram retirados do pacote. Agora cada banco possui somente:
+**`docs/instalacao/REIMPLANTE_V2.10.1.md`**
 
-- `database/<banco>/schema.sql` para instalação nova;
-- `database/<banco>/update.sql` para atualizar a versão imediatamente anterior.
+O reimplante não deve apagar nem recriar o `portal-saude-db` existente.
 
-As versões dos schemas ficam registradas em `emulti_schema_version` e podem ser conferidas em **Administração > Diagnóstico da configuração**.
+## Banco D1
 
-## Novidades
+### Instalação nova
 
-O histórico de alterações fica centralizado na página **Novidades da Versão**, acessível pelo menu superior, e no arquivo único `NOVIDADES.md`.
+```bash
+wrangler d1 create portal-saude-db
+wrangler d1 execute portal-saude-db --remote --file=./database/schema.sql
+```
 
-Consulte `INSTALL.md` para os comandos de instalação e atualização.
+Depois configure o `database_id` em `wrangler.toml`.
+
+### Atualização do banco que já está em produção
+
+Se o Portal atual já está na linha **2.9.x** e suas migrations anteriores já foram aplicadas, **não rode novamente `database/update.sql`**. Esse arquivo é consolidado e contém alterações históricas que não são idempotentes.
+
+Para a passagem de 2.9.x/2.10.0 para este pacote, aplique apenas:
+
+```bash
+wrangler d1 execute portal-saude-db --remote --file=./database/migrations/010_producao_apoio_clinico.sql
+```
+
+O arquivo `database/update.sql` foi preservado para cenários de atualização a partir de bases antigas e deve ser usado somente após conferir a versão de origem.
+
+## Deploy
+
+```bash
+wrangler pages deploy . --project-name=portal-saude-cajamar
+```
+
+Se o projeto estiver conectado ao GitHub no Cloudflare Pages, o deploy pode ocorrer automaticamente após o merge/push para a branch configurada.
+
+## Autenticação e permissões
+
+- O Portal é a fonte de verdade para usuário, senha, sessão e vínculo com unidades.
+- Senhas são armazenadas por hash, nunca em texto puro.
+- Senha temporária pode exigir troca no primeiro acesso.
+- O Super Administrador controla acesso aos ambientes externos.
+- Um usuário pode possuir múltiplas responsabilidades dentro de cada ambiente.
+- Ambientes externos devem respeitar as unidades relacionadas ao usuário no Portal.
+
+## Ambientes externos
+
+Cada ambiente possui código/repositório e URL próprios:
+
+- **eMulti / Regulação**
+- **Produção**
+- **Apoio Clínico / IA**
+
+O acesso entre URLs usa handoff de sessão de uso único, sem duplicação de senha.
+
+Consulte:
+
+- `docs/instalacao/INSTALL_REGULACAO.md`
+- `docs/instalacao/INSTALAR_NOVOS_AMBIENTES.md`
+
+## Ouvidoria IA
+
+A configuração administrativa do OuvidorSUS continua integrada ao Portal. Consulte:
+
+`docs/instalacao/INTEGRACAO_OUVIDORIA.md`
+
+## Documentação e histórico
+
+A raiz do projeto deve permanecer focada nos arquivos que participam diretamente do deploy. Documentação fica em `docs/`; scripts de banco ficam em `database/`.
+
+Para ver o histórico de versões:
+
+`docs/NOVIDADES.md`

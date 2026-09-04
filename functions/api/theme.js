@@ -35,7 +35,7 @@ export async function onRequestPut({ request, env }) {
   try {
     await env.DB.prepare('UPDATE users SET theme = ? WHERE id = ?').bind(theme, user.id).run();
   } catch {
-    return json({ error: 'A configuração de aparência ainda não está disponível no banco do Portal. Atualize o Portal para a versão compatível.' }, 503);
+    return json({ error: 'A coluna de aparência ainda não existe. Execute database/migrations/legacy/migration_theme_v3.sql no banco portal-saude-db.' }, 503);
   }
 
   return json({ ok: true, theme });
