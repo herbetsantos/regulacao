@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/js/theme.js"></script>
+<title>Sobre o eMulti Regulação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .about-card { max-width:850px; border:1px solid var(--line); border-radius:12px; background:#fff; padding:24px; box-shadow:var(--shadow); }
+  .about-card p { color:var(--muted); line-height:1.65; font-size:14px; }
+  .about-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:20px; }
+  .about-meta div { background:var(--surface); border-radius:9px; padding:13px; }
+  .about-meta strong { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+</style>
+<link rel="stylesheet" href="/css/theme.css">
+</head>
+<body>
+<div id="app-topbar"></div>
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">eMulti Cajamar</div>
+    <h1 class="page__title">Sobre o eMulti Regulação</h1>
+    <p class="page__subtitle">Informações do módulo de Regulação de Vagas.</p>
+  </div>
+  <section class="about-card">
+    <h2>Regulação e acompanhamento eMulti</h2>
+    <p>Ferramenta integrada ao Portal Saúde Cajamar para organizar pacientes, guias de encaminhamento, triagem, filas e acompanhamentos das equipes multiprofissionais. O acesso utiliza a mesma conta do Portal e respeita os vínculos de equipe e unidade definidos pela administração.</p>
+    <p>Os dados de usuários, unidades, equipes e permissões permanecem centralizados no Portal. Pacientes, guias, acompanhamentos e notificações são armazenados no banco específico deste módulo.</p>
+    <div class="about-meta">
+      <div><strong>Módulo</strong><span>eMulti — Regulação de Vagas</span></div>
+      <div><strong>Integração</strong><span>Portal Saúde Cajamar</span></div>
+      <div><strong>Versão desta revisão</strong><span id="aboutVersion"></span></div>
+    </div>
+  </section>
+</main>
+<script src="/js/app-chrome.js"></script>
+<script>
+(async () => { await initPortalChrome(); const el=document.getElementById('aboutVersion'); if(el&&window.EMULTI_VERSION) el.textContent=window.EMULTI_VERSION; })();
+</script>
+</body>
+</html>

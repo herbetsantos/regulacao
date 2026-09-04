@@ -1,21 +1,17 @@
-# Documentação — Portal Saúde Cajamar
+# Documentação — eMulti Regulação 2.18.2
 
-Esta pasta concentra documentação operacional e histórico técnico para manter a raiz do projeto limpa.
+Este diretório concentra a documentação técnica do projeto para manter a raiz do repositório limpa.
 
-## Instalação e integrações
+## Conteúdo
 
-- `instalacao/REIMPLANTE_V2.10.1.md` — roteiro recomendado para atualizar/reimplantar o Portal.
-- `instalacao/INSTALAR_NOVOS_AMBIENTES.md` — Produção e Apoio Clínico.
-- `instalacao/INSTALL_REGULACAO.md` — integração com eMulti/Regulação.
-- `instalacao/INTEGRACAO_OUVIDORIA.md` — integração administrativa com OuvidorSUS.
+- `instalacao/INSTALL.md` — instalação, atualização e bancos D1.
+- `NOVIDADES.md` — histórico funcional consolidado da aplicação.
+- `ESTRUTURA_DO_REPOSITORIO.md` — organização e arquivos que pertencem a este repositório.
 
-## Histórico
+## Regra de arquitetura
 
-- `NOVIDADES.md` — changelog consolidado das versões recentes.
-- `historico/AJUSTES_*.md` — registros antigos preservados para consulta.
+O eMulti/Regulação é um ambiente independente do Portal Saúde, com repositório e URL próprios.
 
-> Arquivos desta pasta não são executados pela aplicação. São documentação para manutenção, implantação e auditoria técnica.
-
-## Organização da versão
-
-- `ORGANIZACAO_V2.10.1.md` — mapa das alterações de pastas e arquivos.
+- `portal-saude-db` permanece como fonte central de identidade, usuários, sessões, unidades, vínculos e permissões.
+- `regulacao-vagas-db` armazena os dados próprios do eMulti/Regulação.
+- Arquivos funcionais do Portal Saúde que não fazem parte do eMulti não devem ser copiados para este repositório.

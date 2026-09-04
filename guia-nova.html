@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/js/theme.js"></script>
+<title>Nova guia — eMulti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .reg-form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+  .reg-paciente-box { background:#f5f7fa; border-radius:8px; padding:14px 18px; margin-bottom:20px; }
+  .reg-aviso { background:#fff7e6; border:1px solid #f0c36d; border-radius:8px; padding:14px 18px; margin:16px 0; font-size:14px; }
+  .cpf-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+  .cpf-row .field { max-width:280px; margin-bottom:0; flex:1; min-width:220px; }
+  #gMotivo { width:100%; box-sizing:border-box; min-height:110px; height:110px; padding:11px 13px; border:1.5px solid var(--line); border-radius:8px; font:inherit; color:var(--ink); background:#fff; resize:vertical; }
+  #gMotivo:focus { border-color:var(--primary); outline:none; box-shadow:0 0 0 3px rgba(32,59,143,0.14); }
+</style>
+<link rel="stylesheet" href="/css/theme.css">
+</head>
+<body>
+<div id="app-topbar"></div>
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">Regulação de Vagas</div>
+    <h1 class="page__title">Nova guia de encaminhamento</h1>
+    <p class="page__subtitle">Localize o paciente pelo CPF e preencha os dados da solicitação.</p>
+  </div>
+
+  <div id="configAlert"></div>
+
+  <div class="cpf-row">
+    <div class="field"><label for="gCpf">CPF do paciente *</label><input type="text" id="gCpf" maxlength="14" required placeholder="000.000.000-00"></div>
+    <button class="btn btn--outline" type="button" id="btnBuscarPaciente">Buscar paciente</button>
+  </div>
+  <div id="pacienteBox" style="margin-top:14px"></div>
+
+  <form id="guiaForm" style="margin-top:20px; display:none">
+    <div class="reg-form-grid">
+      <div class="field"><label for="gUnidadeSolicitante">Unidade solicitante *</label><select id="gUnidadeSolicitante" required><option value="">Selecione</option></select></div>
+      <div class="field"><label for="gMedico">Médico solicitante *</label><input type="text" id="gMedico" required></div>
+      <div class="field"><label for="gEspecialidade">Especialidade *</label><select id="gEspecialidade" required><option value="">Selecione</option></select></div>
+      <div class="field"><label for="gCid10">CID-10</label><input type="text" id="gCid10" placeholder="Ex.: M54.5"></div>
+      <div class="field" style="grid-column:1/-1"><label for="gMotivo">Motivo do encaminhamento *</label><textarea id="gMotivo" rows="4" required></textarea></div>
+    </div>
+    <div id="avisoArea"></div>
+    <div class="form-msg" id="formMsg"></div>
+    <div class="inline-form__actions" style="margin-top:16px"><button class="btn btn--accent" type="submit" id="btnSalvar">Criar guia</button></div>
+  </form>
+</main>
+
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
+<script>
+(async () => {
+  const user = await initPortalChrome();
+  if (!user) return;
+  const access = user.regulacao || {};
+  const podeCadastrar = !!(access.cadastrante || access.administrador);
+  if (!podeCadastrar) {
+    document.getElementById('configAlert').innerHTML = '<div class="notice-box is-warning">Seu usuário não possui a responsabilidade <strong>Cadastrante</strong>. A emissão de guias não está disponível para este perfil.</div>';
+    document.getElementById('btnBuscarPaciente').disabled = true;
+    document.getElementById('gCpf').disabled = true;
+    return;
+  }
+
+  const [unidResp, especResp] = await Promise.all([apiFetch('/api/unidades'), apiFetch('/api/especialidades')]);
+  const unidSel = document.getElementById('gUnidadeSolicitante');
+  const especSel = document.getElementById('gEspecialidade');
+  let podeEmitir = false;
+  let unidadeNome = {};
+
+  if (!unidResp.ok) {
+    document.getElementById('configAlert').innerHTML = `<div class="notice-box is-error">Não foi possível carregar as unidades. ${escapeHtml(unidResp.data?.error || 'Verifique a configuração do banco do Portal.')}</div>`;
+  } else {
+    unidadeNome = Object.fromEntries((unidResp.data.todas || []).map((u) => [u.code, u.nome]));
+    const lista = unidResp.data.isAdmin ? (unidResp.data.todas || []) : (unidResp.data.minhasEmissoras || []);
+    podeEmitir = lista.length > 0;
+    lista.forEach((u) => unidSel.insertAdjacentHTML('beforeend', `<option value="${u.code}">${escapeHtml(u.nome)}</option>`));
+    if (!podeEmitir) {
+      document.getElementById('configAlert').innerHTML = '<div class="notice-box is-warning"><strong>Emissão não configurada para seu usuário.</strong> O administrador precisa vincular seu usuário a uma unidade com a opção “Pode emitir guia”.</div>';
+    }
+  }
+
+  if (especResp.ok) (especResp.data.especialidades || []).forEach((e) => especSel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(e.nome)}</option>`));
+  else document.getElementById('configAlert').insertAdjacentHTML('beforeend', '<div class="notice-box is-error">Não foi possível carregar as especialidades.</div>');
+
+  let pacienteAtual = null;
+  let confirmarMesmoAssim = false;
+  const cpfInput = document.getElementById('gCpf');
+  cpfInput.addEventListener('input', (e) => { e.target.value = maskCPF(e.target.value); });
+  cpfInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); buscarPaciente(); } });
+  cpfInput.addEventListener('blur', () => { if (onlyDigits(cpfInput.value).length === 11 && !pacienteAtual) buscarPaciente(); });
+  document.getElementById('btnBuscarPaciente').addEventListener('click', buscarPaciente);
+
+  async function buscarPaciente() {
+    const cpf = onlyDigits(cpfInput.value);
+    const box = document.getElementById('pacienteBox');
+    const form = document.getElementById('guiaForm');
+    pacienteAtual = null;
+    form.style.display = 'none';
+    if (cpf.length !== 11) { box.innerHTML = '<div class="notice-box is-warning">Informe os 11 dígitos do CPF.</div>'; return; }
+
+    box.innerHTML = '<div class="skeleton-loading">Buscando paciente…</div>';
+    const { ok, data } = await apiFetch(`/api/pacientes?cpf=${cpf}`);
+    if (!ok) { box.innerHTML = `<div class="notice-box is-error">${escapeHtml(data?.error || 'Erro ao buscar paciente.')}</div>`; return; }
+    const pacientes = data.pacientes || [];
+    if (!pacientes.length) {
+      box.innerHTML = `<div class="notice-box is-warning">Cidadão não encontrado. <a href="/paciente.html?cpf=${cpf}&retorno=guia" style="color:var(--primary);font-weight:700">Cadastrar este cidadão</a>.</div>`;
+      return;
+    }
+
+    pacienteAtual = pacientes[0];
+    box.innerHTML = `<div class="reg-paciente-box"><strong>${escapeHtml(pacienteAtual.nome)}</strong> — ${formatDateBR(pacienteAtual.data_nascimento)}, ${pacienteAtual.sexo === 'F' ? 'Feminino' : 'Masculino'}<br>Unidade de referência: ${escapeHtml(unidadeNome[pacienteAtual.unidade_referencia_code] || pacienteAtual.unidade_referencia_code)}</div>`;
+    form.style.display = '';
+    document.getElementById('btnSalvar').disabled = !podeEmitir || !especResp.ok;
+  }
+
+  document.getElementById('guiaForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!pacienteAtual) return;
+    const msg = document.getElementById('formMsg');
+    const avisoArea = document.getElementById('avisoArea');
+    msg.className='form-msg'; msg.textContent='';
+    const payload = {
+      cpf:pacienteAtual.cpf,
+      unidade_solicitante_code:unidSel.value,
+      medico_solicitante:document.getElementById('gMedico').value.trim(),
+      especialidade_id:especSel.value,
+      cid10:document.getElementById('gCid10').value.trim(),
+      motivo:document.getElementById('gMotivo').value.trim(),
+      confirmar_mesmo_assim:confirmarMesmoAssim,
+    };
+    const btn = document.getElementById('btnSalvar');
+    btn.disabled = true;
+    const { ok, data } = await apiFetch('/api/guias', { method:'POST', body:JSON.stringify(payload) });
+    btn.disabled = false;
+    if (ok && data.aviso) {
+      avisoArea.innerHTML = `<div class="reg-aviso">${escapeHtml(data.mensagem)}</div>`;
+      confirmarMesmoAssim = true;
+      btn.textContent = 'Confirmar mesmo assim e criar guia';
+      return;
+    }
+    if (!ok) { msg.className='form-msg is-error'; msg.textContent=data?.error || 'Erro ao criar guia.'; return; }
+    window.location.href = `/guia-detalhe.html?id=${data.guia.id}`;
+  });
+
+  const cpfPrefill = onlyDigits(new URLSearchParams(window.location.search).get('cpf') || '');
+  if (cpfPrefill) { cpfInput.value = maskCPF(cpfPrefill); await buscarPaciente(); }
+})();
+</script>
+</body>
+</html>

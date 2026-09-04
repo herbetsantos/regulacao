@@ -1,18 +1,21 @@
-name = "portal-saude-cajamar"
+name = "emulti"
 compatibility_date = "2024-09-23"
 pages_build_output_dir = "."
 
+# Banco de LOGIN/unidades/equipes — o MESMO banco do Portal Saúde Cajamar
+# (portal-saude-db). Este projeto só LÊ usuários/sessões/unidades/equipes
+# daqui (login em si continua acontecendo só no portal) e ESCREVE sessões
+# novas ao consumir um código de repasse (ver functions/_middleware.js).
 [[d1_databases]]
 binding = "DB"
 database_name = "portal-saude-db"
 database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
 
-# Opcional: só defina isso se for publicar o projeto de Regulação de Vagas
-# (ou outro projeto Pages separado) num subdomínio do mesmo domínio deste
-# portal, e quiser que o mesmo login/cookie funcione nos dois.
-# Ex.: se o portal está em "saude.cajamar.sp.gov.br" e a Regulação em
-# "regulacao.saude.cajamar.sp.gov.br", use ".saude.cajamar.sp.gov.br"
-# (com o ponto na frente). Deixe comentado/ausente para manter o
-# comportamento atual (cookie restrito ao host exato).
-# [vars]
-# COOKIE_DOMAIN = ".saude.cajamar.sp.gov.br"
+# Banco de CONTEÚDO deste projeto (pacientes, guias, acompanhamentos,
+# notificações) — exclusivo, criado com:
+#   wrangler d1 create regulacao-vagas-db
+# Troque o database_id abaixo pelo id retornado.
+[[d1_databases]]
+binding = "DB_REGULACAO"
+database_name = "regulacao-vagas-db"
+database_id = "1a40262a-3005-4b06-9fb7-2f04ebda9246"

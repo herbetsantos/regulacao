@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/js/theme.js"></script>
+<title>Links úteis — eMulti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/theme.css">
+</head>
+<body>
+<div id="app-topbar"></div>
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">Acesso rápido</div>
+    <h1 class="page__title">Links úteis</h1>
+    <p class="page__subtitle">Os mesmos links cadastrados no Portal Saúde Cajamar, organizados em grade para acesso rápido.</p>
+  </div>
+  <div id="linksArea"><div class="skeleton-loading">Carregando links…</div></div>
+</main>
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
+<script>
+(async () => {
+  const user = await initPortalChrome();
+  if (!user) return;
+
+  const { ok, data } = await apiFetch('/api/links-uteis');
+  const area = document.getElementById('linksArea');
+  if (!ok) {
+    area.innerHTML = '<div class="empty-state">Não foi possível carregar os links úteis.</div>';
+    return;
+  }
+
+  const categoryLabel = { ferramenta: 'Ferramentas', documento: 'Documentos', manual: 'Manuais' };
+  const groups = ['ferramenta', 'documento', 'manual'];
+  const resolveUrl = (url) => {
+    if (!url) return '#';
+    if (/^https?:\/\//i.test(url)) return url;
+    return `${window.PORTAL_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const sections = groups.map((cat) => {
+    const links = (data.links || []).filter((l) => l.category === cat);
+    if (!links.length) return '';
+    return `
+      <section class="useful-links-section">
+        <h2 class="useful-links-section__title">${categoryLabel[cat]}</h2>
+        <div class="useful-links-grid">
+          ${links.map((l) => `
+            <a class="useful-link-card" href="${escapeAttr(resolveUrl(l.url))}" target="${l.open_mode === '_self' ? '_self' : '_blank'}" rel="noopener">
+              <span class="useful-link-card__icon">${appIconSvg(l.icon_key)}</span>
+              <span>
+                <div class="useful-link-card__title">${escapeHtml(l.title)}</div>
+                <div class="useful-link-card__desc">${escapeHtml(l.description || categoryLabel[cat])}</div>
+              </span>
+            </a>`).join('')}
+        </div>
+      </section>`;
+  }).join('');
+
+  area.innerHTML = sections || '<div class="empty-state">Nenhum link cadastrado no Portal.</div>';
+})();
+</script>
+</body>
+</html>

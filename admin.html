@@ -4,470 +4,561 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script src="/js/theme.js"></script>
-<title>Administração — Portal Saúde Cajamar</title>
+<title>Administração — eMulti</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
-<link rel="stylesheet" href="/css/theme.css">
 <style>
-@media(max-width:900px){#usersListControls{grid-template-columns:1fr!important}.admin-pagination{justify-content:flex-start!important}}
+  .adm-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:900px) { .adm-grid { grid-template-columns:1fr; } }
+  .adm-card { background:#f7f9fc; border:1px solid #e2e8f2; border-radius:10px; padding:16px 18px; margin-bottom:14px; }
+  .adm-card.is-inactive { opacity:.72; }
+  .adm-card__head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; }
+  .adm-card__title { font-weight:700; font-size:15px; }
+  .adm-tag { display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #dce2ec; border-radius:999px; padding:4px 10px 4px 12px; font-size:12px; margin:3px 6px 3px 0; }
+  .adm-tag button { background:none; border:none; color:#c0392b; cursor:pointer; font-size:14px; line-height:1; padding:0; }
+  .inline-row { display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; }
+  .inline-row .field { margin-bottom:0; min-width:180px; flex:1; }
+  table.adm-table { width:100%; font-size:13px; border-collapse:collapse; }
+  table.adm-table th, table.adm-table td { padding:9px 8px; text-align:left; border-bottom:1px solid #e6eaf1; vertical-align:middle; }
+  table.adm-table input[type="text"], table.adm-table input[type="number"], table.adm-table select { padding:7px 9px; border:1px solid var(--line); border-radius:7px; font-family:inherit; width:100%; }
+  .prof-editor,.prof-add{display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(150px,1fr) minmax(180px,1fr) auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #e6eaf1}.prof-editor input,.prof-editor select,.prof-add input,.prof-add select{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:7px;font-family:inherit}.prof-add{grid-template-columns:minmax(180px,1.5fr) minmax(150px,1fr) minmax(180px,1fr) auto}@media(max-width:900px){.prof-editor,.prof-add{grid-template-columns:1fr}}
+  .section-anchor { scroll-margin-top:90px; }
+  #adminContent .panel-section { margin-bottom:16px; }
+.admin-list-controls{display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(170px,1fr) minmax(170px,1fr) auto;gap:10px;align-items:end;margin:0 0 14px}.admin-list-controls .field{margin:0}.admin-pagination{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:12px 0 18px}.admin-pagination select{width:auto;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--text)}@media(max-width:900px){.admin-list-controls{grid-template-columns:1fr}.admin-pagination{justify-content:flex-start}}
 </style>
+<link rel="stylesheet" href="/css/theme.css">
 </head>
 <body>
-
 <div id="app-topbar"></div>
-
 <main class="page">
   <div class="page__header">
-    <div class="eyebrow">Área restrita</div>
+    <div class="eyebrow">eMulti</div>
     <h1 class="page__title">Administração</h1>
-    <p class="page__subtitle">Gerencie as ferramentas, documentos, manuais e os usuários com acesso ao portal.</p>
+    <p class="page__subtitle">Configuração dos acessos da Regulação, equipes, unidades de emissão, profissionais, especialidades e links úteis.</p>
   </div>
 
-  <div id="notAdminMsg" class="empty-state" style="display:none">
-    Esta área é restrita a administradores.
+  <div id="accessDenied" class="empty-state" style="display:none">Você não tem permissão para acessar esta página.</div>
+
+  <div id="adminContent" style="display:none">
+    <section class="panel-section section-anchor is-active" id="diagnosticoSection">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Diagnóstico da configuração</div>
+        <div class="panel-section__desc">Ajuda a identificar por que pacientes ou guias podem não estar sendo cadastrados.</div>
+      </div>
+      <div id="diagnosticoArea"><div class="skeleton-loading">Verificando configuração…</div></div>
+      <div id="versoesBancoArea" style="margin-top:14px"></div>
+    </section>
+
+
+    <section class="panel-section section-anchor is-active" id="acessosSection">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Acessos e responsabilidades</div>
+        <div class="panel-section__desc">O perfil no Portal é independente do eMulti. O acesso pode ser concedido por vínculo com uma equipe eMulti ou por unidade autorizada; as responsabilidades definem o que cada usuário pode fazer.</div>
+      </div>
+      <div class="notice-box" style="margin-bottom:14px"><strong>Como funciona:</strong> o vínculo com equipe ou unidade autoriza a entrada na ferramenta. As classes continuam controlando as ações: Cadastrante inclui cidadãos e emite guias; Regulador organiza fila, triagem, transferências e grupos; Executor registra atendimentos e evoluções; Administrador configura todo o módulo.</div>
+      <div class="admin-list-controls" id="accessFilters">
+        <div class="field"><label for="accessSearch">Buscar</label><input id="accessSearch" type="search" placeholder="Nome ou usuário"></div>
+        <div class="field"><label for="accessUnitFilter">Unidade</label><select id="accessUnitFilter"><option value="">Todas as unidades</option></select></div>
+        <div class="field"><label for="accessFunctionFilter">Função</label><select id="accessFunctionFilter"><option value="">Todas</option><option value="cadastrante">Cadastrante</option><option value="regulador">Regulador</option><option value="executor">Executor</option><option value="administrador">Administrador</option><option value="sem_funcao">Sem função atribuída</option></select></div>
+        <button class="btn btn--outline btn--sm" type="button" id="accessClearFilters">Limpar filtros</button>
+      </div>
+      <div id="acessosList"><div class="skeleton-loading">Carregando acessos…</div></div>
+      <div id="accessPagination" class="admin-pagination"></div>
+    </section>
+
+
+    <section class="panel-section section-anchor is-active" id="profissionaisBaseSection">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Profissionais eMulti pré-carregados</div>
+        <div class="panel-section__desc">Relação-base importada da escala informada. O cadastro profissional existe independentemente do login; vincule-o a um usuário do Portal quando a conta real estiver disponível.</div>
+      </div>
+      <div class="notice-box" style="margin-bottom:14px"><strong>Importante:</strong> o pré-cadastro não cria usuário nem senha. A escala exibida aqui é a referência original; a configuração operacional da escala permanece exclusiva do Administrador.</div>
+      <div class="admin-list-controls" id="baseProfessionalFilters">
+        <div class="field"><label for="baseProfessionalSearch">Buscar</label><input id="baseProfessionalSearch" type="search" placeholder="Nome ou especialidade"></div>
+        <div class="field"><label for="baseProfessionalUnit">Unidade</label><select id="baseProfessionalUnit"><option value="">Todas as unidades</option></select></div>
+        <div class="field"><label for="baseProfessionalSpecialty">Função / especialidade</label><select id="baseProfessionalSpecialty"><option value="">Todas</option></select></div>
+        <div class="field"><label for="baseProfessionalLink">Acesso</label><select id="baseProfessionalLink"><option value="">Todos</option><option value="vinculado">Acesso vinculado</option><option value="sem_vinculo">Sem acesso</option></select></div>
+        <button class="btn btn--outline btn--sm" type="button" id="baseProfessionalClear">Limpar filtros</button>
+      </div>
+      <div id="profissionaisBaseList"><div class="skeleton-loading">Carregando profissionais…</div></div>
+      <div id="baseProfessionalPagination" class="admin-pagination"></div>
+    </section>
+
+    <section class="panel-section section-anchor is-active" id="equipesSection">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Equipes multiprofissionais</div>
+        <div class="panel-section__desc"><strong>Regra:</strong> uma equipe pode cobrir várias unidades e ter vários profissionais; cada profissional pertence a apenas uma equipe.</div>
+      </div>
+      <div class="inline-row" style="margin-bottom:14px">
+        <div class="field"><label for="novaEquipeNome">Nova equipe</label><input type="text" id="novaEquipeNome" placeholder="Ex.: eMulti 2"></div>
+        <button class="btn btn--accent btn--sm" type="button" id="btnCriarEquipe">Criar equipe</button>
+      </div>
+      <div class="form-msg" id="equipeMsg"></div>
+      <div id="equipesList"></div>
+    </section>
+
+    <section class="panel-section section-anchor is-active" id="agentesSection">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Unidades autorizadas para emissão</div>
+        <div class="panel-section__desc">Defina por quais unidades cada Cadastrante pode emitir guias. A responsabilidade Cadastrante é configurada na seção acima.</div>
+      </div>
+      <div class="adm-grid" style="margin-bottom:12px">
+        <div class="field"><label for="agUsuario">Usuário</label><select id="agUsuario"><option value="">Selecione</option></select></div>
+        <div class="field"><label for="agUnidade">Unidade</label><select id="agUnidade"><option value="">Selecione</option></select></div>
+      </div>
+      <label style="font-size:13px;margin-right:18px"><input type="checkbox" id="agPodeEmitir" checked> Pode emitir guia por esta unidade</label>
+      <input type="checkbox" id="agPodeExecutar" style="display:none">
+      <div style="margin-top:12px"><button class="btn btn--accent btn--sm" type="button" id="btnSalvarAgente">Salvar vínculo</button></div>
+      <div class="form-msg" id="agenteMsg"></div>
+      <div id="agentesList" style="margin-top:16px"></div>
+    </section>
+
+    <section class="panel-section section-anchor is-active" id="especialidadesSection">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Especialidades</div>
+        <div class="panel-section__desc">Cadastre, renomeie, ordene ou desative especialidades e defina a duração padrão de cada horário de atendimento.</div>
+      </div>
+      <div class="inline-row" style="margin-bottom:14px">
+        <div class="field"><label for="novaEspNome">Nova especialidade</label><input type="text" id="novaEspNome" placeholder="Ex.: Terapia Ocupacional"></div><div class="field" style="max-width:180px"><label for="novaEspDuracao">Duração padrão (min)</label><input type="number" id="novaEspDuracao" value="30" min="5" max="480" step="5"></div>
+        <button class="btn btn--accent btn--sm" type="button" id="btnCriarEsp">Adicionar</button>
+      </div>
+      <div class="form-msg" id="espMsg"></div>
+      <div id="especialidadesList"></div>
+    </section>
+
+    <section class="panel-section section-anchor is-active" id="linksSection">
+      <div class="panel-section__head">
+        <div class="panel-section__title">Ícones dos Links úteis</div>
+        <div class="panel-section__desc">Os links são os mesmos cadastrados no Portal Saúde. Aqui o administrador escolhe apenas o ícone exibido na grade do eMulti.</div>
+      </div>
+      <div id="linkIconsList"><div class="skeleton-loading">Carregando links…</div></div>
+    </section>
   </div>
-
-  <div class="admin-shell" id="adminShell" style="display:none">
-    <div class="admin-tabs">
-      <button class="admin-tab is-active" data-tab="updates">Atualizações</button>
-      <button class="admin-tab" data-tab="solicitacoes">Solicitações<span id="pendingBadge" class="admin-tab__count" style="display:none">0</span></button>
-      <button class="admin-tab" data-tab="ferramenta">Ferramentas</button>
-      <button class="admin-tab" data-tab="documento">Documentos Úteis</button>
-      <button class="admin-tab" data-tab="manual">Manuais de Uso</button>
-      <button class="admin-tab" data-tab="relatorios">Relatórios</button>
-      <button class="admin-tab" data-tab="unidades">Unidades</button>
-      <button class="admin-tab" data-tab="ouvidoria">Ouvidoria IA</button>
-      <button class="admin-tab" data-tab="perfis">Perfis de acesso</button>
-      <button class="admin-tab" data-tab="usuarios">Usuários</button>
-      <button class="admin-tab" data-tab="auditoria">Auditoria</button>
-      <button class="admin-tab" data-tab="chat-config" id="chatConfigTab" style="display:none">Chat e suporte</button>
-      <button class="admin-tab" data-tab="conta">Minha Conta</button>
-    </div>
-
-    <div class="admin-panel">
-
-<!-- Atualizações -->
-<section class="panel-section is-active" data-panel="updates">
-  <div class="panel-section__head">
-    <div>
-      <div class="panel-section__title">Atualizações</div>
-      <div class="panel-section__desc">Avisos e novidades exibidos na página inicial do portal.</div>
-    </div>
-  </div>
-  <div id="updatesTableWrap"><div class="skeleton-loading">Carregando…</div></div>
-
-  <form id="addUpdateForm" class="inline-form">
-    <div class="field field--full">
-      <label for="upTitle">Título</label>
-      <input type="text" id="upTitle" required>
-    </div>
-    <div class="field field--full">
-      <label for="upBody">Texto</label>
-      <textarea id="upBody" rows="3" required style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font:inherit;resize:vertical"></textarea>
-    </div>
-    <div class="field">
-      <label for="upTag">Categoria/tag (opcional)</label>
-      <input type="text" id="upTag" placeholder="Ex.: Sistema, Aviso, Manutenção">
-    </div>
-    <div class="field">
-      <label for="upDate">Data</label>
-      <input type="date" id="upDate">
-    </div>
-    <div class="field">
-      <label for="upLinkUrl">Link/anexo (opcional)</label>
-      <input type="url" id="upLinkUrl" placeholder="https://">
-    </div>
-    <div class="field">
-      <label for="upLinkLabel">Texto do link (opcional)</label>
-      <input type="text" id="upLinkLabel" placeholder="Ex.: Ver anexo">
-    </div>
-    <div class="field">
-      <label for="upImageUrl">Imagem (URL ou caminho, opcional)</label>
-      <input type="text" id="upImageUrl" placeholder="https://… ou /assets/imagem.jpg">
-    </div>
-    <div class="field">
-      <label for="upImageFile">Ou selecionar imagem</label>
-      <input type="file" id="upImageFile" accept="image/png,image/jpeg,image/webp,image/gif">
-      <small class="muted">Até 600 KB. A imagem será incorporada à mensagem.</small>
-    </div>
-    <div class="field field--full">
-      <label for="upImageAlt">Descrição da imagem (acessibilidade)</label>
-      <input type="text" id="upImageAlt" placeholder="Descreva brevemente a imagem">
-    </div>
-    <div class="inline-form__actions">
-      <button type="submit" class="btn btn--accent btn--sm">Publicar atualização</button>
-    </div>
-    <div id="addUpdateMsg" class="form-msg" style="grid-column:1/-1"></div>
-  </form>
-</section>
-
-<!-- Solicitações de cadastro -->
-<section class="panel-section" data-panel="solicitacoes">
-  <div class="panel-section__head">
-    <div>
-      <div class="panel-section__title">Solicitações de acesso</div>
-      <div class="panel-section__desc">Pedidos de cadastro enviados pela tela pública. Aprovar cria o usuário automaticamente.</div>
-    </div>
-  </div>
-  <div id="signupRequestsWrap"><div class="skeleton-loading">Carregando…</div></div>
-</section>
-
-<!-- Ferramentas / Documentos / Manuais compartilham o mesmo template -->
-<section class="panel-section" data-panel="ferramenta">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Ferramentas</div>
-            <div class="panel-section__desc">Itens exibidos no submenu FERRAMENTAS do menu superior.</div>
-          </div>
-        </div>
-        <div class="table-wrap" data-table="ferramenta"></div>
-      </section>
-
-      <section class="panel-section" data-panel="documento">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Documentos Úteis</div>
-            <div class="panel-section__desc">Itens exibidos na página Documentos Úteis.</div>
-          </div>
-        </div>
-        <div class="table-wrap" data-table="documento"></div>
-      </section>
-
-      <section class="panel-section" data-panel="manual">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Manuais de Uso</div>
-            <div class="panel-section__desc">Itens exibidos na página Manuais de Uso.</div>
-          </div>
-        </div>
-        <div class="table-wrap" data-table="manual"></div>
-      </section>
-
-      <!-- Relatórios -->
-      <section class="panel-section" data-panel="relatorios">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Grupos de acesso</div>
-            <div class="panel-section__desc">Crie grupos (ex.: Enfermagem, Gestão) e escolha quais relatórios cada grupo pode ver. Depois, atribua usuários aos grupos na aba Usuários.</div>
-          </div>
-        </div>
-        <div id="reportGroupsWrap"><div class="skeleton-loading">Carregando…</div></div>
-
-        <form id="addGroupForm" class="inline-form">
-          <div class="field">
-            <label for="grpName">Nome do grupo</label>
-            <input type="text" id="grpName" required placeholder="Ex.: Enfermagem">
-          </div>
-          <div class="field field--full">
-            <label for="grpDesc">Descrição (opcional)</label>
-            <input type="text" id="grpDesc">
-          </div>
-          <div class="inline-form__actions">
-            <button type="submit" class="btn btn--accent btn--sm">Criar grupo</button>
-          </div>
-          <div id="addGroupMsg" class="form-msg" style="grid-column:1/-1"></div>
-        </form>
-
-        <div class="panel-section__head" style="margin-top:34px">
-          <div>
-            <div class="panel-section__title">Relatórios cadastrados</div>
-            <div class="panel-section__desc">Link do relatório do Data Studio (ou outro serviço) e como ele deve abrir para quem tiver acesso.</div>
-          </div>
-        </div>
-        <div id="reportsWrap"><div class="skeleton-loading">Carregando…</div></div>
-
-        <form id="addReportForm" class="inline-form">
-          <div class="field field--full">
-            <label for="repTitle">Título</label>
-            <input type="text" id="repTitle" required>
-          </div>
-          <div class="field field--full">
-            <label for="repDesc">Descrição (opcional)</label>
-            <input type="text" id="repDesc">
-          </div>
-          <div class="field field--full">
-            <label for="repUrl">Link do relatório (embed do Data Studio ou outro link)</label>
-            <input type="url" id="repUrl" required placeholder="https://">
-          </div>
-          <div class="field">
-            <label for="repMode">Como abrir</label>
-            <select id="repMode">
-              <option value="embed">Incorporado no portal</option>
-              <option value="new_tab">Nova aba</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="repOrder">Ordem de exibição</label>
-            <input type="number" id="repOrder" value="1">
-          </div>
-          <div class="inline-form__actions">
-            <button type="submit" class="btn btn--accent btn--sm">Adicionar relatório</button>
-          </div>
-          <div id="addReportMsg" class="form-msg" style="grid-column:1/-1"></div>
-        </form>
-      </section>
-
-      <!-- Unidades -->
-      <section class="panel-section" data-panel="unidades">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Unidades de saúde</div>
-            <div class="panel-section__desc">Unidades disponíveis no Receituário e nas telas de atribuição da aba Usuários. Cadastrar, editar ou excluir é restrito ao Super Administrador; unidades inativas somem dos seletores, mas ficam preservadas no histórico.</div>
-          </div>
-        </div>
-        <div id="unidadesTableWrap"><div class="skeleton-loading">Carregando…</div></div>
-
-        <form id="addUnidadeForm" class="inline-form" style="display:none">
-          <div class="field field--full">
-            <label for="uniNome">Nome da unidade</label>
-            <input type="text" id="uniNome" required placeholder="Ex: UBS Jardim das Flores">
-          </div>
-          <div class="field">
-            <label for="uniCnes">CNES</label>
-            <input type="text" id="uniCnes" placeholder="Ex: 1234567">
-          </div>
-          <div class="field">
-            <label for="uniTel">Telefone</label>
-            <input type="text" id="uniTel" placeholder="Ex: (11) 4446-0100">
-          </div>
-          <div class="field field--full">
-            <label for="uniEndereco">Endereço</label>
-            <input type="text" id="uniEndereco" placeholder="Ex: Rua Exemplo, 100 - Bairro, Cajamar/SP">
-          </div>
-          <div class="inline-form__actions">
-            <button type="submit" class="btn btn--accent btn--sm">Cadastrar unidade</button>
-          </div>
-          <div id="addUnidadeMsg" class="form-msg" style="grid-column:1/-1"></div>
-        </form>
-      </section>
-
-
-      <!-- Ouvidoria IA -->
-      <section class="panel-section" data-panel="ouvidoria">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Ouvidoria — distribuição por IA</div>
-            <div class="panel-section__desc">Fonte central de profissionais, regras especiais e fallback consumida pela extensão OuvidorSUS. Nenhum conteúdo de manifestação é armazenado aqui.</div>
-          </div>
-        </div>
-
-        <div class="panel-section__head" style="margin-top:10px">
-          <div>
-            <div class="panel-section__title" style="font-size:17px">Profissionais</div>
-            <div class="panel-section__desc">O código técnico é estável no Portal. Para atribuir no OuvidorSUS, a extensão resolve o nome exato habilitado e usa o identificador exigido pelo próprio sistema apenas durante a operação.</div>
-          </div>
-        </div>
-        <div id="ouvidoriaProfissionaisWrap"><div class="skeleton-loading">Carregando…</div></div>
-        <form id="addOuvidoriaProfissionalForm" class="inline-form">
-          <div class="field">
-            <label for="ovProfCodigo">Código técnico</label>
-            <input type="text" id="ovProfCodigo" required pattern="[a-z0-9_-]{2,40}" placeholder="ex.: beatriz">
-          </div>
-          <div class="field">
-            <label for="ovProfNome">Nome no Portal</label>
-            <input type="text" id="ovProfNome" required placeholder="Ex.: Beatriz">
-          </div>
-          <div class="field field--full">
-            <label for="ovProfNomeSus">Nome exato no OuvidorSUS</label>
-            <input type="text" id="ovProfNomeSus" placeholder="Preencher exatamente como aparece na lista de usuários habilitados">
-          </div>
-          <div class="field">
-            <label for="ovProfEmail">E-mail</label>
-            <input type="email" id="ovProfEmail" placeholder="profissional@cajamar.sp.gov.br">
-          </div>
-          <div class="field">
-            <label for="ovProfObs">Observação / função</label>
-            <input type="text" id="ovProfObs" placeholder="Ex.: apoio técnico de Odontologia">
-          </div>
-          <div class="inline-form__actions">
-            <button type="submit" class="btn btn--accent btn--sm">Adicionar profissional</button>
-          </div>
-          <div id="addOuvidoriaProfissionalMsg" class="form-msg" style="grid-column:1/-1"></div>
-        </form>
-
-        <div class="panel-section__head" style="margin-top:34px">
-          <div>
-            <div class="panel-section__title" style="font-size:17px">Regras de distribuição</div>
-            <div class="panel-section__desc">A menor prioridade numérica é avaliada primeiro. Ex.: Odontologia técnica (10) antes da regra geral de Odontologia (20).</div>
-          </div>
-        </div>
-        <div id="ouvidoriaRegrasWrap"><div class="skeleton-loading">Carregando…</div></div>
-        <form id="addOuvidoriaRegraForm" class="inline-form">
-          <div class="field">
-            <label for="ovRegraTitulo">Título</label>
-            <input type="text" id="ovRegraTitulo" required placeholder="Ex.: Odontologia — demanda técnica">
-          </div>
-          <div class="field">
-            <label for="ovRegraDivisao">Divisão</label>
-            <input type="text" id="ovRegraDivisao" required placeholder="Ex.: Odontologia">
-          </div>
-          <div class="field">
-            <label for="ovRegraSubtipo">Subtipo</label>
-            <input type="text" id="ovRegraSubtipo" value="geral" required placeholder="geral / tecnica / ...">
-          </div>
-          <div class="field">
-            <label for="ovRegraPrioridade">Prioridade</label>
-            <input type="number" id="ovRegraPrioridade" min="1" max="9999" value="100" required>
-          </div>
-          <div class="field">
-            <label for="ovRegraProfissional">Responsável</label>
-            <select id="ovRegraProfissional" required><option value="">— selecione —</option></select>
-          </div>
-          <div class="field field--full">
-            <label for="ovRegraDescricao">Critério / orientação</label>
-            <textarea id="ovRegraDescricao" rows="2" style="width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font:inherit;resize:vertical" placeholder="Descreva quando esta regra deve ser aplicada"></textarea>
-          </div>
-          <div class="inline-form__actions">
-            <button type="submit" class="btn btn--accent btn--sm">Adicionar regra</button>
-          </div>
-          <div id="addOuvidoriaRegraMsg" class="form-msg" style="grid-column:1/-1"></div>
-        </form>
-
-        <div class="panel-section__head" style="margin-top:34px">
-          <div>
-            <div class="panel-section__title" style="font-size:17px">Dúvida / fallback</div>
-            <div class="panel-section__desc">Quando a classificação não atingir o nível mínimo de confiança, a extensão usa esta ordem de apoio em vez de adivinhar um responsável.</div>
-          </div>
-        </div>
-        <form id="ouvidoriaConfigForm" class="inline-form">
-          <div class="field">
-            <label for="ovConfidence">Confiança mínima para distribuição automática (%)</label>
-            <input type="number" id="ovConfidence" min="0" max="100" step="1" value="80" required>
-          </div>
-          <div class="field">
-            <label for="ovFallback1">1º fallback</label>
-            <select id="ovFallback1"><option value="">— nenhum —</option></select>
-          </div>
-          <div class="field">
-            <label for="ovFallback2">2º fallback</label>
-            <select id="ovFallback2"><option value="">— nenhum —</option></select>
-          </div>
-          <div class="inline-form__actions">
-            <button type="submit" class="btn btn--accent btn--sm">Salvar configuração</button>
-          </div>
-          <div id="ouvidoriaConfigMsg" class="form-msg" style="grid-column:1/-1"></div>
-        </form>
-
-        <div class="empty-state" style="margin-top:28px;text-align:left">
-          <strong>Integração com a extensão</strong><br>
-          A extensão consumirá <code>/api/ouvidoria/extension-config</code> em modo somente leitura. Configure no Cloudflare Pages a variável secreta <code>OUVIDORIA_EXTENSION_TOKEN</code>. O banco do Portal guarda apenas esta configuração administrativa — não guarda manifestações.
-        </div>
-      </section>
-
-      <!-- Perfis de acesso -->
-      <section class="panel-section" data-panel="perfis">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Perfis de acesso</div>
-            <div class="panel-section__desc">Define o "teto" de funcionalidades permitido para cada papel. O card de Configurações de cada profissional (aba Usuários) nunca pode ir além do que estiver marcado aqui. O Super Administrador sempre tem acesso a tudo e não aparece nesta lista.</div>
-          </div>
-        </div>
-        <div id="rolePermsWrap"><div class="skeleton-loading">Carregando…</div></div>
-      </section>
-
-      <!-- Usuários -->
-      <section class="panel-section" data-panel="usuarios">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Usuários</div>
-            <div class="panel-section__desc">Pessoas com acesso ao portal.</div>
-          </div>
-        </div>
-        <div class="admin-list-controls" id="usersListControls" style="display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(180px,1fr) minmax(150px,.8fr) minmax(130px,.7fr) auto;gap:10px;align-items:end;margin:0 0 14px">
-          <div class="field"><label for="usersSearch">Buscar</label><input id="usersSearch" type="search" placeholder="Nome ou usuário"></div>
-          <div class="field"><label for="usersUnitFilter">Unidade</label><select id="usersUnitFilter"><option value="">Todas as unidades</option></select></div>
-          <div class="field"><label for="usersRoleFilter">Função</label><select id="usersRoleFilter"><option value="">Todas</option><option value="user">Usuário</option><option value="admin_unidade">Administrador de Unidade</option><option value="admin">Administrador</option><option value="super_admin">Super Administrador</option></select></div>
-          <div class="field"><label for="usersStatusFilter">Status</label><select id="usersStatusFilter"><option value="">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option></select></div>
-          <button type="button" id="usersClearFilters" class="btn btn--outline btn--sm">Limpar filtros</button>
-        </div>
-        <div id="usersTableWrap"><div class="skeleton-loading">Carregando usuários…</div></div>
-        <div id="usersPagination" class="admin-pagination" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:12px 0 22px"></div>
-
-        <form id="addUserForm" class="inline-form">
-          <div class="field">
-            <label for="uName">Nome completo</label>
-            <input type="text" id="uName" required>
-          </div>
-          <div class="field">
-            <label for="uUsername">Usuário (login)</label>
-            <input type="text" id="uUsername" required pattern="[a-z0-9._-]{3,32}" title="Letras minúsculas, números, ponto, hífen ou underline">
-          </div>
-          <div class="field">
-            <label for="uUnidade">Unidade de lotação</label>
-            <select id="uUnidade"><option value="">— selecione —</option></select>
-          </div>
-          <div class="field">
-            <label for="uPassword">Senha provisória</label>
-            <div style="display:flex;gap:8px">
-              <input type="text" id="uPassword" required minlength="8" style="flex:1">
-              <button type="button" id="genTempPasswordNewUser" class="btn btn--outline btn--sm" style="white-space:nowrap">Gerar</button>
-            </div>
-          </div>
-          <div class="field field--full">
-            <label for="uRole">Papel</label>
-            <select id="uRole" style="max-width:320px">
-              <option value="user">Usuário</option>
-              <option value="admin">Administrador</option>
-              <option value="super_admin">Super Administrador</option>
-            </select>
-          </div>
-          <div class="inline-form__actions">
-            <button type="submit" class="btn btn--accent btn--sm">Adicionar usuário</button>
-          </div>
-          <p class="muted" style="grid-column:1/-1;font-size:13px;margin:0">O usuário será obrigado a trocar essa senha provisória no primeiro login.</p>
-          <div id="addUserMsg" class="form-msg" style="grid-column:1/-1"></div>
-        </form>
-      </section>
-
-      <!-- Auditoria -->
-      <section class="panel-section" data-panel="auditoria">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Auditoria</div>
-            <div class="panel-section__desc">Últimas 100 ações administrativas (criação/edição/exclusão de usuários, links, permissões e solicitações). Visível só para o Super Administrador.</div>
-          </div>
-        </div>
-        <div id="auditLogWrap"><div class="skeleton-loading">Carregando…</div></div>
-      </section>
-
-      <!-- Minha conta -->
-      <section class="panel-section" data-panel="conta">
-        <div class="panel-section__head">
-          <div>
-            <div class="panel-section__title">Minha Conta</div>
-            <div class="panel-section__desc">Altere sua própria senha de acesso.</div>
-          </div>
-        </div>
-        <form id="changePasswordForm" style="max-width:340px">
-          <div class="field">
-            <label for="curPass">Senha atual</label>
-            <input type="password" id="curPass" required>
-          </div>
-          <div class="field">
-            <label for="newPass">Nova senha</label>
-            <input type="password" id="newPass" required minlength="8">
-          </div>
-          <div id="changePassMsg" class="form-msg"></div>
-          <button type="submit" class="btn btn--accent">Salvar nova senha</button>
-        </form>
-      </section>
-
-      <section class="panel-section" data-panel="chat-config"><div class="panel-section__head"><div><div class="panel-section__title">Chat e suporte</div><div class="panel-section__desc">Prazos de retenção compartilhados pelo Portal Saúde e eMulti.</div></div></div><form id="chatConfigForm" class="inline-form"><div class="field"><label>Comunicação interna (dias)</label><input id="internalRetention" type="number" min="1" max="3650" value="30"></div><div class="field"><label>Suporte (dias)</label><input id="supportRetention" type="number" min="1" max="3650" value="30"></div><div class="inline-form__actions"><button class="btn btn--accent" type="submit">Salvar prazos</button></div><div id="chatConfigMsg" class="form-msg"></div></form></section>
-
-    </div>
-  
-
-
-</div>
 </main>
 
-<!-- Modal genérico de edição -->
-<div class="modal-backdrop" id="modalBackdrop">
-  <div class="modal" id="modalBox"></div>
-</div>
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
+<script>
+(async () => {
+  const user = await initPortalChrome();
+  if (!user) return;
+  if (!user.regulacao?.administrador) {
+    document.getElementById('accessDenied').style.display = '';
+    return;
+  }
+  document.getElementById('adminContent').style.display = '';
 
-<script src="/js/common.js"></script>
-<script src="/js/admin.js"></script>
+  let todasUnidades = [];
+  let todosUsuarios = [];
+  let equipesCache = [];
+  let especialidadesCache = [];
+
+  function showMsg(id, text, ok = false) {
+    const el = document.getElementById(id);
+    el.className = `form-msg ${ok ? 'is-ok' : 'is-error'}`;
+    el.textContent = text;
+  }
+
+  async function carregarVersoesBanco() {
+    const area = document.getElementById('versoesBancoArea');
+    if (!area) return;
+    const { ok, data } = await apiFetch('/api/admin/versoes');
+    if (!ok) { area.innerHTML = ''; return; }
+    const pv = data.portal?.version || 'Não registrado';
+    const rv = data.regulacao?.version || 'Não registrado';
+    const cls = data.atualizado ? '' : ' is-warning';
+    area.innerHTML = `<div class="notice-box${cls}"><strong>Versões:</strong> Sistema ${escapeHtml(data.app_version)} · Portal DB ${escapeHtml(pv)} · Regulação DB ${escapeHtml(rv)}${data.atualizado ? ' · Bancos atualizados' : ' · Atualização disponível em Diagnóstico.'}</div>`;
+  }
+
+  async function carregarDiagnostico() {
+    const area = document.getElementById('diagnosticoArea');
+    const { ok, data } = await apiFetch('/api/admin/diagnostico');
+    if (!ok) { area.innerHTML = '<div class="notice-box is-error">Não foi possível executar o diagnóstico.</div>'; return; }
+    const d = data.diagnostico;
+    const cards = [
+      ['Banco da Regulação', d.banco_conteudo_ok ? 'OK' : 'Atenção', d.banco_conteudo_ok],
+      ['Cadastro de cidadãos', d.cadastro_cidadao_pronto ? 'Pronto' : 'Atenção', d.cadastro_cidadao_pronto],
+      ['Unidades APS', d.unidades_aps ?? '—', (d.unidades_aps || 0) > 0],
+      ['Equipes ativas', d.equipes_ativas ?? '—', (d.equipes_ativas || 0) > 0],
+      ['Vínculos equipe/unidade', d.vinculos_equipe_unidade ?? '—', (d.vinculos_equipe_unidade || 0) > 0],
+      ['Profissionais com equipe', d.profissionais_com_equipe ?? '—', (d.profissionais_com_equipe || 0) > 0],
+      ['Cadastrantes', d.cadastrantes ?? '—', (d.cadastrantes || 0) > 0],
+      ['Reguladores', d.reguladores ?? '—', true],
+      ['Executores', d.executores ?? '—', true],
+      ['Unidades com emissores', d.agentes_emissores ?? '—', true],
+    ];
+    area.innerHTML = `
+      <div class="admin-summary-grid">
+        ${cards.map(([label, value, good]) => `<div class="admin-summary-card ${good ? 'is-ok' : 'is-warning'}"><strong>${value}</strong><span>${label}</span></div>`).join('')}
+      </div>
+      ${d.avisos.length ? `<div class="notice-box is-warning"><strong>Pontos a verificar:</strong><br>${d.avisos.map((a) => `• ${escapeHtml(a)}`).join('<br>')}</div>` : '<div class="notice-box">Configuração básica sem alertas.</div>'}
+      `;
+
+    // Atualizações de schema são aplicadas administrativamente no D1.
+    await carregarVersoesBanco();
+  }
+
+  async function carregarListasBase() {
+    const [unidResp, usResp, espResp] = await Promise.all([apiFetch('/api/unidades'), apiFetch('/api/admin/usuarios'), apiFetch('/api/especialidades?all=1')]);
+    todasUnidades = unidResp.ok ? (unidResp.data.todas || []) : [];
+    todosUsuarios = usResp.ok ? (usResp.data.usuarios || []) : [];
+    especialidadesCache = espResp.ok ? (espResp.data.especialidades || []).filter((e) => e.ativo) : [];
+
+    document.getElementById('agUnidade').innerHTML = '<option value="">Selecione</option>' +
+      todasUnidades.map((u) => `<option value="${u.code}">${escapeHtml(u.nome)}${u.tipo === 'aps' ? ' (APS)' : ''}</option>`).join('');
+    document.getElementById('agUsuario').innerHTML = '<option value="">Selecione</option>' +
+      todosUsuarios.map((u) => `<option value="${u.id}">${escapeHtml(u.name)} (${escapeHtml(u.username)})</option>`).join('');
+  }
+
+  const accessListState = { page:1, pageSize:20, q:'', unidade:'', funcao:'' };
+  let accessSearchTimer = null;
+
+  function paginationHtml(meta, prefix) {
+    const total = Number(meta?.total || 0);
+    const page = Number(meta?.page || 1);
+    const pages = Number(meta?.pages || 0);
+    const size = Number(meta?.page_size || 20);
+    if (!total) return '<span style="color:var(--muted);font-size:13px">Nenhum registro encontrado.</span>';
+    const first = (page - 1) * size + 1;
+    const last = Math.min(total, page * size);
+    return `<div style="color:var(--muted);font-size:13px">Exibindo ${first}–${last} de ${total}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <label style="color:var(--muted);font-size:13px" for="${prefix}PageSize">Por página</label>
+        <select id="${prefix}PageSize">${[10,20,50,100].map((n)=>`<option value="${n}" ${n===size?'selected':''}>${n}</option>`).join('')}</select>
+        <button class="btn btn--outline btn--sm" type="button" id="${prefix}Prev" ${page<=1?'disabled':''}>Anterior</button>
+        <span style="color:var(--muted);font-size:13px">Página ${page} de ${pages || 1}</span>
+        <button class="btn btn--outline btn--sm" type="button" id="${prefix}Next" ${!pages || page>=pages?'disabled':''}>Próxima</button>
+      </div>`;
+  }
+
+  async function carregarAcessos() {
+    const area = document.getElementById('acessosList');
+    const pager = document.getElementById('accessPagination');
+    area.innerHTML = '<div class="skeleton-loading">Carregando acessos…</div>';
+    const params = new URLSearchParams({ page:String(accessListState.page), page_size:String(accessListState.pageSize) });
+    if (accessListState.q) params.set('q', accessListState.q);
+    if (accessListState.unidade) params.set('unidade', accessListState.unidade);
+    if (accessListState.funcao) params.set('funcao', accessListState.funcao);
+    const { ok, data } = await apiFetch(`/api/admin/acessos?${params.toString()}`);
+    if (!ok) {
+      area.innerHTML = `<div class="notice-box is-warning">${escapeHtml(data?.error || 'Não foi possível carregar os acessos.')}</div>`;
+      if (pager) pager.innerHTML = '';
+      return;
+    }
+    const acessos = data.acessos || [];
+    const meta = data.pagination || {};
+    accessListState.page = Number(meta.page || 1);
+    accessListState.pageSize = Number(meta.page_size || accessListState.pageSize);
+    area.innerHTML = acessos.length ? `<div class="table-wrap"><table class="adm-table"><thead><tr><th>Usuário</th><th>Portal</th><th>Equipe</th><th>Cadastrante</th><th>Regulador</th><th>Executor</th><th>Administrador</th><th></th></tr></thead><tbody>${acessos.map((a) => {
+      const superAdmin = a.role === 'super_admin';
+      const checked = (v) => (superAdmin || v) ? 'checked' : '';
+      const disabled = superAdmin ? 'disabled' : '';
+      const alertas = [];
+      if (a.cadastrante && Number(a.unidades_emissao || 0) === 0) alertas.push('sem unidade de emissão');
+      if ((a.regulador || a.executor) && !a.equipe_id) alertas.push('sem equipe');
+      return `<tr data-access-user="${a.id}">
+        <td><strong>${escapeHtml(a.name)}</strong><br><span style="color:var(--muted);font-size:11px">${escapeHtml(a.username)}</span>${alertas.length ? `<br><span style="font-size:11px;color:#a15c00">${escapeHtml(alertas.join(' · '))}</span>` : ''}</td>
+        <td>${escapeHtml(a.role)}</td>
+        <td>${escapeHtml(a.equipe_nome || '—')}</td>
+        <td><input type="checkbox" data-cap="cadastrante" ${checked(a.cadastrante)} ${disabled}></td>
+        <td><input type="checkbox" data-cap="regulador" ${checked(a.regulador)} ${disabled}></td>
+        <td><input type="checkbox" data-cap="executor" ${checked(a.executor)} ${disabled}></td>
+        <td><input type="checkbox" data-cap="administrador" ${checked(a.administrador)} ${disabled}></td>
+        <td>${superAdmin ? '<span class="badge badge--admin">Total implícito</span>' : '<button class="btn btn--outline btn--sm" type="button" data-save-access>Salvar</button>'}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>` : '<div class="empty-state">Nenhum usuário encontrado com os filtros selecionados.</div>';
+
+    if (pager) {
+      pager.innerHTML = paginationHtml(meta, 'access');
+      document.getElementById('accessPageSize')?.addEventListener('change', (e)=>{ accessListState.pageSize=Number(e.target.value)||20; accessListState.page=1; carregarAcessos(); });
+      document.getElementById('accessPrev')?.addEventListener('click', ()=>{ if(accessListState.page>1){accessListState.page--;carregarAcessos();} });
+      document.getElementById('accessNext')?.addEventListener('click', ()=>{ accessListState.page++;carregarAcessos(); });
+    }
+
+    area.querySelectorAll('[data-save-access]').forEach((btn) => btn.addEventListener('click', async () => {
+      const row = btn.closest('[data-access-user]');
+      const payload = { user_id:Number(row.dataset.accessUser) };
+      row.querySelectorAll('[data-cap]').forEach((cb) => { payload[cb.dataset.cap] = cb.checked; });
+      btn.disabled = true;
+      btn.textContent = 'Salvando…';
+      const resp = await apiFetch('/api/admin/acessos', { method:'POST', body:JSON.stringify(payload) });
+      if (!resp.ok) alert(resp.data?.error || 'Não foi possível salvar o acesso.');
+      await carregarAcessos();
+      await carregarDiagnostico();
+    }));
+  }
+
+  function setupAccessFilters() {
+    const search=document.getElementById('accessSearch');
+    const unit=document.getElementById('accessUnitFilter');
+    const fn=document.getElementById('accessFunctionFilter');
+    if (unit) unit.innerHTML='<option value="">Todas as unidades</option>'+todasUnidades.map((u)=>`<option value="${escapeAttr(u.code)}">${escapeHtml(u.nome)}</option>`).join('');
+    search?.addEventListener('input',()=>{ clearTimeout(accessSearchTimer); accessSearchTimer=setTimeout(()=>{accessListState.q=search.value.trim();accessListState.page=1;carregarAcessos();},300); });
+    unit?.addEventListener('change',()=>{accessListState.unidade=unit.value;accessListState.page=1;carregarAcessos();});
+    fn?.addEventListener('change',()=>{accessListState.funcao=fn.value;accessListState.page=1;carregarAcessos();});
+    document.getElementById('accessClearFilters')?.addEventListener('click',()=>{
+      accessListState.q='';accessListState.unidade='';accessListState.funcao='';accessListState.page=1;
+      if(search)search.value='';if(unit)unit.value='';if(fn)fn.value='';carregarAcessos();
+    });
+  }
+
+
+
+  const baseProfessionalState = { page:1, pageSize:20, q:'', unidade:'', especialidade:'', vinculo:'' };
+  let baseProfessionalSearchTimer = null;
+  let baseProfessionalFilterOptionsLoaded = false;
+
+  async function carregarProfissionaisBase() {
+    const area = document.getElementById('profissionaisBaseList');
+    const pager = document.getElementById('baseProfessionalPagination');
+    area.innerHTML = '<div class="skeleton-loading">Carregando profissionais…</div>';
+    const params = new URLSearchParams({ page:String(baseProfessionalState.page), page_size:String(baseProfessionalState.pageSize) });
+    if (baseProfessionalState.q) params.set('q', baseProfessionalState.q);
+    if (baseProfessionalState.unidade) params.set('unidade', baseProfessionalState.unidade);
+    if (baseProfessionalState.especialidade) params.set('especialidade', baseProfessionalState.especialidade);
+    if (baseProfessionalState.vinculo) params.set('vinculo', baseProfessionalState.vinculo);
+    const { ok, data } = await apiFetch(`/api/admin/profissionais-base?${params.toString()}`);
+    if (!ok) {
+      area.innerHTML = `<div class="notice-box is-warning">${escapeHtml(data?.error || 'Execute a atualização do portal-saude-db para carregar a relação de profissionais.')}</div>`;
+      if (pager) pager.innerHTML='';
+      return;
+    }
+    if (!baseProfessionalFilterOptionsLoaded && data.filtros) {
+      const unit=document.getElementById('baseProfessionalUnit');
+      const spec=document.getElementById('baseProfessionalSpecialty');
+      if(unit) unit.innerHTML='<option value="">Todas as unidades</option>'+(data.filtros.unidades||[]).map((u)=>`<option value="${escapeAttr(u)}">${escapeHtml(u)}</option>`).join('');
+      if(spec) spec.innerHTML='<option value="">Todas</option>'+(data.filtros.especialidades||[]).map((s)=>`<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join('');
+      baseProfessionalFilterOptionsLoaded=true;
+    }
+    const dias = {1:'Seg',2:'Ter',3:'Qua',4:'Qui',5:'Sex'};
+    const itens = data.profissionais || [];
+    const meta = data.pagination || {};
+    baseProfessionalState.page=Number(meta.page||1);
+    baseProfessionalState.pageSize=Number(meta.page_size||baseProfessionalState.pageSize);
+    area.innerHTML = itens.length ? `
+      <div style="overflow:auto">
+        <table class="adm-table">
+          <thead><tr><th>Profissional</th><th>Função / especialidade</th><th>Unidades / escala de referência</th><th>Status de acesso</th><th>Usuário do Portal</th><th></th></tr></thead>
+          <tbody>${itens.map((p) => {
+            const lotacoes = (p.lotacoes || []).map((l) => {
+              const hs = (l.horarios || []).map((h) => `${dias[h.dia_semana] || h.dia_semana} ${h.hora_inicio}–${h.hora_fim}`).join(' · ');
+              return `<div style="margin-bottom:5px"><strong>${escapeHtml(l.unidade_nome)}</strong>${hs ? `<br><span style="color:var(--muted);font-size:11px">${escapeHtml(hs)}</span>` : ''}</div>`;
+            }).join('');
+            const linked=!!p.user_id;
+            return `<tr data-base-prof="${p.id}">
+              <td><strong>${escapeHtml(p.nome)}</strong></td>
+              <td>${escapeHtml(p.especialidade)}</td>
+              <td style="min-width:300px">${lotacoes || '—'}</td>
+              <td>${linked ? '<span class="badge badge--user">Acesso vinculado</span>' : '<span class="badge">Sem acesso</span>'}</td>
+              <td style="min-width:230px"><select data-base-user><option value="">Sem vínculo</option>${todosUsuarios.map((u) => `<option value="${u.id}" ${Number(p.user_id)===Number(u.id)?'selected':''}>${escapeHtml(u.name)} (${escapeHtml(u.username)})</option>`).join('')}</select></td>
+              <td><button class="btn btn--outline btn--sm" data-save-base>Salvar vínculo</button></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>` : '<div class="empty-state">Nenhum profissional encontrado com os filtros selecionados.</div>';
+
+    if (pager) {
+      pager.innerHTML=paginationHtml(meta,'baseProfessional');
+      document.getElementById('baseProfessionalPageSize')?.addEventListener('change',(e)=>{baseProfessionalState.pageSize=Number(e.target.value)||20;baseProfessionalState.page=1;carregarProfissionaisBase();});
+      document.getElementById('baseProfessionalPrev')?.addEventListener('click',()=>{if(baseProfessionalState.page>1){baseProfessionalState.page--;carregarProfissionaisBase();}});
+      document.getElementById('baseProfessionalNext')?.addEventListener('click',()=>{baseProfessionalState.page++;carregarProfissionaisBase();});
+    }
+
+    area.querySelectorAll('[data-base-prof]').forEach((row) => {
+      row.querySelector('[data-save-base]').addEventListener('click', async () => {
+        const user_id = row.querySelector('[data-base-user]').value || null;
+        const r = await apiFetch('/api/admin/profissionais-base', {
+          method:'PUT',
+          body:JSON.stringify({ id:Number(row.dataset.baseProf), user_id:user_id ? Number(user_id) : null })
+        });
+        if (!r.ok) return alert(r.data?.error || 'Erro ao salvar vínculo.');
+        await carregarProfissionaisBase();
+      });
+    });
+  }
+
+  function setupBaseProfessionalFilters() {
+    const search=document.getElementById('baseProfessionalSearch');
+    const unit=document.getElementById('baseProfessionalUnit');
+    const spec=document.getElementById('baseProfessionalSpecialty');
+    const link=document.getElementById('baseProfessionalLink');
+    search?.addEventListener('input',()=>{clearTimeout(baseProfessionalSearchTimer);baseProfessionalSearchTimer=setTimeout(()=>{baseProfessionalState.q=search.value.trim();baseProfessionalState.page=1;carregarProfissionaisBase();},300);});
+    unit?.addEventListener('change',()=>{baseProfessionalState.unidade=unit.value;baseProfessionalState.page=1;carregarProfissionaisBase();});
+    spec?.addEventListener('change',()=>{baseProfessionalState.especialidade=spec.value;baseProfessionalState.page=1;carregarProfissionaisBase();});
+    link?.addEventListener('change',()=>{baseProfessionalState.vinculo=link.value;baseProfessionalState.page=1;carregarProfissionaisBase();});
+    document.getElementById('baseProfessionalClear')?.addEventListener('click',()=>{
+      baseProfessionalState.q='';baseProfessionalState.unidade='';baseProfessionalState.especialidade='';baseProfessionalState.vinculo='';baseProfessionalState.page=1;
+      if(search)search.value='';if(unit)unit.value='';if(spec)spec.value='';if(link)link.value='';carregarProfissionaisBase();
+    });
+  }
+
+
+  async function carregarEquipes() {
+    const { ok, data } = await apiFetch('/api/admin/equipes');
+    const area = document.getElementById('equipesList');
+    if (!ok) { area.innerHTML = '<div class="empty-state">Erro ao carregar equipes.</div>'; return; }
+    equipesCache = data.equipes || [];
+    const unidadesAps = todasUnidades.filter((u) => u.tipo === 'aps');
+    const assigned = new Map();
+    equipesCache.forEach((eq) => eq.profissionais.forEach((p) => assigned.set(Number(p.id), eq)));
+
+    area.innerHTML = equipesCache.map((eq) => `
+      <div class="adm-card ${eq.ativo ? '' : 'is-inactive'}" data-equipe-id="${eq.id}">
+        <div class="adm-card__head">
+          <div><div class="adm-card__title">${escapeHtml(eq.nome)} ${eq.ativo ? '' : '<span class="badge badge--inactive">Inativa</span>'}</div></div>
+          <div class="admin-actions-row">
+            <button class="btn btn--outline btn--sm" type="button" data-rename>Renomear</button>
+            <button class="btn btn--outline btn--sm" type="button" data-toggle>${eq.ativo ? 'Desativar' : 'Ativar'}</button>
+          </div>
+        </div>
+        <div style="font-size:13px;color:#667085;margin-bottom:4px">Unidades cobertas</div>
+        <div>${eq.unidades.map((u) => `<span class="adm-tag">${escapeHtml(u.nome)} <button type="button" data-remove-unidade="${u.code}">×</button></span>`).join('') || '<span style="font-size:13px;color:#999">Nenhuma unidade vinculada</span>'}</div>
+        ${eq.ativo ? `<div class="inline-row" style="margin-top:8px"><select class="add-unidade-sel"><option value="">+ vincular unidade APS</option>${unidadesAps.filter((u) => !eq.unidades.some((x) => x.code === u.code)).map((u) => `<option value="${u.code}">${escapeHtml(u.nome)}</option>`).join('')}</select></div>` : ''}
+        <div style="font-size:13px;color:#667085;margin:14px 0 7px">Profissionais especialistas</div>
+        <div class="prof-list">${eq.profissionais.map((p) => `<div class="prof-editor" data-prof-id="${p.id}"><strong>${escapeHtml(p.name)}</strong><input type="text" data-prof-cargo value="${escapeHtml(p.cargo || '')}" placeholder="Cargo/profissão"><select data-prof-esps multiple size="${Math.min(4, Math.max(2, especialidadesCache.length))}">${especialidadesCache.map((e) => `<option value="${e.id}" ${(p.especialidade_ids || []).includes(Number(e.id)) ? 'selected' : ''}>${escapeHtml(e.nome)}</option>`).join('')}</select><button class="btn btn--outline btn--sm" type="button" data-save-prof>Salvar</button><button class="btn btn--outline btn--sm" type="button" data-remove-prof="${p.id}">Remover</button></div>`).join('') || '<span style="font-size:13px;color:#999">Nenhum profissional vinculado</span>'}</div>
+        ${eq.ativo ? `<div class="prof-add" style="margin-top:10px"><select class="add-prof-sel"><option value="">+ profissional</option>${todosUsuarios.filter((u) => !assigned.has(Number(u.id))).map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}</select><input class="add-prof-cargo" type="text" placeholder="Cargo/profissão"><select class="add-prof-esps" multiple size="${Math.min(4, Math.max(2, especialidadesCache.length))}">${especialidadesCache.map((e) => `<option value="${e.id}">${escapeHtml(e.nome)}</option>`).join('')}</select><button class="btn btn--accent btn--sm add-prof-btn" type="button">Vincular</button></div>` : ''}
+      </div>`).join('') || '<div class="empty-state">Nenhuma equipe cadastrada.</div>';
+
+    area.querySelectorAll('[data-equipe-id]').forEach((card) => {
+      const equipeId = Number(card.dataset.equipeId);
+      const eq = equipesCache.find((x) => Number(x.id) === equipeId);
+      card.querySelector('[data-rename]').addEventListener('click', async () => {
+        const nome = prompt('Novo nome da equipe:', eq.nome);
+        if (!nome || nome.trim() === eq.nome) return;
+        const r = await apiFetch(`/api/admin/equipes/${equipeId}`, { method:'PUT', body:JSON.stringify({ nome:nome.trim() }) });
+        if (!r.ok) alert(r.data?.error || 'Erro ao renomear.');
+        await carregarEquipes();
+      });
+      card.querySelector('[data-toggle]').addEventListener('click', async () => {
+        const r = await apiFetch(`/api/admin/equipes/${equipeId}`, { method:'PUT', body:JSON.stringify({ ativo:!eq.ativo }) });
+        if (!r.ok) alert(r.data?.error || 'Erro ao alterar equipe.');
+        await carregarEquipes();
+        await carregarDiagnostico();
+      });
+      card.querySelectorAll('[data-remove-unidade]').forEach((btn) => btn.addEventListener('click', async () => {
+        const r = await apiFetch(`/api/admin/equipes/${equipeId}/unidades?unidade_code=${encodeURIComponent(btn.dataset.removeUnidade)}`, { method:'DELETE' });
+        if (!r.ok) alert(r.data?.error || 'Erro ao remover unidade.');
+        await carregarEquipes(); await carregarDiagnostico();
+      }));
+      card.querySelectorAll('[data-remove-prof]').forEach((btn) => btn.addEventListener('click', async () => {
+        const r = await apiFetch(`/api/admin/equipes/${equipeId}/profissionais?user_id=${btn.dataset.removeProf}`, { method:'DELETE' });
+        if (!r.ok) alert(r.data?.error || 'Erro ao remover profissional.');
+        await carregarEquipes(); await carregarDiagnostico();
+      }));
+      const us = card.querySelector('.add-unidade-sel');
+      if (us) us.addEventListener('change', async (e) => {
+        if (!e.target.value) return;
+        const r = await apiFetch(`/api/admin/equipes/${equipeId}/unidades`, { method:'POST', body:JSON.stringify({ unidade_code:e.target.value }) });
+        if (!r.ok) alert(r.data?.error || 'Erro ao vincular unidade.');
+        await carregarEquipes(); await carregarDiagnostico();
+      });
+      card.querySelectorAll('[data-save-prof]').forEach((btn) => btn.addEventListener('click', async () => {
+        const row = btn.closest('[data-prof-id]');
+        const especialidade_ids = [...row.querySelector('[data-prof-esps]').selectedOptions].map((o) => Number(o.value));
+        const r = await apiFetch(`/api/admin/equipes/${equipeId}/profissionais`, { method:'PUT', body:JSON.stringify({ user_id:Number(row.dataset.profId), cargo:row.querySelector('[data-prof-cargo]').value.trim(), especialidade_ids }) });
+        if (!r.ok) alert(r.data?.error || 'Erro ao salvar profissional.'); else await carregarEquipes();
+      }));
+      const addBtn = card.querySelector('.add-prof-btn');
+      if (addBtn) addBtn.addEventListener('click', async () => {
+        const ps = card.querySelector('.add-prof-sel');
+        const cargo = card.querySelector('.add-prof-cargo').value.trim();
+        const especialidade_ids = [...card.querySelector('.add-prof-esps').selectedOptions].map((o) => Number(o.value));
+        if (!ps.value || !cargo || !especialidade_ids.length) return alert('Selecione profissional, cargo e ao menos uma especialidade.');
+        const r = await apiFetch(`/api/admin/equipes/${equipeId}/profissionais`, { method:'POST', body:JSON.stringify({ user_id:Number(ps.value), cargo, especialidade_ids }) });
+        if (!r.ok) alert(r.data?.error || 'Erro ao vincular profissional.');
+        await carregarEquipes(); await carregarDiagnostico();
+      });
+    });
+  }
+
+  document.getElementById('btnCriarEquipe').addEventListener('click', async () => {
+    const nome = document.getElementById('novaEquipeNome').value.trim();
+    if (!nome) return showMsg('equipeMsg', 'Informe o nome da equipe.');
+    const { ok, data } = await apiFetch('/api/admin/equipes', { method:'POST', body:JSON.stringify({ nome }) });
+    if (!ok) return showMsg('equipeMsg', data?.error || 'Erro ao criar equipe.');
+    document.getElementById('novaEquipeNome').value = '';
+    showMsg('equipeMsg', 'Equipe criada.', true);
+    await carregarEquipes(); await carregarDiagnostico();
+  });
+
+  async function carregarAgentes() {
+    const { ok, data } = await apiFetch('/api/admin/agentes');
+    const area = document.getElementById('agentesList');
+    if (!ok) { area.innerHTML = '<div class="empty-state">Erro ao carregar vínculos.</div>'; return; }
+    const agentes = data.agentes || [];
+    area.innerHTML = agentes.length ? `<table class="adm-table"><thead><tr><th>Usuário</th><th>Unidade</th><th>Emite</th><th></th></tr></thead><tbody>${agentes.map((a) => `<tr><td>${escapeHtml(a.user_name)}</td><td>${escapeHtml(a.unidade_nome)}</td><td>${a.pode_emitir ? 'Sim' : '—'}</td><td><button class="btn btn--outline btn--sm" data-user="${a.user_id}" data-unidade="${a.unidade_code}">Remover</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhum vínculo de emissão/execução cadastrado.</div>';
+    area.querySelectorAll('button[data-user]').forEach((btn) => btn.addEventListener('click', async () => {
+      await apiFetch(`/api/admin/agentes?user_id=${btn.dataset.user}&unidade_code=${encodeURIComponent(btn.dataset.unidade)}`, { method:'DELETE' });
+      await carregarAgentes(); await carregarDiagnostico();
+    }));
+  }
+
+  document.getElementById('btnSalvarAgente').addEventListener('click', async () => {
+    const payload = {
+      user_id:Number(document.getElementById('agUsuario').value),
+      unidade_code:document.getElementById('agUnidade').value,
+      pode_emitir:document.getElementById('agPodeEmitir').checked,
+      pode_executar:false,
+    };
+    if (!payload.user_id || !payload.unidade_code) return showMsg('agenteMsg', 'Selecione usuário e unidade.');
+    const { ok, data } = await apiFetch('/api/admin/agentes', { method:'POST', body:JSON.stringify(payload) });
+    if (!ok) return showMsg('agenteMsg', data?.error || 'Erro ao salvar vínculo.');
+    showMsg('agenteMsg', 'Vínculo salvo.', true);
+    await carregarAgentes(); await carregarDiagnostico();
+  });
+
+  async function carregarEspecialidades() {
+    const { ok, data } = await apiFetch('/api/especialidades?all=1');
+    const area = document.getElementById('especialidadesList');
+    if (!ok) { area.innerHTML = '<div class="empty-state">Erro ao carregar especialidades.</div>'; return; }
+    const itens = data.especialidades || [];
+    area.innerHTML = itens.length ? `<table class="adm-table"><thead><tr><th>Nome</th><th>Duração padrão</th><th>Ordem</th><th>Ativa</th><th></th></tr></thead><tbody>${itens.map((e) => `<tr data-esp-id="${e.id}"><td><input type="text" data-nome value="${escapeAttr(e.nome)}"></td><td style="width:140px"><input type="number" data-duracao min="5" max="480" step="5" value="${e.duracao_padrao_min || 30}"></td><td style="width:100px"><input type="number" data-ordem value="${e.sort_order}"></td><td style="width:80px"><input type="checkbox" data-ativo ${e.ativo ? 'checked' : ''}></td><td style="width:100px"><button class="btn btn--outline btn--sm" data-save>Salvar</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty-state">Nenhuma especialidade cadastrada.</div>';
+    area.querySelectorAll('[data-esp-id]').forEach((row) => row.querySelector('[data-save]').addEventListener('click', async () => {
+      const id = row.dataset.espId;
+      const payload = { nome:row.querySelector('[data-nome]').value.trim(), duracao_padrao_min:Number(row.querySelector('[data-duracao]').value)||30, sort_order:Number(row.querySelector('[data-ordem]').value)||0, ativo:row.querySelector('[data-ativo]').checked };
+      const r = await apiFetch(`/api/especialidades/${id}`, { method:'PUT', body:JSON.stringify(payload) });
+      if (!r.ok) alert(r.data?.error || 'Erro ao salvar especialidade.');
+      else await carregarEspecialidades();
+    }));
+  }
+
+  document.getElementById('btnCriarEsp').addEventListener('click', async () => {
+    const nome = document.getElementById('novaEspNome').value.trim();
+    if (!nome) return showMsg('espMsg', 'Informe o nome da especialidade.');
+    const duracao_padrao_min = Number(document.getElementById('novaEspDuracao').value || 30); const { ok, data } = await apiFetch('/api/especialidades', { method:'POST', body:JSON.stringify({ nome, duracao_padrao_min }) });
+    if (!ok) return showMsg('espMsg', data?.error || 'Erro ao adicionar especialidade.');
+    document.getElementById('novaEspNome').value = '';
+    showMsg('espMsg', 'Especialidade adicionada.', true);
+    await carregarEspecialidades();
+  });
+
+  async function carregarLinkIcons() {
+    const area = document.getElementById('linkIconsList');
+    const { ok, data } = await apiFetch('/api/admin/link-icons');
+    if (!ok) {
+      area.innerHTML = `<div class="notice-box is-warning">${escapeHtml(data?.error || 'Não foi possível carregar os ícones.')}</div>`;
+      return;
+    }
+    const labels = { links:'Grade', document:'Documento', book:'Manual/Livro', tools:'Ferramenta', calendar:'Calendário', message:'Mensagem', hospital:'Saúde', chart:'Relatório', patients:'Pessoas', queue:'Lista/Fila', info:'Informação', external:'Link externo' };
+    const items = (data.links || []).filter((l) => String(l.title).toLowerCase() !== 'regulação de vagas');
+    const defaultIcon = { ferramenta:'tools', documento:'document', manual:'book' };
+    area.innerHTML = items.length ? `<table class="adm-table"><thead><tr><th>Link do Portal</th><th>Categoria</th><th>Ícone no eMulti</th></tr></thead><tbody>${items.map((l) => { const currentIcon = l.icon_key || defaultIcon[l.category] || 'links'; return `<tr data-link-id="${l.id}"><td><strong>${escapeHtml(l.title)}</strong><br><span style="color:var(--muted);font-size:11px">${escapeHtml(l.url)}</span></td><td>${escapeHtml(l.category)}</td><td><div class="icon-choice"><span class="icon-preview">${appIconSvg(currentIcon)}</span><select data-icon>${window.APP_ICON_KEYS.map((k) => `<option value="${k}" ${currentIcon === k ? 'selected' : ''}>${labels[k] || k}</option>`).join('')}</select></div></td></tr>`; }).join('')}</tbody></table>` : '<div class="empty-state">Nenhum link cadastrado no Portal.</div>';
+    area.querySelectorAll('[data-link-id]').forEach((row) => {
+      const sel = row.querySelector('[data-icon]');
+      sel.addEventListener('change', async () => {
+        row.querySelector('.icon-preview').innerHTML = appIconSvg(sel.value);
+        const r = await apiFetch('/api/admin/link-icons', { method:'POST', body:JSON.stringify({ link_id:Number(row.dataset.linkId), icon_key:sel.value }) });
+        if (!r.ok) alert(r.data?.error || 'Erro ao salvar ícone.');
+      });
+    });
+  }
+
+  await carregarListasBase();
+  setupAccessFilters();
+  setupBaseProfessionalFilters();
+  await Promise.all([carregarDiagnostico(), carregarAcessos(), carregarProfissionaisBase(), carregarEquipes(), carregarAgentes(), carregarEspecialidades(), carregarLinkIcons()]);
+})();
+</script>
 </body>
 </html>

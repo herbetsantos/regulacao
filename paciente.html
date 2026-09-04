@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/js/theme.js"></script>
+<title>Pacientes — eMulti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .reg-search-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:24px; }
+  .reg-search-row .field { margin-bottom:0; min-width:220px; }
+  .reg-form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+  .panel-section { margin-top:24px; }
+  .address-title { grid-column:1/-1; margin-top:4px; padding-top:4px; font-weight:700; color:var(--ink); }
+  .cep-lookup { display:flex; gap:8px; align-items:center; }
+  .cep-lookup input { flex:1; min-width:0; }
+  .cep-status { min-height:18px; margin-top:6px; font-size:12px; color:var(--muted); line-height:1.35; }
+  .cep-status.is-ok { color:var(--accent-dark); }
+  .cep-status.is-warning { color:#80611d; }
+  .cep-status.is-error { color:var(--danger); }
+  .field--span-2 { grid-column:span 2; }
+  @media (max-width:760px) { .field--span-2 { grid-column:auto; } }
+</style>
+<link rel="stylesheet" href="/css/theme.css">
+</head>
+<body>
+<div id="app-topbar"></div>
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">Regulação de Vagas</div>
+    <h1 class="page__title">Pacientes</h1>
+    <p class="page__subtitle">Busque um cadastro existente ou inclua um novo paciente.</p>
+  </div>
+
+  <div id="configAlert"></div>
+
+  <div class="reg-search-row">
+    <div class="field"><label for="searchCpf">CPF</label><input type="text" id="searchCpf" placeholder="000.000.000-00" maxlength="14"></div>
+    <div class="field"><label for="searchNome">ou Nome</label><input type="text" id="searchNome" placeholder="Nome do paciente"></div>
+    <button class="btn btn--accent" id="btnSearch" type="button">Buscar</button>
+    <button class="btn btn--outline" id="btnNovoPaciente" type="button">+ Novo paciente</button>
+  </div>
+
+  <div id="resultArea"></div>
+
+  <div class="panel-section" id="formSection" style="display:none">
+    <div class="panel-section__head">
+      <div class="panel-section__title" id="formTitle">Novo paciente</div>
+      <div class="panel-section__desc">Campos com * são obrigatórios.</div>
+    </div>
+    <form id="pacienteForm">
+      <div class="reg-form-grid">
+        <div class="field"><label for="pCpf">CPF *</label><input type="text" id="pCpf" required maxlength="14"></div>
+        <div class="field"><label for="pCns">CNS</label><input type="text" id="pCns" maxlength="15" inputmode="numeric"></div>
+        <div class="field"><label for="pNome">Nome completo *</label><input type="text" id="pNome" required></div>
+        <div class="field"><label for="pNasc">Data de nascimento *</label><input type="date" id="pNasc" required></div>
+        <div class="field"><label for="pSexo">Sexo *</label><select id="pSexo" required><option value="">Selecione</option><option value="F">Feminino</option><option value="M">Masculino</option></select></div>
+        <div class="field"><label for="pUnidade">Unidade de referência (APS) *</label><select id="pUnidade" required><option value="">Selecione</option></select></div>
+        <div class="field"><label for="pTel1">Telefone 1</label><input type="text" id="pTel1" maxlength="15"></div>
+        <div class="field"><label for="pTel2">Telefone 2</label><input type="text" id="pTel2" maxlength="15"></div>
+        <div class="field"><label for="pTel3">Telefone 3</label><input type="text" id="pTel3" maxlength="15"></div>
+        <div class="address-title">Endereço</div>
+        <div class="field">
+          <label for="pCep">CEP</label>
+          <div class="cep-lookup">
+            <input type="text" id="pCep" maxlength="9" inputmode="numeric" autocomplete="postal-code" placeholder="00000-000">
+            <button class="btn btn--outline btn--sm" type="button" id="btnBuscarCep">Buscar CEP</button>
+          </div>
+          <div class="cep-status" id="cepStatus" aria-live="polite">Informe o CEP para preencher o endereço automaticamente pela BrasilAPI.</div>
+        </div>
+        <div class="field field--span-2"><label for="pLogradouro">Logradouro</label><input type="text" id="pLogradouro" autocomplete="address-line1"></div>
+        <div class="field"><label for="pNumero">Número</label><input type="text" id="pNumero" autocomplete="address-line2"></div>
+        <div class="field"><label for="pComplemento">Complemento</label><input type="text" id="pComplemento"></div>
+        <div class="field"><label for="pBairro">Bairro</label><input type="text" id="pBairro"></div>
+        <div class="field"><label for="pMunicipio">Município</label><input type="text" id="pMunicipio" autocomplete="address-level2"></div>
+        <div class="field"><label for="pUf">UF</label><input type="text" id="pUf" maxlength="2" autocomplete="address-level1" style="text-transform:uppercase"></div>
+      </div>
+      <div class="form-msg" id="formMsg"></div>
+      <div class="inline-form__actions" style="margin-top:16px">
+        <button class="btn btn--accent" type="submit" id="btnSalvarPaciente">Salvar paciente</button>
+        <button class="btn btn--outline" type="button" id="btnNovaGuiaAtalho" style="display:none">Criar guia para este paciente</button>
+      </div>
+    </form>
+  </div>
+</main>
+
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
+<script>
+(async () => {
+  const user = await initPortalChrome();
+  if (!user) return;
+  const access = user.regulacao || {};
+  const podeCadastrar = !!(access.cadastrante || access.administrador);
+  const btnNovoTopo = document.getElementById('btnNovoPaciente');
+  if (btnNovoTopo) btnNovoTopo.style.display = podeCadastrar ? '' : 'none';
+
+  const paramsUrl = new URLSearchParams(window.location.search);
+  const retornoGuia = paramsUrl.get('retorno') === 'guia';
+  const cpfInicial = onlyDigits(paramsUrl.get('cpf') || '');
+
+  const apsSel = document.getElementById('pUnidade');
+  const unidResp = await apiFetch('/api/unidades');
+  const unidadeNome = {};
+  let cadastroDisponivel = false;
+  if (unidResp.ok) {
+    (unidResp.data.aps || []).forEach((u) => {
+      unidadeNome[u.code] = u.nome;
+      apsSel.insertAdjacentHTML('beforeend', `<option value="${u.code}">${escapeHtml(u.nome)}</option>`);
+    });
+    cadastroDisponivel = (unidResp.data.aps || []).length > 0;
+    if (!cadastroDisponivel) {
+      document.getElementById('configAlert').innerHTML = '<div class="notice-box is-warning">Nenhuma unidade está classificada como APS. O administrador precisa revisar a configuração antes de cadastrar pacientes.</div>';
+    } else if (unidResp.data.configuracao?.aviso) {
+      document.getElementById('configAlert').innerHTML = `<div class="notice-box is-warning"><strong>Compatibilidade ativa:</strong> ${escapeHtml(unidResp.data.configuracao.aviso)}</div>`;
+    }
+  } else {
+    document.getElementById('configAlert').innerHTML = `<div class="notice-box is-error">Não foi possível carregar as unidades de referência. ${escapeHtml(unidResp.data?.error || 'Verifique a migração do banco do Portal.')}</div>`;
+  }
+
+  document.getElementById('searchCpf').addEventListener('input', (e) => { e.target.value = maskCPF(e.target.value); });
+  document.getElementById('pCpf').addEventListener('input', (e) => { e.target.value = maskCPF(e.target.value); });
+  document.getElementById('pCns').addEventListener('input', (e) => { e.target.value = onlyDigits(e.target.value).slice(0, 15); });
+  ['pTel1','pTel2','pTel3'].forEach((id) => document.getElementById(id).addEventListener('input', (e) => { e.target.value = maskPhone(e.target.value); }));
+
+  function maskCEP(value) {
+    const digits = onlyDigits(value).slice(0, 8);
+    return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+  }
+
+  const cepInput = document.getElementById('pCep');
+  const cepStatus = document.getElementById('cepStatus');
+  const btnBuscarCep = document.getElementById('btnBuscarCep');
+  let lastCepLookup = '';
+
+  function setCepStatus(text, state = '') {
+    cepStatus.className = `cep-status${state ? ` is-${state}` : ''}`;
+    cepStatus.textContent = text;
+  }
+
+  async function buscarCep() {
+    const cep = onlyDigits(cepInput.value);
+    if (cep.length !== 8) {
+      setCepStatus('Informe um CEP com 8 dígitos.', 'warning');
+      return false;
+    }
+
+    btnBuscarCep.disabled = true;
+    setCepStatus('Consultando CEP…');
+    const { ok, data } = await apiFetch(`/api/cep/${cep}`);
+    btnBuscarCep.disabled = false;
+
+    if (!ok) {
+      setCepStatus(data?.error || 'Não foi possível consultar o CEP. Preencha o endereço manualmente.', 'warning');
+      return false;
+    }
+
+    lastCepLookup = cep;
+    cepInput.value = maskCEP(data.cep || cep);
+    document.getElementById('pLogradouro').value = data.logradouro || '';
+    document.getElementById('pBairro').value = data.bairro || '';
+    document.getElementById('pMunicipio').value = data.municipio || '';
+    document.getElementById('pUf').value = data.uf || '';
+
+    const foraCajamar = String(data.municipio || '').trim().toLowerCase() !== 'cajamar' || String(data.uf || '').toUpperCase() !== 'SP';
+    if (foraCajamar) {
+      setCepStatus(`CEP localizado em ${data.municipio || 'município não informado'}/${data.uf || '--'}. Confira se o endereço está correto.`, 'warning');
+    } else {
+      setCepStatus('CEP localizado pela BrasilAPI. Confira o número e o complemento.', 'ok');
+    }
+    document.getElementById('pNumero').focus();
+    return true;
+  }
+
+  cepInput.addEventListener('input', (e) => {
+    e.target.value = maskCEP(e.target.value);
+    if (onlyDigits(e.target.value) !== lastCepLookup) setCepStatus('Informe o CEP para preencher o endereço automaticamente pela BrasilAPI.');
+  });
+  cepInput.addEventListener('blur', () => {
+    const cep = onlyDigits(cepInput.value);
+    if (cep.length === 8 && cep !== lastCepLookup) buscarCep();
+  });
+  cepInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); buscarCep(); }
+  });
+  btnBuscarCep.addEventListener('click', buscarCep);
+  document.getElementById('pUf').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2); });
+
+  let currentCpf = null;
+
+  function showForm(paciente = null, prefillCpf = '') {
+    if (!podeCadastrar) {
+      document.getElementById('configAlert').innerHTML = '<div class="notice-box is-warning">Seu perfil permite consultar cidadãos, mas não cadastrar ou editar. Solicite a responsabilidade <strong>Cadastrante</strong> a um administrador da Regulação.</div>';
+      return;
+    }
+    const section = document.getElementById('formSection');
+    const title = document.getElementById('formTitle');
+    const atalho = document.getElementById('btnNovaGuiaAtalho');
+    const form = document.getElementById('pacienteForm');
+    // .panel-section é ocultada globalmente pelo CSS administrativo.
+    // O formulário de paciente precisa forçar sua exibição ao ser aberto.
+    section.classList.add('is-active');
+    section.style.display = 'block';
+    form.reset();
+    document.getElementById('formMsg').className = 'form-msg';
+    document.getElementById('formMsg').textContent = '';
+
+    if (paciente) {
+      title.textContent = `Editar paciente — ${paciente.nome}`;
+      currentCpf = paciente.cpf;
+      document.getElementById('pCpf').value = maskCPF(paciente.cpf);
+      document.getElementById('pCns').value = paciente.cns || '';
+      document.getElementById('pCpf').disabled = true;
+      document.getElementById('pNome').value = paciente.nome;
+      document.getElementById('pNasc').value = paciente.data_nascimento;
+      document.getElementById('pSexo').value = paciente.sexo;
+      apsSel.value = paciente.unidade_referencia_code;
+      document.getElementById('pTel1').value = maskPhone(paciente.tel1 || '');
+      document.getElementById('pTel2').value = maskPhone(paciente.tel2 || '');
+      document.getElementById('pTel3').value = maskPhone(paciente.tel3 || '');
+      document.getElementById('pCep').value = maskCEP(paciente.cep || '');
+      document.getElementById('pLogradouro').value = paciente.logradouro || ((!paciente.cep && paciente.endereco) ? paciente.endereco : '');
+      document.getElementById('pNumero').value = paciente.numero || '';
+      document.getElementById('pComplemento').value = paciente.complemento || '';
+      document.getElementById('pBairro').value = paciente.bairro || '';
+      document.getElementById('pMunicipio').value = paciente.municipio || '';
+      document.getElementById('pUf').value = paciente.uf || '';
+      lastCepLookup = onlyDigits(paciente.cep || '');
+      setCepStatus(lastCepLookup ? 'Endereço carregado do cadastro. Use Buscar CEP para atualizar os dados.' : 'Informe o CEP para preencher o endereço automaticamente pela BrasilAPI.');
+      atalho.style.display = '';
+      atalho.onclick = () => { window.location.href = `/guia-nova.html?cpf=${paciente.cpf}`; };
+    } else {
+      title.textContent = 'Novo paciente';
+      currentCpf = null;
+      document.getElementById('pCpf').disabled = false;
+      if (prefillCpf) document.getElementById('pCpf').value = maskCPF(prefillCpf);
+      lastCepLookup = '';
+      setCepStatus('Informe o CEP para preencher o endereço automaticamente pela BrasilAPI.');
+      atalho.style.display = 'none';
+    }
+
+    document.getElementById('btnSalvarPaciente').disabled = !cadastroDisponivel;
+    section.scrollIntoView({ behavior:'smooth', block:'start' });
+  }
+
+  async function doSearch() {
+    const cpf = onlyDigits(document.getElementById('searchCpf').value);
+    const nome = document.getElementById('searchNome').value.trim();
+    const area = document.getElementById('resultArea');
+    area.innerHTML = '';
+    if (!cpf && !nome) return;
+    if (cpf && cpf.length !== 11) { area.innerHTML = '<div class="notice-box is-warning">Informe os 11 dígitos do CPF.</div>'; return; }
+
+    const params = new URLSearchParams();
+    if (cpf) params.set('cpf', cpf); else params.set('q', nome);
+    const { ok, data } = await apiFetch(`/api/pacientes?${params.toString()}`);
+    if (!ok) { area.innerHTML = `<div class="notice-box is-error">${escapeHtml(data?.error || 'Erro ao buscar paciente.')}</div>`; return; }
+    const pacientes = data.pacientes || [];
+
+    if (!pacientes.length) {
+      if (podeCadastrar) {
+        area.innerHTML = '<div class="empty-state">Paciente não encontrado. O formulário de novo cadastro foi aberto abaixo.</div>';
+        showForm(null, cpf);
+      } else {
+        area.innerHTML = '<div class="empty-state">Cidadão não encontrado. Seu perfil não possui a responsabilidade Cadastrante para incluir um novo cadastro.</div>';
+      }
+      return;
+    }
+
+    area.innerHTML = `<div class="table-wrap"><table><thead><tr><th>CPF</th><th>Nome</th><th>Nascimento</th><th>Unidade de referência</th><th></th></tr></thead><tbody>${pacientes.map((p) => `<tr><td>${maskCPF(p.cpf)}</td><td>${escapeHtml(p.nome)}</td><td>${formatDateBR(p.data_nascimento)}</td><td>${escapeHtml(unidadeNome[p.unidade_referencia_code] || p.unidade_referencia_code)}</td><td>${podeCadastrar ? `<button class="btn btn--outline btn--sm" data-cpf="${p.cpf}">Editar</button>` : '<span style="color:var(--muted);font-size:12px">Somente consulta</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+    area.querySelectorAll('button[data-cpf]').forEach((btn) => btn.addEventListener('click', () => showForm(pacientes.find((p) => p.cpf === btn.dataset.cpf))));
+  }
+
+  document.getElementById('btnSearch').addEventListener('click', doSearch);
+  document.getElementById('searchNome').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+  document.getElementById('searchCpf').addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+  document.getElementById('btnNovoPaciente').addEventListener('click', () => showForm(null, onlyDigits(document.getElementById('searchCpf').value)));
+
+  document.getElementById('pacienteForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('formMsg');
+    msg.className = 'form-msg'; msg.textContent = '';
+    const payload = {
+      cpf:document.getElementById('pCpf').value,
+      cns:document.getElementById('pCns').value,
+      nome:document.getElementById('pNome').value.trim(),
+      data_nascimento:document.getElementById('pNasc').value,
+      sexo:document.getElementById('pSexo').value,
+      unidade_referencia_code:apsSel.value,
+      tel1:document.getElementById('pTel1').value,
+      tel2:document.getElementById('pTel2').value,
+      tel3:document.getElementById('pTel3').value,
+      cep:document.getElementById('pCep').value,
+      logradouro:document.getElementById('pLogradouro').value.trim(),
+      numero:document.getElementById('pNumero').value.trim(),
+      complemento:document.getElementById('pComplemento').value.trim(),
+      bairro:document.getElementById('pBairro').value.trim(),
+      municipio:document.getElementById('pMunicipio').value.trim(),
+      uf:document.getElementById('pUf').value.trim(),
+    };
+    const url = currentCpf ? `/api/pacientes/${currentCpf}` : '/api/pacientes';
+    const method = currentCpf ? 'PUT' : 'POST';
+    const btn = document.getElementById('btnSalvarPaciente');
+    btn.disabled = true;
+    const { ok, data } = await apiFetch(url, { method, body:JSON.stringify(payload) });
+    btn.disabled = false;
+    if (!ok) {
+      msg.className='form-msg is-error';
+      msg.textContent = data?.error || 'Erro ao salvar paciente.';
+      if (data?.codigo) msg.textContent += ` [${data.codigo}]`;
+      return;
+    }
+    showForm(data.paciente);
+    const finalMsg = document.getElementById('formMsg');
+    finalMsg.className='form-msg is-ok';
+    finalMsg.textContent = retornoGuia ? 'Paciente salvo. Agora você pode criar a guia.' : 'Paciente salvo com sucesso.';
+  });
+
+  if (cpfInicial) {
+    document.getElementById('searchCpf').value = maskCPF(cpfInicial);
+    await doSearch();
+  }
+})();
+</script>
+</body>
+</html>

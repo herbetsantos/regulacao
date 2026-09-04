@@ -1,20 +1,370 @@
-
-Index · HTML
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<script src="/js/theme.js"></script>
 <meta charset="UTF-8">
-<meta name="google-site-verification" content="B10lwzARXdaUTRUQrRj9bt878Htx8shXtDS1tbUJhlk" />
-<title>Portal Saúde Cajamar</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="/js/theme.js"></script>
+<title>Regulação de Vagas — Portal Saúde Cajamar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+<style>
+  .queue-toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .queue-search { flex:1 1 520px; display:flex; gap:8px; align-items:flex-end; }
+  .queue-search .field { flex:1; margin:0; }
+  .queue-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .advanced-filters { display:none; border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; background:var(--surface); }
+  .advanced-filters.is-open { display:block; }
+  .advanced-grid { display:grid; grid-template-columns:repeat(4,minmax(170px,1fr)); gap:12px; }
+  .advanced-grid .field { margin:0; }
+  .advanced-footer { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+  .queue-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:4px 0 10px; color:var(--muted); font-size:13px; }
+  .queue-table { table-layout:fixed; width:100%; min-width:930px; border-collapse:separate; border-spacing:0; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); }
+  .queue-table th, .queue-table td { vertical-align:middle; text-align:left !important; padding:12px 14px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .queue-table thead th { background:color-mix(in srgb, var(--surface) 92%, var(--primary) 8%); font-size:12px; font-weight:700; color:var(--ink); }
+  .queue-table th:last-child, .queue-table td:last-child { border-right:0; }
+  .queue-table tbody tr:last-child td { border-bottom:0; }
+  .queue-table tbody tr:hover td { background:color-mix(in srgb, var(--surface) 96%, var(--primary) 4%); }
+  .queue-table td:last-child { text-align:center !important; }
+  .table-wrap { overflow-x:auto; border-radius:10px; }
+  .queue-table th:nth-child(1) { width:14%; }
+  .queue-table th:nth-child(2) { width:27%; }
+  .queue-table th:nth-child(3) { width:17%; }
+  .queue-table th:nth-child(4) { width:23%; }
+  .queue-table th:nth-child(5) { width:13%; }
+  .queue-table th:nth-child(6) { width:6%; }
+  .patient-cell strong, .request-cell strong { display:block; font-weight:600; color:var(--ink); }
+  .patient-cell small, .request-cell small { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
+  .guide-code { font-weight:700; color:var(--primary); white-space:nowrap; }
+  .queue-pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding-top:14px; }
+  .queue-pages { display:flex; align-items:center; gap:6px; }
+  .queue-pages .btn { min-width:36px; padding-left:10px; padding-right:10px; }
+  .queue-pages .is-current { background:var(--primary); color:#fff; border-color:var(--primary); }
+  .page-size-wrap { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; }
+  .page-size-wrap select { width:auto; min-width:76px; }
+  @media (max-width:980px) { .advanced-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:620px) { .advanced-grid { grid-template-columns:1fr; } .queue-search { flex-basis:100%; } }
+</style>
 <link rel="stylesheet" href="/css/theme.css">
 </head>
 <body>
+<div id="app-topbar"></div>
+
+<main class="page">
+  <div class="page__header">
+    <div class="eyebrow">Regulação de Vagas</div>
+    <h1 class="page__title">Regulação e Pesquisa de Guias</h1>
+    <p class="page__subtitle">Consulte encaminhamentos e trabalhe as filas conforme sua responsabilidade.</p>
+  </div>
+
+  <div class="queue-toolbar">
+    <div class="queue-search">
+      <div class="field">
+        <label for="fBusca">Buscar</label>
+        <input id="fBusca" type="search" placeholder="Número da guia, CPF ou nome do paciente" autocomplete="off">
+      </div>
+      <button class="btn btn--outline" type="button" id="btnBuscar">Buscar</button>
+    </div>
+    <div class="queue-actions">
+      <button class="btn btn--outline" type="button" id="btnAdvanced" aria-expanded="false">Filtros avançados</button>
+      <button class="btn btn--outline" type="button" id="btnExportar">Exportar CSV</button>
+      <button class="btn btn--outline" type="button" id="btnImportar">Importar CSV</button>
+      <input id="arquivoImportacao" type="file" accept=".csv,text/csv" hidden>
+      <a class="btn btn--accent" id="btnNovaGuiaHome" href="/guia-nova.html">+ Nova guia</a>
+    </div>
+  </div>
+
+  <section class="advanced-filters" id="advancedFilters" aria-label="Filtros avançados">
+    <div class="advanced-grid">
+      <div class="field">
+        <label for="fSituacao">Situação</label>
+        <select id="fSituacao">
+          <option value="">Todas</option>
+          <option value="aguardando_autorizacao">Aguardando autorização</option>
+          <option value="lista_espera">Em lista de espera</option>
+          <option value="em_atendimento">Em atendimento</option>
+          <option value="concluido">Concluído</option>
+          <option value="negado">Negado</option>
+        </select>
+      </div>
+      <div class="field"><label for="fEspecialidade">Especialidade</label><select id="fEspecialidade"><option value="">Todas</option></select></div>
+      <div class="field"><label for="fUnidade">Unidade solicitante</label><select id="fUnidade"><option value="">Todas</option></select></div>
+      <div class="field"><label for="fEquipe">Equipe responsável</label><select id="fEquipe"><option value="">Todas</option></select></div>
+      <div class="field"><label for="fProfissional">Profissional requisitante</label><input id="fProfissional" type="text" placeholder="Nome do solicitante"></div>
+      <div class="field"><label for="fDataDe">Solicitada a partir de</label><input id="fDataDe" type="date"></div>
+      <div class="field"><label for="fDataAte">Solicitada até</label><input id="fDataAte" type="date"></div>
+      <div class="field"><label for="fOrdem">Ordenação</label><select id="fOrdem"><option value="recentes">Mais recentes</option><option value="antigas">Mais antigas primeiro</option></select></div>
+    </div>
+    <div class="advanced-footer">
+      <button class="btn btn--outline btn--sm" type="button" id="btnLimpar">Limpar filtros</button>
+      <button class="btn btn--accent btn--sm" type="button" id="btnAplicar">Aplicar filtros</button>
+    </div>
+  </section>
+
+  <div id="listArea"><div class="skeleton-loading">Carregando guias…</div></div>
+</main>
+
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
 <script>
-  fetch('/api/me', { credentials: 'same-origin' })
-    .then((r) => { window.location.replace(r.ok ? '/portal.html' : '/login.html'); })
-    .catch(() => { window.location.replace('/login.html'); });
+(async () => {
+  const user = await initPortalChrome();
+  if (!user) return;
+  const access = user.regulacao || {};
+  const btnNova = document.getElementById('btnNovaGuiaHome');
+  if (btnNova) btnNova.style.display = (access.cadastrante || access.administrador) ? '' : 'none';
+  const btnImportar = document.getElementById('btnImportar');
+  if (btnImportar) btnImportar.style.display = (access.cadastrante || access.administrador) ? '' : 'none';
+
+  const els = {
+    busca: document.getElementById('fBusca'), situacao: document.getElementById('fSituacao'),
+    especialidade: document.getElementById('fEspecialidade'), unidade: document.getElementById('fUnidade'),
+    equipe: document.getElementById('fEquipe'), profissional: document.getElementById('fProfissional'),
+    dataDe: document.getElementById('fDataDe'), dataAte: document.getElementById('fDataAte'), ordem: document.getElementById('fOrdem'),
+    advanced: document.getElementById('advancedFilters'), btnAdvanced: document.getElementById('btnAdvanced')
+  };
+  let page = 1;
+  let pageSize = 20;
+  const formatDateTimeBR = (value) => {
+    if (!value) return '—';
+    const normalized = String(value).includes('T') ? String(value) : `${String(value).replace(' ', 'T')}Z`;
+    const d = new Date(normalized);
+    if (Number.isNaN(d.getTime())) return escapeHtml(String(value));
+    return new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short' }).format(d);
+  };
+
+  const [especResp, unidResp, equipesResp] = await Promise.all([
+    apiFetch('/api/especialidades'), apiFetch('/api/unidades'), apiFetch('/api/equipes')
+  ]);
+  if (especResp.ok) especResp.data.especialidades.forEach((e) => els.especialidade.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(e.nome)}</option>`));
+  if (unidResp.ok) (unidResp.data.todas || []).forEach((u) => els.unidade.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(u.code)}">${escapeHtml(u.nome)}</option>`));
+  if (equipesResp.ok) equipesResp.data.equipes.forEach((eq) => els.equipe.insertAdjacentHTML('beforeend', `<option value="${eq.id}">${escapeHtml(eq.nome)}</option>`));
+
+  function buildParams(includePage = true) {
+    const p = new URLSearchParams();
+    if (els.busca.value.trim()) p.set('q', els.busca.value.trim());
+    if (els.situacao.value) p.set('situacao', els.situacao.value);
+    if (els.especialidade.value) p.set('especialidade_id', els.especialidade.value);
+    if (els.unidade.value) p.set('unidade_solicitante', els.unidade.value);
+    if (els.equipe.value) p.set('equipe_id', els.equipe.value);
+    if (els.profissional.value.trim()) p.set('medico_solicitante', els.profissional.value.trim());
+    if (els.dataDe.value) p.set('data_de', els.dataDe.value);
+    if (els.dataAte.value) p.set('data_ate', els.dataAte.value);
+    if (new URLSearchParams(location.search).get('meus') === '1') p.set('meus', '1');
+    p.set('ordem', els.ordem.value || 'recentes');
+    if (includePage) { p.set('page', String(page)); p.set('page_size', String(pageSize)); }
+    return p;
+  }
+
+  function syncUrl() {
+    const p = buildParams(true);
+    history.replaceState(null, '', `${location.pathname}?${p.toString()}`);
+  }
+
+  function restoreFromUrl() {
+    const p = new URLSearchParams(location.search);
+    els.busca.value = p.get('q') || '';
+    els.situacao.value = p.get('situacao') || '';
+    els.especialidade.value = p.get('especialidade_id') || '';
+    els.unidade.value = p.get('unidade_solicitante') || '';
+    els.equipe.value = p.get('equipe_id') || '';
+    els.profissional.value = p.get('medico_solicitante') || '';
+    els.dataDe.value = p.get('data_de') || '';
+    els.dataAte.value = p.get('data_ate') || '';
+    els.ordem.value = p.get('ordem') || 'recentes';
+    page = Math.max(1, Number(p.get('page')) || 1);
+    pageSize = [10,20,50,100].includes(Number(p.get('page_size'))) ? Number(p.get('page_size')) : 20;
+    const hasAdvanced = ['situacao','especialidade_id','unidade_solicitante','equipe_id','medico_solicitante','data_de','data_ate'].some((k) => p.get(k));
+    if (hasAdvanced) { els.advanced.classList.add('is-open'); els.btnAdvanced.setAttribute('aria-expanded','true'); }
+  }
+
+  function pageButtons(current, totalPages) {
+    const pages = new Set([1, totalPages, current, current-1, current+1].filter((n) => n >= 1 && n <= totalPages));
+    const sorted = [...pages].sort((a,b) => a-b);
+    let html = '';
+    let prev = 0;
+    for (const n of sorted) {
+      if (prev && n - prev > 1) html += '<span style="padding:0 3px;color:var(--muted)">…</span>';
+      html += `<button type="button" class="btn btn--outline btn--sm ${n===current?'is-current':''}" data-page="${n}">${n}</button>`;
+      prev = n;
+    }
+    return html;
+  }
+
+  async function loadGuias() {
+    const area = document.getElementById('listArea');
+    area.innerHTML = '<div class="skeleton-loading">Carregando guias…</div>';
+    syncUrl();
+    const params = buildParams(true);
+    const { ok, data } = await apiFetch(`/api/guias?${params.toString()}`);
+    if (!ok) { area.innerHTML = '<div class="empty-state">Não foi possível carregar as guias.</div>'; return; }
+    const guias = data.guias || [];
+    const total = Number(data.total ?? guias.length);
+    const totalPages = Math.max(1, Number(data.total_pages) || Math.ceil(total / pageSize));
+    if (page > totalPages) { page = totalPages; return loadGuias(); }
+    if (!guias.length) { area.innerHTML = '<div class="empty-state">Nenhuma guia encontrada com os filtros atuais.</div>'; return; }
+
+    const retorno = `${location.pathname}${location.search}`;
+    area.innerHTML = `
+      <div class="queue-summary"><strong>${total.toLocaleString('pt-BR')} encaminhamento${total===1?'':'s'} encontrado${total===1?'':'s'}</strong><span>Página ${page} de ${totalPages}</span></div>
+      <div class="table-wrap">
+        <table class="queue-table">
+          <thead><tr><th>Guia</th><th>Paciente</th><th>Especialidade</th><th>Solicitação</th><th>Situação</th><th></th></tr></thead>
+          <tbody>${guias.map((g) => {
+            const href = `/guia-detalhe.html?id=${g.id}&retorno=${encodeURIComponent(retorno)}`;
+            return `<tr>
+              <td><span class="guide-code">${escapeHtml(formatGuideCode(g))}</span></td>
+              <td class="patient-cell"><strong>${escapeHtml(g.paciente_nome)}</strong><small>CPF ${maskCPF(g.cpf)}</small></td>
+              <td>${escapeHtml(g.especialidade_nome)}</td>
+              <td class="request-cell"><strong>${formatDateTimeBR(g.created_at)}</strong><small>${escapeHtml(g.medico_solicitante || 'Profissional não informado')}</small></td>
+              <td>${situacaoBadgeHtml(g.situacao)}</td>
+              <td><a class="btn btn--outline btn--sm" href="${href}">${(access.regulador || access.administrador) ? 'Regular' : 'Abrir'}</a></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+      <div class="queue-pagination">
+        <div class="page-size-wrap"><span>Itens por página</span><select id="pageSize"><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option></select><span>${((page-1)*pageSize)+1}–${Math.min(page*pageSize,total)} de ${total}</span></div>
+        <div class="queue-pages">
+          <button type="button" class="btn btn--outline btn--sm" data-page="${Math.max(1,page-1)}" ${page<=1?'disabled':''}>‹</button>
+          ${pageButtons(page,totalPages)}
+          <button type="button" class="btn btn--outline btn--sm" data-page="${Math.min(totalPages,page+1)}" ${page>=totalPages?'disabled':''}>›</button>
+        </div>
+      </div>`;
+    const ps = document.getElementById('pageSize'); ps.value = String(pageSize);
+    ps.addEventListener('change', () => { pageSize = Number(ps.value); page = 1; loadGuias(); });
+    area.querySelectorAll('[data-page]').forEach((b) => b.addEventListener('click', () => { const n=Number(b.dataset.page); if(n && n!==page){page=n;loadGuias();} }));
+  }
+
+  els.btnAdvanced.addEventListener('click', () => {
+    const open = !els.advanced.classList.contains('is-open');
+    els.advanced.classList.toggle('is-open', open); els.btnAdvanced.setAttribute('aria-expanded', String(open));
+  });
+  document.getElementById('btnBuscar').addEventListener('click', () => { page=1; loadGuias(); });
+  els.busca.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); page=1; loadGuias(); } });
+  document.getElementById('btnAplicar').addEventListener('click', () => { page=1; loadGuias(); });
+  document.getElementById('btnLimpar').addEventListener('click', () => {
+    [els.busca,els.situacao,els.especialidade,els.unidade,els.equipe,els.profissional,els.dataDe,els.dataAte].forEach((el) => el.value='');
+    els.ordem.value='recentes'; page=1; loadGuias();
+  });
+
+
+
+  function csvEscape(value) {
+    const s = String(value ?? '');
+    return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }
+
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], field = '', quoted = false;
+    const src = String(text || '').replace(/^\uFEFF/, '');
+    for (let i = 0; i < src.length; i++) {
+      const ch = src[i];
+      if (quoted) {
+        if (ch === '"' && src[i + 1] === '"') { field += '"'; i++; }
+        else if (ch === '"') quoted = false;
+        else field += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === ';') { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field.replace(/\r$/, '')); rows.push(row); row = []; field = ''; }
+      else field += ch;
+    }
+    if (field.length || row.length) { row.push(field.replace(/\r$/, '')); rows.push(row); }
+    return rows.filter((r) => r.some((v) => String(v).trim() !== ''));
+  }
+
+  async function fetchAllFilteredGuides() {
+    const firstParams = buildParams(false);
+    firstParams.set('page', '1');
+    firstParams.set('page_size', '100');
+    const first = await apiFetch(`/api/guias?${firstParams.toString()}`);
+    if (!first.ok) throw new Error(first.data?.error || 'Não foi possível carregar os dados para exportação.');
+    const all = [...(first.data.guias || [])];
+    const totalPages = Math.max(1, Number(first.data.total_pages || 1));
+    for (let pg = 2; pg <= totalPages; pg++) {
+      const params = buildParams(false);
+      params.set('page', String(pg));
+      params.set('page_size', '100');
+      const resp = await apiFetch(`/api/guias?${params.toString()}`);
+      if (!resp.ok) throw new Error(resp.data?.error || `Falha ao carregar a página ${pg}.`);
+      all.push(...(resp.data.guias || []));
+    }
+    return all;
+  }
+
+  document.getElementById('btnExportar').addEventListener('click', async () => {
+    const btn = document.getElementById('btnExportar');
+    const original = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Exportando…';
+    try {
+      const guias = await fetchAllFilteredGuides();
+      const headers = [
+        'numero_guia','cpf','paciente','especialidade_id','especialidade','unidade_solicitante_code',
+        'medico_solicitante','cid10','motivo','situacao','data_cadastro'
+      ];
+      const lines = [headers.join(';')];
+      guias.forEach((g) => lines.push([
+        formatGuideCode(g), g.cpf, g.paciente_nome, g.especialidade_id, g.especialidade_nome,
+        g.unidade_solicitante_code, g.medico_solicitante, g.cid10 || '', g.motivo || '',
+        g.situacao, g.created_at || ''
+      ].map(csvEscape).join(';')));
+      const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type:'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      const stamp = new Date().toISOString().slice(0,10);
+      a.download = `emulti-guias-${stamp}.csv`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
+    } catch (err) { alert(err.message || 'Não foi possível exportar os dados.'); }
+    finally { btn.disabled = false; btn.textContent = original; }
+  });
+
+  document.getElementById('btnImportar').addEventListener('click', () => document.getElementById('arquivoImportacao').click());
+  document.getElementById('arquivoImportacao').addEventListener('change', async (event) => {
+    const input = event.target;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      const rows = parseCsv(await file.text());
+      if (rows.length < 2) throw new Error('O arquivo CSV não possui registros para importar.');
+      const headers = rows[0].map((h) => String(h).trim().toLowerCase());
+      const required = ['cpf','especialidade_id','unidade_solicitante_code','medico_solicitante','motivo'];
+      const missing = required.filter((h) => !headers.includes(h));
+      if (missing.length) throw new Error(`Colunas obrigatórias ausentes: ${missing.join(', ')}.`);
+      const records = rows.slice(1).map((r) => Object.fromEntries(headers.map((h,i) => [h, r[i] ?? ''])));
+      if (!confirm(`Importar ${records.length} registro(s)? A importação cria novas guias e aplica as validações normais do sistema.`)) return;
+      const btn = document.getElementById('btnImportar');
+      const original = btn.textContent; btn.disabled = true; btn.textContent = 'Importando…';
+      let success = 0; const errors = [];
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        const payload = {
+          cpf: onlyDigits(r.cpf),
+          unidade_solicitante_code: String(r.unidade_solicitante_code || '').trim(),
+          medico_solicitante: String(r.medico_solicitante || '').trim(),
+          especialidade_id: Number(r.especialidade_id || 0),
+          motivo: String(r.motivo || '').trim(),
+          cid10: String(r.cid10 || '').trim(),
+          confirmar_mesmo_assim: false
+        };
+        const resp = await apiFetch('/api/guias', { method:'POST', body:JSON.stringify(payload) });
+        if (resp.ok && resp.data?.aviso) {
+          errors.push(`Linha ${i+2}: paciente já possui guia ativa para a especialidade; registro não importado automaticamente.`);
+        } else if (resp.ok) success++;
+        else errors.push(`Linha ${i+2}: ${resp.data?.error || 'erro ao importar'}`);
+      }
+      btn.disabled = false; btn.textContent = original;
+      const summary = [`Importação concluída: ${success} guia(s) criada(s).`];
+      if (errors.length) summary.push(`${errors.length} registro(s) não importado(s):\n\n${errors.slice(0,12).join('\n')}${errors.length>12?'\n…':''}`);
+      alert(summary.join('\n\n'));
+      page = 1; await loadGuias();
+    } catch (err) { alert(err.message || 'Não foi possível importar o arquivo CSV.'); }
+    finally { input.value = ''; const b=document.getElementById('btnImportar'); if(b){b.disabled=false; if(b.textContent==='Importando…') b.textContent='Importar CSV';} }
+  });
+
+  restoreFromUrl();
+  loadGuias();
+})();
 </script>
 </body>
 </html>
- 
