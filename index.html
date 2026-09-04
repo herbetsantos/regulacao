@@ -8,9 +8,46 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css">
+<style>
+  .queue-toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+  .queue-search { flex:1 1 520px; display:flex; gap:8px; align-items:flex-end; }
+  .queue-search .field { flex:1; margin:0; }
+  .queue-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .advanced-filters { display:none; border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; background:var(--surface); }
+  .advanced-filters.is-open { display:block; }
+  .advanced-grid { display:grid; grid-template-columns:repeat(4,minmax(170px,1fr)); gap:12px; }
+  .advanced-grid .field { margin:0; }
+  .advanced-footer { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+  .queue-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:4px 0 10px; color:var(--muted); font-size:13px; }
+  .queue-table { table-layout:fixed; width:100%; min-width:930px; border-collapse:separate; border-spacing:0; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); }
+  .queue-table th, .queue-table td { vertical-align:middle; text-align:left !important; padding:12px 14px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
+  .queue-table thead th { background:color-mix(in srgb, var(--surface) 92%, var(--primary) 8%); font-size:12px; font-weight:700; color:var(--ink); }
+  .queue-table th:last-child, .queue-table td:last-child { border-right:0; }
+  .queue-table tbody tr:last-child td { border-bottom:0; }
+  .queue-table tbody tr:hover td { background:color-mix(in srgb, var(--surface) 96%, var(--primary) 4%); }
+  .queue-table td:last-child { text-align:center !important; }
+  .table-wrap { overflow-x:auto; border-radius:10px; }
+  .queue-table th:nth-child(1) { width:14%; }
+  .queue-table th:nth-child(2) { width:27%; }
+  .queue-table th:nth-child(3) { width:17%; }
+  .queue-table th:nth-child(4) { width:23%; }
+  .queue-table th:nth-child(5) { width:13%; }
+  .queue-table th:nth-child(6) { width:6%; }
+  .patient-cell strong, .request-cell strong { display:block; font-weight:600; color:var(--ink); }
+  .patient-cell small, .request-cell small { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
+  .guide-code { font-weight:700; color:var(--primary); white-space:nowrap; }
+  .queue-pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding-top:14px; }
+  .queue-pages { display:flex; align-items:center; gap:6px; }
+  .queue-pages .btn { min-width:36px; padding-left:10px; padding-right:10px; }
+  .queue-pages .is-current { background:var(--primary); color:#fff; border-color:var(--primary); }
+  .page-size-wrap { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; }
+  .page-size-wrap select { width:auto; min-width:76px; }
+  @media (max-width:980px) { .advanced-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:620px) { .advanced-grid { grid-template-columns:1fr; } .queue-search { flex-basis:100%; } }
+</style>
 <link rel="stylesheet" href="/css/theme.css">
 </head>
-<body class="regulacao-lista">
+<body>
 <div id="app-topbar"></div>
 
 <main class="page">
@@ -30,15 +67,8 @@
     </div>
     <div class="queue-actions">
       <button class="btn btn--outline" type="button" id="btnAdvanced" aria-expanded="false">Filtros avançados</button>
-
-      <details class="queue-options-menu" id="dadosMenu">
-        <summary aria-label="Abrir opções de importação e exportação">Opções</summary>
-        <div class="queue-options-menu__panel" role="menu" aria-label="Opções">
-          <button class="queue-options-menu__item" type="button" id="btnExportar" role="menuitem">Exportar CSV</button>
-          <button class="queue-options-menu__item" type="button" id="btnImportar" role="menuitem">Importar CSV</button>
-        </div>
-      </details>
-
+      <button class="btn btn--outline" type="button" id="btnExportar">Exportar CSV</button>
+      <button class="btn btn--outline" type="button" id="btnImportar">Importar CSV</button>
       <input id="arquivoImportacao" type="file" accept=".csv,text/csv" hidden>
       <a class="btn btn--accent" id="btnNovaGuiaHome" href="/guia-nova.html">+ Nova guia</a>
     </div>
@@ -67,7 +97,7 @@
     </div>
     <div class="advanced-footer">
       <button class="btn btn--outline btn--sm" type="button" id="btnLimpar">Limpar filtros</button>
-      <button class="btn btn--outline btn--sm" type="button" id="btnAplicar">Aplicar filtros</button>
+      <button class="btn btn--accent btn--sm" type="button" id="btnAplicar">Aplicar filtros</button>
     </div>
   </section>
 
@@ -330,18 +360,6 @@
       page = 1; await loadGuias();
     } catch (err) { alert(err.message || 'Não foi possível importar o arquivo CSV.'); }
     finally { input.value = ''; const b=document.getElementById('btnImportar'); if(b){b.disabled=false; if(b.textContent==='Importando…') b.textContent='Importar CSV';} }
-  });
-
-
-  const dadosMenu = document.getElementById('dadosMenu');
-  document.getElementById('btnExportar')?.addEventListener('click', () => {
-    if (dadosMenu) dadosMenu.open = false;
-  });
-  document.getElementById('btnImportar')?.addEventListener('click', () => {
-    if (dadosMenu) dadosMenu.open = false;
-  });
-  document.addEventListener('click', (event) => {
-    if (dadosMenu?.open && !dadosMenu.contains(event.target)) dadosMenu.open = false;
   });
 
   restoreFromUrl();

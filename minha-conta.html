@@ -20,7 +20,7 @@
   <div class="page__header">
     <div class="eyebrow">Minha conta</div>
     <h1 class="page__title">Alterar senha</h1>
-    <p class="page__subtitle">A senha é a mesma utilizada no Portal Saúde Cajamar.</p>
+    <p class="page__subtitle">Usuários do Portal APS mantêm a senha central. Credenciais próprias alteram a senha somente neste ambiente.</p>
   </div>
   <section class="account-card">
     <form id="passwordForm">
@@ -30,11 +30,11 @@
       </div>
       <div class="field">
         <label for="newPass">Nova senha</label>
-        <input type="password" id="newPass" autocomplete="new-password" minlength="8" required>
+        <input type="password" id="newPass" autocomplete="new-password" minlength="10" required>
       </div>
       <div class="field">
         <label for="newPass2">Confirmar nova senha</label>
-        <input type="password" id="newPass2" autocomplete="new-password" minlength="8" required>
+        <input type="password" id="newPass2" autocomplete="new-password" minlength="10" required>
       </div>
       <div class="form-msg" id="passwordMsg"></div>
       <button class="btn btn--accent" type="submit" id="savePassword">Salvar nova senha</button>
@@ -48,6 +48,9 @@
   const user = await initPortalChrome();
   if (!user) return;
   const form = document.getElementById('passwordForm');
+  const minLen = user.source === 'local' ? 10 : 8;
+  document.getElementById('newPass').minLength = minLen;
+  document.getElementById('newPass2').minLength = minLen;
   const msg = document.getElementById('passwordMsg');
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

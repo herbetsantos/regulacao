@@ -3,7 +3,7 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.18.2';
+const APP_VERSION = '2.19.0';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {
@@ -177,13 +177,13 @@ async function requireLogin() {
     const res = await fetch('/api/me', { credentials: 'same-origin' });
     if (!res.ok) {
       const next = encodeURIComponent(window.location.href);
-      window.location.href = `${PORTAL_URL}/login.html?next=${next}`;
+      window.location.href = `/login.html?next=${next}`;
       return null;
     }
     const data = await res.json();
     return data.user;
   } catch {
-    window.location.href = `${PORTAL_URL}/login.html`;
+    window.location.href = '/login.html';
     return null;
   }
 }
@@ -200,7 +200,7 @@ function renderUser(user) {
     else if (access.cadastrante) teamEl.textContent = 'Cadastrante';
     else if (access.regulador) teamEl.textContent = 'Regulação';
     else if (access.executor) teamEl.textContent = 'Execução';
-    else teamEl.textContent = 'eMulti';
+    else teamEl.textContent = user.source === 'local' ? 'Credencial própria' : 'eMulti';
   }
 
   const regulacaoItem = document.getElementById('navRegulacaoItem');
@@ -317,7 +317,7 @@ function setupLogout() {
     try {
       await fetch('/api/logout-local', { method: 'POST', credentials: 'same-origin' });
     } catch { /* continua para o portal */ }
-    window.location.href = `${PORTAL_URL}/login.html`;
+    window.location.href = '/login.html';
   });
 }
 

@@ -447,7 +447,9 @@ export async function ensureRegulacaoSchema(env) {
 
   await env.DB_REGULACAO.prepare(`INSERT INTO emulti_schema_version (id, version, updated_at)
     VALUES (1, '2.18.2', datetime('now'))
-    ON CONFLICT(id) DO UPDATE SET version=excluded.version, updated_at=excluded.updated_at`).run();
+    ON CONFLICT(id) DO UPDATE SET
+      version = CASE WHEN emulti_schema_version.version = '2.19.0' THEN emulti_schema_version.version ELSE excluded.version END,
+      updated_at = CASE WHEN emulti_schema_version.version = '2.19.0' THEN emulti_schema_version.updated_at ELSE excluded.updated_at END`).run();
 
   const especialidades = [
     ['Fisioterapia', 1],

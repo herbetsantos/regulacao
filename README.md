@@ -1,38 +1,75 @@
-# eMulti Regulação — Cajamar Saúde
+# eMulti / Regulação — Cajamar Saúde
 
-Versão atual: **2.18.2**.
+Versão de avaliação: **2.19.0**
 
-Atualizações estruturais do banco são aplicadas administrativamente no Cloudflare D1. O diagnóstico do sistema apenas confere a configuração; ele não altera automaticamente o schema.
-
-Sistema integrado ao Portal Saúde para cadastro e regulação de guias, equipes eMulti, agenda de especialistas, atendimentos individuais e grupos.
+Esta evolução reorganiza a Administração, separa o profissional assistencial do usuário do sistema e introduz acesso híbrido: **Portal APS ou credencial própria da Regulação**.
 
 ## Bancos D1
 
-- `DB` → `portal-saude-db`: identidade, usuários, unidades, equipes, vínculos e permissões.
-- `DB_REGULACAO` → `regulacao-vagas-db`: pacientes, guias, fila, agenda, grupos e atendimentos.
+```text
+DB            → portal-saude-db
+DB_REGULACAO  → regulacao-vagas-db
+```
 
-## Atualizações de banco simplificadas
+### `portal-saude-db`
+Continua sendo a fonte central para:
+- usuários internos do Portal APS;
+- sessão/handoff do Portal;
+- cadastro mestre de unidades;
+- estruturas legadas ainda mantidas durante a transição.
 
-Os antigos arquivos `migration_*.sql` foram retirados do pacote. Este repositório mantém somente o banco próprio da Regulação:
+### `regulacao-vagas-db`
+Continua armazenando pacientes, guias, fila, agenda, grupos e atendimentos.
 
-- `database/schema.sql` para instalação nova;
-- `database/update.sql` para atualização do `regulacao-vagas-db`.
+Na 2.19.0 passa também a armazenar:
+- credenciais externas da Regulação;
+- autorização funcional por principal;
+- vínculos de unidade/equipe das autorizações;
+- profissionais assistenciais independentes;
+- vínculos `profissional + unidade + especialidade + carga horária semanal`.
 
-O `portal-saude-db` pertence ao repositório do Portal Saúde.
+## Identidade
 
-As versões dos schemas ficam registradas em `emulti_schema_version` e podem ser conferidas em **Administração > Diagnóstico da configuração**.
+```text
+portal:<id>       → conta do Portal APS
+local:<uuid>      → credencial própria da Regulação
+```
 
-## Novidades
+O profissional assistencial é um cadastro separado e pode existir sem possuir login.
 
-O histórico de alterações fica centralizado na página **Novidades da Versão**, acessível pelo menu superior, e no arquivo único `docs/NOVIDADES.md`.
+## Administração
 
-Consulte `docs/instalacao/INSTALL.md` para os comandos de instalação e atualização.
+A Administração foi dividida em:
 
+1. Visão geral
+2. Usuários e acessos
+3. Profissionais
+4. Especialidades
+5. Equipes
+6. Unidades
+7. Configurações
 
-## 2.18.2
+## Carga horária das especialidades
 
-As listas de **Acessos e responsabilidades** e **Profissionais eMulti pré-carregados** agora usam paginação no backend. Há busca, filtros combináveis por unidade e função/especialidade e seleção de 10, 20, 50 ou 100 registros por página.
+A carga horária de uma especialidade não é digitada manualmente.
 
-## 2.18.1
+Ela é calculada pela soma dos vínculos assistenciais ativos:
 
-O Portal Saúde é o proprietário do schema compartilhado de usuários, chat, suporte e chamados. O chat usa o `portal-saude-db` compartilhado e não existe estrutura duplicada no `regulacao-vagas-db`.
+```text
+profissional + unidade + especialidade + horas/semana
+```
+
+Assim, um profissional pode distribuir corretamente sua jornada entre unidades e/ou especialidades sem duplicação indevida.
+
+## Avaliação
+
+Consulte `AVALIACAO_2.19.0.md`.
+
+**Não execute SQL no D1 apenas para avaliar os arquivos e a proposta.**
+
+Quando a versão for aprovada, a migração deverá ser feita de forma controlada no Cloudflare D1 usando:
+
+- `database/019_admin_profissionais_acesso_hibrido.sql`
+- `database/VALIDAR_2_19_0.sql`
+
+Não use `database/update.sql` para instalar a evolução 2.19.0.
