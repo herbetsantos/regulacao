@@ -12,7 +12,59 @@
   .queue-toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
   .queue-search { flex:1 1 520px; display:flex; gap:8px; align-items:flex-end; }
   .queue-search .field { flex:1; margin:0; }
-  .queue-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .queue-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
+  .queue-data-menu { position:relative; }
+  .queue-data-menu > summary {
+    list-style:none;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    min-height:38px;
+    padding:8px 11px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:transparent;
+    color:var(--muted);
+    font-size:12px;
+    font-weight:600;
+    cursor:pointer;
+    user-select:none;
+  }
+  .queue-data-menu > summary::-webkit-details-marker { display:none; }
+  .queue-data-menu > summary::after { content:'▾'; font-size:10px; opacity:.75; }
+  .queue-data-menu[open] > summary,
+  .queue-data-menu > summary:hover {
+    color:var(--primary);
+    border-color:color-mix(in srgb, var(--line) 55%, var(--primary) 45%);
+    background:color-mix(in srgb, var(--surface) 97%, var(--primary) 3%);
+  }
+  .queue-data-menu__panel {
+    position:absolute;
+    z-index:30;
+    right:0;
+    top:calc(100% + 6px);
+    min-width:168px;
+    padding:5px;
+    border:1px solid var(--line);
+    border-radius:9px;
+    background:var(--surface);
+    box-shadow:0 10px 26px rgba(20,35,65,.12);
+  }
+  .queue-data-menu__item {
+    width:100%;
+    border:0;
+    background:transparent;
+    color:var(--ink);
+    text-align:left;
+    font:inherit;
+    font-size:12px;
+    font-weight:500;
+    padding:8px 10px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .queue-data-menu__item:hover { background:color-mix(in srgb, var(--surface) 92%, var(--primary) 8%); color:var(--primary); }
+  .queue-data-menu__item:disabled { opacity:.55; cursor:not-allowed; }
   .advanced-filters { display:none; border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; background:var(--surface); }
   .advanced-filters.is-open { display:block; }
   .advanced-grid { display:grid; grid-template-columns:repeat(4,minmax(170px,1fr)); gap:12px; }
@@ -67,8 +119,13 @@
     </div>
     <div class="queue-actions">
       <button class="btn btn--outline" type="button" id="btnAdvanced" aria-expanded="false">Filtros avançados</button>
-      <button class="btn btn--outline" type="button" id="btnExportar">Exportar CSV</button>
-      <button class="btn btn--outline" type="button" id="btnImportar">Importar CSV</button>
+      <details class="queue-data-menu" id="dadosMenu">
+        <summary aria-label="Importar ou exportar dados">Dados</summary>
+        <div class="queue-data-menu__panel" role="menu" aria-label="Importação e exportação">
+          <button class="queue-data-menu__item" type="button" id="btnExportar" role="menuitem">Exportar CSV</button>
+          <button class="queue-data-menu__item" type="button" id="btnImportar" role="menuitem">Importar CSV</button>
+        </div>
+      </details>
       <input id="arquivoImportacao" type="file" accept=".csv,text/csv" hidden>
       <a class="btn btn--accent" id="btnNovaGuiaHome" href="/guia-nova.html">+ Nova guia</a>
     </div>
@@ -360,6 +417,17 @@
       page = 1; await loadGuias();
     } catch (err) { alert(err.message || 'Não foi possível importar o arquivo CSV.'); }
     finally { input.value = ''; const b=document.getElementById('btnImportar'); if(b){b.disabled=false; if(b.textContent==='Importando…') b.textContent='Importar CSV';} }
+  });
+
+  const dadosMenu = document.getElementById('dadosMenu');
+  document.getElementById('btnExportar')?.addEventListener('click', () => {
+    if (dadosMenu) dadosMenu.open = false;
+  });
+  document.getElementById('btnImportar')?.addEventListener('click', () => {
+    if (dadosMenu) dadosMenu.open = false;
+  });
+  document.addEventListener('click', (event) => {
+    if (dadosMenu?.open && !dadosMenu.contains(event.target)) dadosMenu.open = false;
   });
 
   restoreFromUrl();

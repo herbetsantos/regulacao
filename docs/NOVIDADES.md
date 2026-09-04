@@ -1,6 +1,12 @@
 # Novidades do eMulti Regulação
 
 
+## Ajuste visual — Importação e exportação discretas
+
+- **Importar CSV** e **Exportar CSV** foram agrupados no menu compacto **Dados** da tela de Regulação e Pesquisa de Guias.
+- Nenhuma alteração de banco, API, permissões ou formato CSV.
+- A versão de schema permanece **2.18.2**.
+
 ## 2.18.2 — Listas administrativas escaláveis
 
 - Acessos e responsabilidades agora têm paginação no backend.
