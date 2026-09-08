@@ -1,6 +1,160 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><script src="/js/theme.js"></script><title>Grupo — eMulti Regulação</title><link rel="stylesheet" href="/css/style.css"><link rel="stylesheet" href="/css/theme.css"><style>.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}.item{padding:10px 0;border-bottom:1px solid var(--line)}.muted{color:var(--muted);font-size:12px}.inline-flex{display:flex;gap:8px;align-items:end;flex-wrap:wrap}@media(max-width:800px){.two{grid-template-columns:1fr}}</style></head><body><div id="app-topbar"></div><main class="page"><a class="btn btn--outline btn--sm" href="/agenda.html">← Agenda</a><div id="head" class="page__header"></div><div class="two"><section class="panel-section"><div class="panel-section__head"><div class="panel-section__title">Pacientes do grupo</div><div class="panel-section__desc">O grupo nasce vazio. Ao alocar uma guia em lista de espera, o paciente passa para Em atendimento.</div></div><div class="inline-flex"><div class="field"><label>ID da guia</label><input id="guiaId" type="number"></div><button class="btn btn--accent btn--sm" id="btnAdd">Alocar paciente</button></div><div id="pacientes"></div></section><section class="panel-section"><div class="panel-section__head"><div class="panel-section__title">Encontros</div><div class="panel-section__desc">Um grupo pode ter um único encontro ou vários encontros programados.</div></div><div class="inline-flex"><div class="field"><label>Data</label><input id="novaData" type="date"></div><div class="field"><label>Horário</label><input id="novaHora" type="time"></div><button class="btn btn--accent btn--sm" id="btnEncontro">Adicionar encontro</button></div><div id="encontros"></div></section></div></main><script src="/js/app-chrome.js"></script><script src="/js/regulacao.js"></script><script>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="/js/theme.js"></script>
+<title>Grupo — eMulti Regulação</title>
+<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/theme.css">
+<style>
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.item{padding:12px 0;border-bottom:1px solid var(--line)}
+.muted{color:var(--muted);font-size:12px}
+.inline-flex{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.group-team{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.group-team span{border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:var(--surface);font-size:12px}
+.group-note{border:1px solid var(--line);border-radius:10px;padding:12px;background:color-mix(in srgb,var(--surface) 94%,var(--primary) 6%);margin-bottom:12px}
+@media(max-width:800px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app-topbar"></div>
+<main class="page">
+  <a class="btn btn--outline btn--sm" href="/agenda.html">← Agenda</a>
+  <div id="head" class="page__header"></div>
+
+  <div class="two">
+    <section class="panel-section">
+      <div class="panel-section__head">
+        <div>
+          <div class="panel-section__title">Pacientes do grupo</div>
+          <div class="panel-section__desc">O Organizador inclui pacientes já regulados para a Lista de espera. A inclusão ocupa a vaga do grupo e coloca a guia em atendimento.</div>
+        </div>
+      </div>
+      <div id="organizePatients" hidden>
+        <div class="inline-flex">
+          <div class="field" style="min-width:360px;flex:1">
+            <label>Guia em lista de espera</label>
+            <select id="guiaId"><option value="">Carregando...</option></select>
+          </div>
+          <button class="btn btn--accent btn--sm" id="btnAdd">Incluir no grupo</button>
+        </div>
+      </div>
+      <div id="pacientes"></div>
+    </section>
+
+    <section class="panel-section">
+      <div class="panel-section__head">
+        <div>
+          <div class="panel-section__title">Encontros</div>
+          <div class="panel-section__desc">Cada encontro ocupa o horário correspondente nas escalas de todos os profissionais vinculados ao grupo.</div>
+        </div>
+      </div>
+      <div id="organizeMeetings" hidden>
+        <div class="inline-flex">
+          <div class="field"><label>Data</label><input id="novaData" type="date"></div>
+          <div class="field"><label>Horário</label><input id="novaHora" type="time"></div>
+          <button class="btn btn--accent btn--sm" id="btnEncontro">Adicionar encontro</button>
+        </div>
+      </div>
+      <div id="encontros"></div>
+    </section>
+  </div>
+</main>
+
+<script src="/js/app-chrome.js"></script>
+<script src="/js/regulacao.js"></script>
+<script>
 const ID=Number(new URLSearchParams(location.search).get('id'));
-async function load(){const r=await apiFetch('/api/agenda/grupos/'+ID);if(!r.ok){head.innerHTML='<div class="empty-state">'+escapeHtml(r.data?.error||'Grupo não encontrado')+'</div>';return}const d=r.data;head.innerHTML=`<div class="eyebrow">Grupo de atendimento</div><h1 class="page__title">${escapeHtml(d.grupo.nome)}</h1><p class="page__subtitle">${escapeHtml(d.grupo.especialidade_nome)} · ${d.pacientes.filter(p=>p.status==='ativo').length}/${d.grupo.capacidade} pacientes · ${d.grupo.duracao_minutos} min por encontro</p>`;pacientes.innerHTML=d.pacientes.map(p=>`<div class="item"><strong>${escapeHtml(p.paciente_nome)}</strong><div class="muted">${escapeHtml(p.codigo_guia||'#'+p.guia_id)} · ${p.status}</div>${p.status==='ativo'?`<div><button class="btn btn--outline btn--sm" onclick="sair(${p.guia_id},'concluido')">Concluir</button> <button class="btn btn--outline btn--sm" onclick="sair(${p.guia_id},'abandono')">Abandono</button> <button class="btn btn--outline btn--sm" onclick="sair(${p.guia_id},'removido')">Remover e voltar à fila</button></div>`:''}</div>`).join('')||'<div class="empty-state">Grupo vazio.</div>';encontros.innerHTML=d.encontros.map(e=>`<div class="item"><strong>${formatDateBR(e.data_encontro)} às ${e.hora_inicio}</strong> · ${e.duracao_minutos} min <span class="muted">${e.situacao}</span></div>`).join('')||'<div class="empty-state">Nenhum encontro programado.</div>'}
-async function sair(gid,des){let motivo='';if(des==='abandono')motivo=prompt('Motivo do abandono (opcional):')||'';const r=await apiFetch('/api/agenda/grupos/'+ID+'/pacientes',{method:'DELETE',body:JSON.stringify({guia_id:gid,desfecho:des,motivo})});if(!r.ok)alert(r.data?.error||'Erro');else load()}
-(async()=>{const u=await initPortalChrome();if(!u)return;btnAdd.onclick=async()=>{const r=await apiFetch('/api/agenda/grupos/'+ID+'/pacientes',{method:'POST',body:JSON.stringify({guia_id:+guiaId.value})});if(!r.ok)alert(r.data?.error||'Erro');else{guiaId.value='';load()}};btnEncontro.onclick=async()=>{const r=await apiFetch('/api/agenda/grupos/'+ID+'/encontros',{method:'POST',body:JSON.stringify({data_encontro:novaData.value,hora_inicio:novaHora.value})});if(!r.ok)alert(r.data?.error||'Erro');else load()};load()})();
-</script></body></html>
+let USER=null,GROUP=null,PERMS={};
+
+async function loadCandidates(){
+  if(!PERMS.pode_organizar||!GROUP)return;
+  const r=await apiFetch(`/api/guias?situacao=lista_espera&especialidade_id=${GROUP.especialidade_id}&page_size=100&ordem=antigas`);
+  const all=r.ok?(r.data.guias||[]):[];
+  const candidatas=all.filter(g=>Number(g.equipe_id)===Number(GROUP.equipe_id));
+  guiaId.innerHTML='<option value="">Selecione</option>'+candidatas.map(g=>
+    `<option value="${g.id}">${escapeHtml(formatGuideCode(g))} — ${escapeHtml(g.paciente_nome)}</option>`
+  ).join('');
+  if(!candidatas.length)guiaId.innerHTML='<option value="">Nenhuma guia da equipe em lista de espera</option>';
+}
+
+async function load(){
+  const r=await apiFetch('/api/agenda/grupos/'+ID);
+  if(!r.ok){
+    head.innerHTML='<div class="empty-state">'+escapeHtml(r.data?.error||'Grupo não encontrado')+'</div>';
+    return;
+  }
+  const d=r.data;
+  GROUP=d.grupo;
+  PERMS=d.permissions||{};
+
+  head.innerHTML=`
+    <div class="eyebrow">Grupo de atendimento</div>
+    <h1 class="page__title">${escapeHtml(d.grupo.nome)}</h1>
+    <p class="page__subtitle">${escapeHtml(d.grupo.especialidade_nome)} · ${d.pacientes.filter(p=>p.status==='ativo').length}/${d.grupo.capacidade} pacientes · ${d.grupo.duracao_minutos} min por encontro</p>
+    <div class="group-team">${(d.profissionais||[]).map(p=>`<span>${escapeHtml(p.nome)}${p.responsavel?' · referência':''}</span>`).join('')||'<span>Sem profissionais vinculados</span>'}</div>
+  `;
+
+  organizePatients.hidden=!PERMS.pode_organizar;
+  organizeMeetings.hidden=!PERMS.pode_organizar;
+
+  pacientes.innerHTML=d.pacientes.map(p=>`<div class="item">
+    <strong>${escapeHtml(p.paciente_nome)}</strong>
+    <div class="muted">${escapeHtml(p.codigo_guia||'#'+p.guia_id)} · ${escapeHtml(p.status)}</div>
+    ${p.status==='ativo'?`<div class="agenda-actions">
+      ${PERMS.pode_executar?`<button class="btn btn--outline btn--sm" onclick="sair(${p.guia_id},'concluido')">Concluir</button>
+      <button class="btn btn--outline btn--sm" onclick="sair(${p.guia_id},'abandono')">Abandono</button>`:''}
+      ${PERMS.pode_organizar?`<button class="btn btn--outline btn--sm" onclick="sair(${p.guia_id},'removido')">Remover e voltar à fila</button>`:''}
+    </div>`:''}
+  </div>`).join('')||'<div class="empty-state">Grupo vazio.</div>';
+
+  encontros.innerHTML=d.encontros.map(e=>`<div class="item">
+    <strong>${formatDateBR(e.data_encontro)} às ${e.hora_inicio}</strong> · ${e.duracao_minutos} min
+    <span class="muted">${escapeHtml(e.situacao)}</span>
+  </div>`).join('')||'<div class="empty-state">Nenhum encontro programado.</div>';
+
+  await loadCandidates();
+}
+
+async function sair(gid,des){
+  let motivo='';
+  if(des==='abandono')motivo=prompt('Motivo do abandono (opcional):')||'';
+  const r=await apiFetch('/api/agenda/grupos/'+ID+'/pacientes',{
+    method:'DELETE',
+    body:JSON.stringify({guia_id:gid,desfecho:des,motivo})
+  });
+  if(!r.ok)alert(r.data?.error||'Erro');
+  else load();
+}
+
+(async()=>{
+  USER=await initPortalChrome();
+  if(!USER)return;
+
+  btnAdd.onclick=async()=>{
+    const id=Number(guiaId.value);
+    if(!id)return;
+    const r=await apiFetch('/api/agenda/grupos/'+ID+'/pacientes',{
+      method:'POST',
+      body:JSON.stringify({guia_id:id})
+    });
+    if(!r.ok)alert(r.data?.error||'Erro');
+    else load();
+  };
+
+  btnEncontro.onclick=async()=>{
+    const r=await apiFetch('/api/agenda/grupos/'+ID+'/encontros',{
+      method:'POST',
+      body:JSON.stringify({data_encontro:novaData.value,hora_inicio:novaHora.value})
+    });
+    if(!r.ok)alert(r.data?.error||'Erro');
+    else load();
+  };
+
+  load();
+})();
+</script>
+</body>
+</html>

@@ -13,10 +13,10 @@ async function principalDetails(env,pid){
   if(!u)return null;return{source:'local',source_id:u.id,username:u.username,name:u.name,portal_role:null,active:!!u.active,must_change_password:!!u.must_change_password,last_login_at:u.last_login_at};
 }
 async function fullRow(env,pid,base){
-  const a=await env.DB_REGULACAO.prepare('SELECT cadastrante,regulador,executor,administrador,active FROM regulacao_principal_acessos WHERE principal_id=?').bind(pid).first();
+  const a=await env.DB_REGULACAO.prepare('SELECT cadastrante,regulador,organizador,executor,administrador,active FROM regulacao_principal_acessos WHERE principal_id=?').bind(pid).first();
   const {results:units}=await env.DB_REGULACAO.prepare('SELECT unidade_code,pode_emitir,pode_executar FROM regulacao_principal_unidades WHERE principal_id=? ORDER BY unidade_code').bind(pid).all();
   const team=await env.DB_REGULACAO.prepare('SELECT equipe_id FROM regulacao_principal_equipes WHERE principal_id=?').bind(pid).first();
-  return{principal_id:pid,...base,cadastrante:!!a?.cadastrante,regulador:!!a?.regulador,executor:!!a?.executor,administrador:base.source==='portal'&&base.portal_role==='super_admin'?true:!!a?.administrador,access_active:a?!!a.active:true,unidades:units||[],equipe_id:team?.equipe_id??null};
+  return{principal_id:pid,...base,cadastrante:!!a?.cadastrante,regulador:!!a?.regulador,organizador:!!a?.organizador,executor:!!a?.executor,administrador:base.source==='portal'&&base.portal_role==='super_admin'?true:!!a?.administrador,access_active:a?!!a.active:true,unidades:units||[],equipe_id:team?.equipe_id??null};
 }
 
 export async function onRequestGet({request,env}){
@@ -29,7 +29,7 @@ export async function onRequestGet({request,env}){
   const {results:locals}=await env.DB_REGULACAO.prepare('SELECT id,username,name,active,must_change_password,last_login_at FROM regulacao_local_users ORDER BY name').all();
   for(const u of locals||[])list.push(await fullRow(env,`local:${u.id}`,{source:'local',source_id:u.id,username:u.username,name:u.name,portal_role:null,active:!!u.active,must_change_password:!!u.must_change_password,last_login_at:u.last_login_at}));
   let filtered=list.filter(x=>!source||x.source===source).filter(x=>!q||x.name.toLowerCase().includes(q)||x.username.toLowerCase().includes(q));
-  if(funcao){filtered=filtered.filter(x=>funcao==='sem_funcao'?!(x.cadastrante||x.regulador||x.executor||x.administrador):!!x[funcao])}
+  if(funcao){filtered=filtered.filter(x=>funcao==='sem_funcao'?!(x.cadastrante||x.regulador||x.organizador||x.executor||x.administrador):!!x[funcao])}
   if(unidade)filtered=filtered.filter(x=>x.unidades.some(u=>u.unidade_code===unidade));
   const total=filtered.length,pages=total?Math.ceil(total/pageSize):0,safePage=pages?Math.min(page,pages):1,start=(safePage-1)*pageSize;filtered=filtered.slice(start,start+pageSize);
   const [unitsResp,teamsResp]=await Promise.all([env.DB.prepare('SELECT code,nome,tipo FROM unidades WHERE ativo=1 ORDER BY nome').all(),env.DB.prepare('SELECT id,nome FROM regulacao_equipes WHERE ativo=1 ORDER BY nome').all()]);
@@ -40,8 +40,8 @@ export async function onRequestPost({request,env}){
   const {user,error}=await requireAdminAccess(request,env);if(error)return error;let b;try{b=await request.json()}catch{return json({error:'JSON inválido.'},400)}
   const pid=String(b.principal_id||''),target=await principalDetails(env,pid);if(!target)return json({error:'Usuário não encontrado.'},404);
   const isSuperActor=user.source==='portal'&&user.role==='super_admin';if(b.administrador&&!(target.source==='portal'&&target.portal_role==='super_admin')&&!isSuperActor)return json({error:'Somente o Super Administrador do Portal APS pode conceder a responsabilidade Administrador.'},403);
-  const actor=principalId(user),roles={cadastrante:b.cadastrante?1:0,regulador:b.regulador?1:0,executor:b.executor?1:0,administrador:b.administrador?1:0};
-  await env.DB_REGULACAO.prepare(`INSERT INTO regulacao_principal_acessos(principal_id,cadastrante,regulador,executor,administrador,active,updated_by_principal,updated_at) VALUES(?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(principal_id) DO UPDATE SET cadastrante=excluded.cadastrante,regulador=excluded.regulador,executor=excluded.executor,administrador=excluded.administrador,active=excluded.active,updated_by_principal=excluded.updated_by_principal,updated_at=datetime('now')`).bind(pid,roles.cadastrante,roles.regulador,roles.executor,roles.administrador,b.access_active===false?0:1,actor).run();
+  const actor=principalId(user),roles={cadastrante:b.cadastrante?1:0,regulador:b.regulador?1:0,organizador:b.organizador?1:0,executor:b.executor?1:0,administrador:b.administrador?1:0};
+  await env.DB_REGULACAO.prepare(`INSERT INTO regulacao_principal_acessos(principal_id,cadastrante,regulador,organizador,executor,administrador,active,updated_by_principal,updated_at) VALUES(?,?,?,?,?,?,?,?,datetime('now')) ON CONFLICT(principal_id) DO UPDATE SET cadastrante=excluded.cadastrante,regulador=excluded.regulador,organizador=excluded.organizador,executor=excluded.executor,administrador=excluded.administrador,active=excluded.active,updated_by_principal=excluded.updated_by_principal,updated_at=datetime('now')`).bind(pid,roles.cadastrante,roles.regulador,roles.organizador,roles.executor,roles.administrador,b.access_active===false?0:1,actor).run();
   const ops=[env.DB_REGULACAO.prepare('DELETE FROM regulacao_principal_unidades WHERE principal_id=?').bind(pid),env.DB_REGULACAO.prepare('DELETE FROM regulacao_principal_equipes WHERE principal_id=?').bind(pid)];
   for(const x of Array.isArray(b.unidades)?b.unidades:[]){if(!x?.unidade_code)continue;ops.push(env.DB_REGULACAO.prepare('INSERT INTO regulacao_principal_unidades(principal_id,unidade_code,pode_emitir,pode_executar,updated_by_principal) VALUES(?,?,?,?,?)').bind(pid,String(x.unidade_code),x.pode_emitir?1:0,x.pode_executar?1:0,actor))}
   if(b.equipe_id)ops.push(env.DB_REGULACAO.prepare('INSERT INTO regulacao_principal_equipes(principal_id,equipe_id,updated_by_principal) VALUES(?,?,?)').bind(pid,Number(b.equipe_id),actor));await env.DB_REGULACAO.batch(ops);

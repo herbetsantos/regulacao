@@ -49,7 +49,7 @@ export async function requireAdminAccess(request, env) {
 
 // Escopo territorial/operacional do usuário.
 // Cadastrante usa unidades com pode_emitir=1.
-// Regulador/Executor usam unidades da própria equipe e, por compatibilidade,
+// Regulador/Organizador/Executor usam unidades da própria equipe e, por compatibilidade,
 // vínculos diretos antigos com pode_executar=1.
 export async function getRegulacaoScope(env, user, access = null) {
   access = access || await getRegulacaoAccessProfile(env, user);
@@ -71,7 +71,7 @@ export async function getRegulacaoScope(env, user, access = null) {
       equipeUnits = (r.results || []).map((x) => x.unidade_code);
     }
     const emissoras = access.cadastrante ? (diretos || []).filter(r=>r.pode_emitir).map(r=>r.unidade_code) : [];
-    const executantes = (access.regulador || access.executor)
+    const executantes = (access.regulador || access.organizador || access.executor)
       ? Array.from(new Set([...(diretos || []).filter(r=>r.pode_executar).map(r=>r.unidade_code), ...equipeUnits])) : [];
     if ((diretos || []).length || team?.equipe_id || user.source === 'local') return { isAdmin:false, emissoras, executantes };
   } catch { /* fallback abaixo */ }
@@ -85,7 +85,7 @@ export async function getRegulacaoScope(env, user, access = null) {
     ]);
   } catch { return { isAdmin:false, emissoras:[], executantes:[] }; }
   const emissoras = access.cadastrante ? (diretoResult.results || []).filter(r=>r.pode_emitir).map(r=>r.unidade_code) : [];
-  const executantes = (access.regulador || access.executor) ? Array.from(new Set([...(diretoResult.results || []).filter(r=>r.pode_executar).map(r=>r.unidade_code), ...(equipeResult.results || []).map(r=>r.unidade_code)])) : [];
+  const executantes = (access.regulador || access.organizador || access.executor) ? Array.from(new Set([...(diretoResult.results || []).filter(r=>r.pode_executar).map(r=>r.unidade_code), ...(equipeResult.results || []).map(r=>r.unidade_code)])) : [];
   return { isAdmin:false, emissoras, executantes };
 }
 

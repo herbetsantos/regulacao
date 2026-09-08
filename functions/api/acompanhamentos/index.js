@@ -9,11 +9,12 @@
 
 import { json, logAudit } from '../_utils.js';
 import { requireRegulacaoAccess, isEquipeMember, getEquipeInfo } from '../_shared.js';
+import { principalId } from '../_hybrid.js';
 
 export async function onRequestPost({ request, env }) {
   const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
-  if (!access.executor && !access.regulador && !access.administrador) return json({ error:'Apenas Executores ou Reguladores podem iniciar atendimento.' }, 403);
+  if (!access.executor && !access.administrador) return json({ error:'Apenas Executor ou Administrador pode iniciar atendimento.' }, 403);
 
   let body;
   try { body = await request.json(); } catch { return json({ error: 'JSON inválido.' }, 400); }
@@ -51,7 +52,6 @@ export async function onRequestPost({ request, env }) {
 
   const naoEmAtendimento = guias.find((g) => g.situacao !== 'em_atendimento');
   if (naoEmAtendimento) return json({ error: 'O atendimento só pode ser iniciado depois que todas as guias estiverem na situação Em atendimento.' }, 409);
-  if (guiaIds.length > 1 && !access.regulador && !access.administrador) return json({ error:'Apenas Reguladores podem organizar atendimento em grupo.' }, 403);
 
   const especialidadeIds = new Set(guias.map((g) => g.especialidade_id));
   if (especialidadeIds.size > 1) {
@@ -70,12 +70,27 @@ export async function onRequestPost({ request, env }) {
     return json({ error: 'Uma ou mais guias já estão vinculadas a outro acompanhamento.' }, 409);
   }
 
-  for (const g of guias) {
-    let attr = null;
-    try { attr = await env.DB_REGULACAO.prepare('SELECT profissional_user_id FROM guia_atribuicoes WHERE guia_id = ? AND encerrado_em IS NULL ORDER BY id DESC LIMIT 1').bind(g.id).first(); } catch {}
-    if (!attr) return json({ error: `A guia ${g.codigo_guia || '#' + g.id} ainda não possui profissional responsável.` }, 409);
-    if (!access.regulador && !access.administrador && Number(attr.profissional_user_id) !== Number(user.id)) {
-      return json({ error: 'Somente o profissional responsável pela guia pode iniciar este atendimento.' }, 403);
+  if (!access.administrador) {
+    const pid = principalId(user);
+    for (const g of guias) {
+      const vinculo = await env.DB_REGULACAO.prepare(`
+        SELECT 1 ok
+        FROM agenda_individuais ai
+        JOIN regulacao_profissionais rp ON rp.id=ai.profissional_id
+        WHERE ai.guia_id=? AND ai.situacao<>'cancelado' AND rp.principal_id=?
+        UNION ALL
+        SELECT 1 ok
+        FROM agenda_grupo_pacientes gp
+        JOIN agenda_grupo_profissionais agp ON agp.grupo_id=gp.grupo_id
+        JOIN regulacao_profissionais rp ON rp.id=agp.profissional_id
+        WHERE gp.guia_id=? AND gp.status='ativo' AND rp.principal_id=?
+        LIMIT 1
+      `).bind(g.id,pid,g.id,pid).first();
+      if (!vinculo) {
+        return json({
+          error: `A guia ${g.codigo_guia || '#' + g.id} não está organizada na sua agenda individual nem em um grupo do qual você participe.`
+        }, 403);
+      }
     }
   }
 

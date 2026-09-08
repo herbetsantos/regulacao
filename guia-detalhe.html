@@ -81,6 +81,36 @@
   .post-regulation__text strong { display:block; color:var(--primary-dark); margin-bottom:3px; }
   .post-regulation__text span { color:var(--muted); font-size:13px; }
   .post-regulation__actions { display:flex; gap:8px; flex-wrap:wrap; }
+
+  .transfer-reason {
+    width:100%;
+    min-height:92px;
+    resize:vertical;
+    box-sizing:border-box;
+    padding:12px 14px;
+    border:1px solid var(--line, #dce3ed);
+    border-radius:10px;
+    background:var(--surface, #fff);
+    color:var(--text, #122052);
+    font-family:inherit;
+    font-size:13px;
+    line-height:1.45;
+    outline:none;
+  }
+  .transfer-reason:focus {
+    border-color:var(--primary, #203b90);
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--primary, #203b90) 12%, transparent);
+  }
+  .organization-note {
+    margin-top:12px;
+    padding:12px 14px;
+    border:1px solid #cfe1f6;
+    border-radius:10px;
+    background:#f5f9ff;
+    color:var(--text, #122052);
+    font-size:13px;
+  }
+
   @media (max-width:1100px) { .reg-info-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:760px) {
     .reg-info-grid { grid-template-columns:1fr; }
@@ -169,14 +199,10 @@
               <label for="tUnidade">Unidade executante *</label>
               <select id="tUnidade" required><option value="">Selecione a equipe primeiro</option></select>
             </div>
-            <div class="field">
-              <label for="tProfissional">Profissional responsável *</label>
-              <select id="tProfissional"><option value="">Selecione a equipe primeiro</option></select>
-            </div>
           </div>
           <div class="field">
             <label for="tMotivo">Motivo da transferência</label>
-            <textarea id="tMotivo" rows="2" placeholder="Ex.: paciente mudou de endereço"></textarea>
+            <textarea id="tMotivo" class="transfer-reason" rows="3" placeholder="Ex.: paciente mudou de endereço"></textarea>
           </div>
           <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Confirmar transferência</button>
           <span class="form-msg" id="transferirMsg"></span>
@@ -204,9 +230,8 @@
           <label for="iLocal">Local de execução (se diferente da unidade)</label>
           <input type="text" id="iLocal" placeholder="Ex.: Escola Municipal X, quadra do bairro Y...">
         </div>
-        <div class="field">
-          <button class="btn btn--outline btn--sm" type="button" id="btnBuscarFila">Buscar guias da fila para juntar em grupo</button>
-          <div id="filaResultado" style="margin-top:8px"></div>
+        <div class="organization-note">
+          A formação de grupos e a inclusão de pacientes são realizadas pelo perfil <strong>Organizador</strong> em <a href="/agenda.html">Agenda e Atendimentos</a>.
         </div>
         <div id="iniciarMsg" class="reg-aviso" style="display:none"></div>
         <button class="btn btn--accent" type="button" id="btnIniciar">Iniciar atendimento</button>
@@ -260,11 +285,26 @@
   if (!user) return;
   const access = user.regulacao || {};
   const podeRegular = !!(access.regulador || access.administrador);
+  const podeOrganizar = !!(access.organizador || access.administrador);
   const podeExecutar = !!(access.executor || access.administrador);
   const podeAlterarSituacao = !!(podeRegular || podeExecutar);
   document.getElementById('situacaoForm').style.display = podeAlterarSituacao ? '' : 'none';
   document.getElementById('novaSessaoBox').style.display = podeExecutar ? '' : 'none';
-  document.getElementById('btnBuscarFila').style.display = podeRegular ? '' : 'none';
+
+  const situacaoSelect = document.getElementById('fSituacao');
+  if (podeRegular && !podeExecutar && !access.administrador) {
+    situacaoSelect.innerHTML = `
+      <option value="">Selecione a decisão</option>
+      <option value="lista_espera">Em lista de espera</option>
+      <option value="negado">Negado</option>
+    `;
+  } else if (podeExecutar && !podeRegular && !access.administrador) {
+    situacaoSelect.innerHTML = `
+      <option value="">Selecione</option>
+      <option value="em_atendimento">Em atendimento</option>
+      <option value="concluido">Concluído</option>
+    `;
+  }
 
   const queryAtual = new URLSearchParams(window.location.search);
   const guiaId = queryAtual.get('id');
@@ -311,19 +351,9 @@
   preencherSelectEquipes(iEquipeSel);
   preencherSelectEquipes(tEquipeSel);
   iEquipeSel.addEventListener('change', () => preencherSelectUnidadesDaEquipe(iUnidadeSel, iEquipeSel.value));
-  const tProfissionalSel = document.getElementById('tProfissional');
-  let profissionaisEquipeAtual = [];
-  async function preencherProfissionaisEquipe(sel, equipeId) {
-    if (!equipeId) { sel.innerHTML='<option value="">Selecione a equipe primeiro</option>'; return; }
-    let profissionais = minhasEquipes.find((e) => String(e.id)===String(equipeId))?.profissionais || [];
-    if (!profissionais.length && String(equipeId)===String(guiaAtual?.equipe_id)) profissionais = profissionaisEquipeAtual;
-    const compat = profissionais.filter((p) => !p.especialidade_ids || p.especialidade_ids.includes(Number(guiaAtual?.especialidade_id)));
-    sel.innerHTML='<option value="">Selecione</option>'+compat.map((p)=>`<option value="${p.id}">${escapeHtml(p.name)} — ${escapeHtml(p.cargo || 'Cargo não definido')}</option>`).join('');
-  }
-  tEquipeSel.addEventListener('change', () => { preencherSelectUnidadesDaEquipe(tUnidadeSel, tEquipeSel.value); preencherProfissionaisEquipe(tProfissionalSel, tEquipeSel.value); });
+  tEquipeSel.addEventListener('change', () => preencherSelectUnidadesDaEquipe(tUnidadeSel, tEquipeSel.value));
 
   let guiaAtual = null;
-  let guiasParaGrupo = []; // ids extras selecionados na busca da fila
 
   async function mostrarPosRegulacao() {
     if (!podeRegular) return;
@@ -350,7 +380,6 @@
     document.getElementById('guideHeroPatient').textContent = guiaAtual.paciente_nome || '—';
     document.getElementById('guideHeroSpecialty').textContent = guiaAtual.especialidade_nome || '—';
     document.getElementById('guideHeroStatus').innerHTML = situacaoBadgeHtml(guiaAtual.situacao);
-    profissionaisEquipeAtual = data.profissionaisEquipe || [];
     const enderecoPartes = [
       guiaAtual.paciente_logradouro,
       guiaAtual.paciente_numero ? `nº ${guiaAtual.paciente_numero}` : '',
@@ -385,11 +414,19 @@
     document.getElementById('andamentoInfo').innerHTML = `
       <li><span>Situação atual</span><span>${situacaoBadgeHtml(guiaAtual.situacao)}</span></li>
       <li><span>Equipe responsável</span><span>${data.equipeAtual ? escapeHtml(data.equipeAtual.nome) : '— ainda não triada —'}</span></li>
-      <li><span>Profissional responsável</span><span>${data.profissionalAtual ? `${escapeHtml(data.profissionalAtual.name || 'Profissional')} · ${escapeHtml(data.profissionalAtual.cargo || 'cargo não informado')}` : '— ainda não atribuído —'}</span></li>
+      <li><span>Organização assistencial</span><span>${
+        data.grupoAtual
+          ? `Grupo: ${escapeHtml(data.grupoAtual.nome)}${data.grupoAtual.profissionais ? ` · ${escapeHtml(data.grupoAtual.profissionais)}` : ''}`
+          : data.profissionalAtual
+            ? `Individual: ${escapeHtml(data.profissionalAtual.name || 'Profissional')}${data.profissionalAtual.cargo ? ` · ${escapeHtml(data.profissionalAtual.cargo)}` : ''}`
+            : '— ainda não organizada —'
+      }</span></li>
       <li><span>Unidade executante</span><span>${guiaAtual.unidade_executante_code ? escapeHtml(nomeUnidade(guiaAtual.unidade_executante_code)) : '—'}</span></li>
       <li><span>Atendimento</span><span>${data.acompanhamento ? (data.acompanhamento.tipo === 'grupo' ? 'Em grupo' : 'Individual') : 'Ainda não iniciado'}</span></li>
     `;
-    document.getElementById('fSituacao').value = guiaAtual.situacao;
+    const fs = document.getElementById('fSituacao');
+    if ([...fs.options].some(o=>o.value===guiaAtual.situacao)) fs.value = guiaAtual.situacao;
+    else fs.value = '';
 
     const acompanhamentoSection = document.getElementById('acompanhamentoSection');
     const iniciarSection = document.getElementById('iniciarSection');
@@ -400,11 +437,10 @@
       transferirSection.style.display = 'none'; // transferência só antes de iniciar
       acompanhamentoSection.style.display = '';
       document.getElementById('novaSessaoBox').style.display = podeExecutar ? '' : 'none';
-  document.getElementById('btnBuscarFila').style.display = podeRegular ? '' : 'none';
       await carregarAcompanhamento(data.acompanhamento.id);
     } else {
       acompanhamentoSection.style.display = 'none';
-      iniciarSection.style.display = (guiaAtual.situacao === 'em_atendimento' && (podeExecutar || podeRegular)) ? '' : 'none';
+      iniciarSection.style.display = (guiaAtual.situacao === 'em_atendimento' && podeExecutar && !data.grupoAtual) ? '' : 'none';
       transferirSection.style.display = podeRegular ? '' : 'none';
       if (data.equipeAtual) {
         document.getElementById('equipeAtualDesc').textContent = `Atualmente com a equipe ${data.equipeAtual.nome}.`;
@@ -419,12 +455,16 @@
           iEquipeSel.disabled = true;
           iUnidadeSel.disabled = true;
         }
+        if (data.profissionalAtual?.data_atendimento) {
+          document.getElementById('iDataInicio').value = data.profissionalAtual.data_atendimento;
+        }
+        if (data.profissionalAtual?.hora_inicio) {
+          document.getElementById('iHoraInicio').value = data.profissionalAtual.hora_inicio;
+        }
         tEquipeSel.value = String(data.equipeAtual.id);
         preencherSelectUnidadesDaEquipe(tUnidadeSel, data.equipeAtual.id);
-        await preencherProfissionaisEquipe(tProfissionalSel, data.equipeAtual.id);
-        if (data.profissionalAtual?.id) tProfissionalSel.value = String(data.profissionalAtual.id);
       } else {
-        document.getElementById('equipeAtualDesc').textContent = 'A guia ainda não possui equipe nem profissional responsável.';
+        document.getElementById('equipeAtualDesc').textContent = 'A guia ainda não possui equipe responsável.';
       }
     }
   }
@@ -474,9 +514,11 @@
     e.preventDefault();
     if (!podeAlterarSituacao) return;
     const msg = document.getElementById('situacaoMsg');
+    const situacao = document.getElementById('fSituacao').value;
+    if (!situacao) { msg.textContent='Selecione uma situação.'; msg.style.color='#c0392b'; return; }
     const { ok, data } = await apiFetch(`/api/guias/${guiaId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ situacao: document.getElementById('fSituacao').value }),
+      body: JSON.stringify({ situacao }),
     });
     if (!ok) { msg.textContent = data?.error || 'Erro ao salvar.'; msg.style.color = '#c0392b'; return; }
     msg.textContent = 'Salvo.'; msg.style.color = '#2e7d32';
@@ -495,14 +537,12 @@
     const msg = document.getElementById('transferirMsg');
     const equipeId = tEquipeSel.value;
     const unidade = tUnidadeSel.value;
-    const profissionalId = tProfissionalSel.value;
-    if (!equipeId || !unidade || !profissionalId) { msg.textContent = 'Selecione equipe, unidade e profissional responsável.'; msg.style.color = '#c0392b'; return; }
+    if (!equipeId || !unidade) { msg.textContent = 'Selecione equipe e unidade executante.'; msg.style.color = '#c0392b'; return; }
     const { ok, data } = await apiFetch(`/api/guias/${guiaId}`, {
       method: 'PATCH',
       body: JSON.stringify({
         equipe_id: Number(equipeId),
         unidade_executante_code: unidade,
-        profissional_responsavel_id: Number(profissionalId),
         motivo_transferencia: document.getElementById('tMotivo').value.trim(),
       }),
     });
@@ -510,39 +550,6 @@
     msg.textContent = 'Guia transferida — a nova equipe foi notificada.'; msg.style.color = '#2e7d32';
     await mostrarPosRegulacao();
     carregar();
-  });
-
-  // --- buscar guias da fila para grupo ---
-  document.getElementById('btnBuscarFila').addEventListener('click', async () => {
-    if (!podeRegular) return;
-    const area = document.getElementById('filaResultado');
-    area.innerHTML = 'Buscando...';
-    const { ok, data } = await apiFetch(`/api/guias?especialidade_id=${guiaAtual.especialidade_id}&page_size=100`);
-    if (!ok) { area.innerHTML = ''; return; }
-
-    const equipeEscolhida = iEquipeSel.value ? Number(iEquipeSel.value) : null;
-    const candidatas = data.guias.filter((g) =>
-      g.id !== guiaAtual.id
-      && ['aguardando_autorizacao', 'lista_espera'].includes(g.situacao)
-      && (g.equipe_id === null || g.equipe_id === undefined || (equipeEscolhida && g.equipe_id === equipeEscolhida))
-    );
-
-    if (candidatas.length === 0) {
-      area.innerHTML = `<div class="empty-state">Nenhuma guia disponível para juntar.</div>`;
-      return;
-    }
-    area.innerHTML = candidatas.map((g) => `
-      <label class="fila-item">
-        <input type="checkbox" value="${g.id}" ${guiasParaGrupo.includes(g.id) ? 'checked' : ''}>
-        <span>${escapeHtml(formatGuideCode(g))} — ${escapeHtml(g.paciente_nome)} (${escapeHtml(nomeUnidade(g.unidade_solicitante_code))})</span>
-      </label>
-    `).join('');
-    area.querySelectorAll('input[type=checkbox]').forEach((cb) => {
-      cb.addEventListener('change', () => {
-        const id = Number(cb.value);
-        guiasParaGrupo = cb.checked ? [...guiasParaGrupo, id] : guiasParaGrupo.filter((x) => x !== id);
-      });
-    });
   });
 
   // --- iniciar atendimento ---
@@ -556,7 +563,7 @@
     if (!equipeId || !unidade || !dataInicio || !horaInicio) { msg.textContent = 'Equipe, unidade, data e horário de início são obrigatórios.'; msg.style.color = '#c0392b'; return; }
 
     const payload = {
-      guia_ids: [Number(guiaId), ...guiasParaGrupo],
+      guia_ids: [Number(guiaId)],
       equipe_id: Number(equipeId),
       unidade_executante_code: unidade,
       local_execucao: document.getElementById('iLocal').value.trim(),

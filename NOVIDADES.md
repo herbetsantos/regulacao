@@ -1,3 +1,14 @@
+# 2.20.1 — correção da Administração
+
+- submenu administrativo passa a usar referências explícitas aos elementos;
+- troca de opção continua funcionando mesmo quando uma API específica falha;
+- diagnóstico visual da estrutura 2.19/2.20 do `regulacao-vagas-db`;
+- novo endpoint somente leitura `/api/admin/estrutura`;
+- mensagens de erro administrativas mais precisas;
+- fallback dos ícones em Configurações;
+- remoção de arquivo temporário `_shared.js.tmp`;
+- sem alteração automática no D1.
+
 # 2.19.1 — desempenho da Regulação
 
 - A fila de guias não espera mais o carregamento dos filtros avançados.

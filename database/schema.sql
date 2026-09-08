@@ -188,6 +188,7 @@ CREATE INDEX IF NOT EXISTS idx_sessoes_acompanhamento ON acompanhamento_sessoes(
 CREATE TABLE IF NOT EXISTS agenda_escalas (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   profissional_user_id INTEGER NOT NULL,
+  profissional_id TEXT,
   especialidade_id INTEGER NOT NULL,
   equipe_id INTEGER NOT NULL,
   unidade_code TEXT NOT NULL,
@@ -203,6 +204,7 @@ CREATE TABLE IF NOT EXISTS agenda_escalas (
   FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
 );
 CREATE INDEX IF NOT EXISTS idx_agenda_escalas_prof ON agenda_escalas(profissional_user_id, ativo);
+CREATE INDEX IF NOT EXISTS idx_agenda_escalas_profissional ON agenda_escalas(profissional_id, ativo);
 
 CREATE TABLE IF NOT EXISTS agenda_grupos (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -221,6 +223,19 @@ CREATE TABLE IF NOT EXISTS agenda_grupos (
   FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
 );
 CREATE INDEX IF NOT EXISTS idx_agenda_grupos_prof ON agenda_grupos(profissional_user_id, ativo);
+
+CREATE TABLE IF NOT EXISTS agenda_grupo_profissionais (
+  grupo_id INTEGER NOT NULL,
+  profissional_id TEXT NOT NULL,
+  papel TEXT,
+  responsavel INTEGER NOT NULL DEFAULT 0 CHECK (responsavel IN (0,1)),
+  added_by TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (grupo_id, profissional_id),
+  FOREIGN KEY (grupo_id) REFERENCES agenda_grupos(id) ON DELETE CASCADE,
+  FOREIGN KEY (profissional_id) REFERENCES regulacao_profissionais(id) ON DELETE RESTRICT
+);
+CREATE INDEX IF NOT EXISTS idx_agenda_grupo_profissionais_prof ON agenda_grupo_profissionais(profissional_id, grupo_id);
 
 CREATE TABLE IF NOT EXISTS agenda_grupo_encontros (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -254,6 +269,7 @@ CREATE TABLE IF NOT EXISTS agenda_individuais (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   guia_id INTEGER NOT NULL,
   profissional_user_id INTEGER NOT NULL,
+  profissional_id TEXT,
   especialidade_id INTEGER NOT NULL,
   equipe_id INTEGER NOT NULL,
   unidade_code TEXT NOT NULL,
@@ -268,6 +284,7 @@ CREATE TABLE IF NOT EXISTS agenda_individuais (
   FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
 );
 CREATE INDEX IF NOT EXISTS idx_agenda_ind_data ON agenda_individuais(profissional_user_id, data_atendimento, hora_inicio);
+CREATE INDEX IF NOT EXISTS idx_agenda_ind_profissional ON agenda_individuais(profissional_id, data_atendimento, hora_inicio);
 
 
 -- Notificações dirigidas a uma EQUIPE (referência solta a
@@ -358,6 +375,7 @@ CREATE TABLE IF NOT EXISTS regulacao_principal_acessos (
   principal_id TEXT PRIMARY KEY,
   cadastrante INTEGER NOT NULL DEFAULT 0 CHECK (cadastrante IN (0,1)),
   regulador INTEGER NOT NULL DEFAULT 0 CHECK (regulador IN (0,1)),
+  organizador INTEGER NOT NULL DEFAULT 0 CHECK (organizador IN (0,1)),
   executor INTEGER NOT NULL DEFAULT 0 CHECK (executor IN (0,1)),
   administrador INTEGER NOT NULL DEFAULT 0 CHECK (administrador IN (0,1)),
   active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
@@ -435,5 +453,5 @@ CREATE TABLE IF NOT EXISTS regulacao_local_audit (
 CREATE INDEX IF NOT EXISTS idx_reg_local_audit_created ON regulacao_local_audit(created_at);
 
 INSERT INTO emulti_schema_version (id, version, updated_at)
-VALUES (1, '2.19.0', datetime('now'))
+VALUES (1, '2.20.0', datetime('now'))
 ON CONFLICT(id) DO UPDATE SET version=excluded.version, updated_at=excluded.updated_at;

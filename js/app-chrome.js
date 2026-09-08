@@ -199,15 +199,16 @@ function renderUser(user) {
     else if (access.administrador) teamEl.textContent = 'Administração da Regulação';
     else if (access.cadastrante) teamEl.textContent = 'Cadastrante';
     else if (access.regulador) teamEl.textContent = 'Regulação';
+    else if (access.organizador) teamEl.textContent = 'Organização da agenda';
     else if (access.executor) teamEl.textContent = 'Execução';
     else teamEl.textContent = user.source === 'local' ? 'Credencial própria' : 'eMulti';
   }
 
   const regulacaoItem = document.getElementById('navRegulacaoItem');
-  if (regulacaoItem) regulacaoItem.hidden = !(access.regulador || access.administrador || access.cadastrante || access.executor);
+  if (regulacaoItem) regulacaoItem.hidden = !(access.regulador || access.administrador || access.cadastrante || access.organizador || access.executor);
 
   const agendaItem = document.getElementById('navAgendaItem');
-  if (agendaItem) agendaItem.hidden = !(access.executor || access.administrador || access.regulador);
+  if (agendaItem) agendaItem.hidden = !(access.organizador || access.executor || access.administrador);
 
   const adminItem = document.getElementById('navAdminItem');
   if (adminItem) adminItem.hidden = !access.administrador;
