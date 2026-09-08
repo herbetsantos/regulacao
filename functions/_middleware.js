@@ -1,6 +1,9 @@
 // Guarda de acesso das páginas do eMulti / Regulação de Vagas.
-// v2.19.0 — correção de redirects no runtime do Cloudflare.
-// Response.redirect() deve receber uma URL absoluta.
+// v2.19.0 — correção do loop de redirecionamento em Cloudflare Pages.
+//
+// O Pages usa URLs "limpas": /login.html pode ser normalizado para /login.
+// Por isso a guarda deve reconhecer as duas formas e preferir a URL canônica
+// sem ".html" nos redirects internos.
 
 import {
   getAuthUser,
@@ -14,7 +17,14 @@ import { getRegulacaoAccessProfile } from './api/_permissions.js';
 export async function onRequest({ request, env, next }) {
   const url = new URL(request.url);
 
-  // Gera URL absoluta no próprio eMulti.
+  // Normaliza apenas para COMPARAÇÃO:
+  // /login.html -> /login
+  // /minha-conta.html -> /minha-conta
+  // /painel.html -> /painel
+  const pagePath = url.pathname.endsWith('.html')
+    ? url.pathname.slice(0, -5)
+    : url.pathname;
+
   const localUrl = (path) => new URL(path, url.origin).toString();
 
   const handoffToken = url.searchParams.get('handoff');
@@ -24,7 +34,7 @@ export async function onRequest({ request, env, next }) {
 
     if (!userId) {
       return Response.redirect(
-        localUrl(`/login.html?next=${encodeURIComponent(url.pathname)}`),
+        localUrl(`/login?next=${encodeURIComponent(pagePath || '/')}`),
         302
       );
     }
@@ -42,14 +52,15 @@ export async function onRequest({ request, env, next }) {
     });
   }
 
-  // APIs possuem sua própria validação de autenticação/permissão.
+  // APIs fazem sua própria validação de autenticação/permissão.
   if (url.pathname.startsWith('/api/')) {
     return next();
   }
 
   // Recursos públicos necessários para a tela de login.
+  // IMPORTANTE: Cloudflare Pages pode servir login.html como /login.
   if (
-    url.pathname === '/login.html' ||
+    pagePath === '/login' ||
     url.pathname.startsWith('/assets/') ||
     url.pathname.startsWith('/css/') ||
     url.pathname.startsWith('/js/')
@@ -60,21 +71,22 @@ export async function onRequest({ request, env, next }) {
   const user = await getAuthUser(request, env);
 
   if (!user) {
-    const nextPath = `${url.pathname}${url.search}`;
+    const nextPath = `${pagePath || '/'}${url.search}`;
 
     return Response.redirect(
-      localUrl(`/login.html?next=${encodeURIComponent(nextPath)}`),
+      localUrl(`/login?next=${encodeURIComponent(nextPath)}`),
       302
     );
   }
 
+  // Evita loop quando o Pages normaliza /minha-conta.html para /minha-conta.
   if (
     user.source === 'local' &&
     user.mustChangePassword &&
-    url.pathname !== '/minha-conta.html'
+    pagePath !== '/minha-conta'
   ) {
     return Response.redirect(
-      localUrl('/minha-conta.html?obrigatoria=1'),
+      localUrl('/minha-conta?obrigatoria=1'),
       302
     );
   }
