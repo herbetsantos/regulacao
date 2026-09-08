@@ -68,12 +68,17 @@
 <script>
 const ID=Number(new URLSearchParams(location.search).get('id'));
 let USER=null,GROUP=null,PERMS={};
+const byId=(id)=>document.getElementById(id);
+const head=byId('head');
+const organizePatients=byId('organizePatients'),organizeMeetings=byId('organizeMeetings');
+const guiaId=byId('guiaId'),btnAdd=byId('btnAdd'),pacientes=byId('pacientes');
+const novaData=byId('novaData'),novaHora=byId('novaHora'),btnEncontro=byId('btnEncontro'),encontros=byId('encontros');
 
 async function loadCandidates(){
   if(!PERMS.pode_organizar||!GROUP)return;
   const r=await apiFetch(`/api/guias?situacao=lista_espera&especialidade_id=${GROUP.especialidade_id}&page_size=100&ordem=antigas`);
   const all=r.ok?(r.data.guias||[]):[];
-  const candidatas=all.filter(g=>Number(g.equipe_id)===Number(GROUP.equipe_id));
+  const candidatas=all.filter(g=>g.equipe_id==null||Number(g.equipe_id)===Number(GROUP.equipe_id));
   guiaId.innerHTML='<option value="">Selecione</option>'+candidatas.map(g=>
     `<option value="${g.id}">${escapeHtml(formatGuideCode(g))} — ${escapeHtml(g.paciente_nome)}</option>`
   ).join('');
@@ -132,25 +137,31 @@ async function sair(gid,des){
 (async()=>{
   USER=await initPortalChrome();
   if(!USER)return;
+  if(!ID){head.innerHTML='<div class="empty-state">Grupo inválido.</div>';return}
 
   btnAdd.onclick=async()=>{
     const id=Number(guiaId.value);
     if(!id)return;
+    btnAdd.disabled=true;
     const r=await apiFetch('/api/agenda/grupos/'+ID+'/pacientes',{
       method:'POST',
       body:JSON.stringify({guia_id:id})
     });
+    btnAdd.disabled=false;
     if(!r.ok)alert(r.data?.error||'Erro');
     else load();
   };
 
   btnEncontro.onclick=async()=>{
+    if(!novaData.value||!novaHora.value){alert('Informe data e horário do encontro.');return}
+    btnEncontro.disabled=true;
     const r=await apiFetch('/api/agenda/grupos/'+ID+'/encontros',{
       method:'POST',
       body:JSON.stringify({data_encontro:novaData.value,hora_inicio:novaHora.value})
     });
+    btnEncontro.disabled=false;
     if(!r.ok)alert(r.data?.error||'Erro');
-    else load();
+    else {novaData.value='';novaHora.value='';load();}
   };
 
   load();

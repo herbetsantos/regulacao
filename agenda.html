@@ -156,6 +156,18 @@
 <script>
 let USER=null,EQUIPES=[],ESPS=[],WAITING=[];
 const dias=['','Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const byId=(id)=>document.getElementById(id);
+const escalaAdminPanel=byId('escalaAdminPanel');
+const eEquipe=byId('eEquipe'),eProf=byId('eProf'),eEsp=byId('eEsp'),eUnidade=byId('eUnidade');
+const eDia=byId('eDia'),eInicio=byId('eInicio'),eFim=byId('eFim'),eVigIni=byId('eVigIni'),eVigFim=byId('eVigFim');
+const btnEscala=byId('btnEscala'),escalaMsg=byId('escalaMsg'),escalaTitulo=byId('escalaTitulo'),escalaDesc=byId('escalaDesc'),escalaList=byId('escalaList');
+const individualOrganizePanel=byId('individualOrganizePanel');
+const iGuia=byId('iGuia'),iEquipe=byId('iEquipe'),iUnidade=byId('iUnidade'),iProf=byId('iProf'),iData=byId('iData'),iHora=byId('iHora'),iBlocos=byId('iBlocos'),iObs=byId('iObs');
+const btnIndividual=byId('btnIndividual'),individualMsg=byId('individualMsg'),individualList=byId('individualList');
+const grupoOrganizePanel=byId('grupoOrganizePanel');
+const gNome=byId('gNome'),gEquipe=byId('gEquipe'),gEsp=byId('gEsp'),gUnidade=byId('gUnidade'),gCap=byId('gCap'),gBlocos=byId('gBlocos');
+const gDia=byId('gDia'),gHora=byId('gHora'),gIni=byId('gIni'),gFim=byId('gFim'),gObs=byId('gObs'),gProfissionais=byId('gProfissionais');
+const btnGrupo=byId('btnGrupo'),grupoMsg=byId('grupoMsg'),gruposList=byId('gruposList');
 
 function opts(a,val='id',label='nome',empty='Selecione'){
   return `<option value="">${escapeHtml(empty)}</option>`+
@@ -248,6 +260,7 @@ async function delEscala(id){
 }
 async function loadInd(){
   const r=await apiFetch('/api/agenda/individuais');
+  if(!r.ok){individualList.innerHTML=`<div class="empty-state">${escapeHtml(r.data?.error||'Erro ao carregar atendimentos individuais.')}</div>`;return}
   individualList.innerHTML=(r.data?.atendimentos||[]).map(x=>`<div class="agenda-card">
     <strong>${formatDateBR(x.data_atendimento)} às ${x.hora_inicio} · ${x.duracao_minutos} min</strong>
     <div>${escapeHtml(x.paciente_nome)} · ${escapeHtml(x.especialidade_nome)}</div>
@@ -255,7 +268,9 @@ async function loadInd(){
   </div>`).join('')||'<div class="empty-state">Nenhum atendimento individual agendado.</div>';
 }
 async function loadGrupos(){
+  gruposList.innerHTML='<div class="empty-state">Carregando grupos...</div>';
   const r=await apiFetch('/api/agenda/grupos');
+  if(!r.ok){gruposList.innerHTML=`<div class="empty-state">${escapeHtml(r.data?.error||'Erro ao carregar grupos.')}</div>`;return}
   gruposList.innerHTML=(r.data?.grupos||[]).map(x=>`<div class="agenda-card">
     <strong>${escapeHtml(x.nome)}</strong>
     <div>${escapeHtml(x.especialidade_nome)} · ${x.pacientes_ativos}/${x.capacidade} pacientes</div>
@@ -349,6 +364,10 @@ async function loadGrupos(){
 
     btnGrupo.onclick=async()=>{
       const profissional_ids=[...gProfissionais.querySelectorAll('input[type=checkbox]:checked')].map(x=>x.value);
+      if(!gNome.value.trim()){setMsg('grupoMsg','Informe o nome do grupo.');return}
+      if(!gEquipe.value||!gEsp.value||!gUnidade.value){setMsg('grupoMsg','Selecione equipe, especialidade e unidade.');return}
+      if(!profissional_ids.length){setMsg('grupoMsg','Selecione ao menos um profissional do grupo.');return}
+      btnGrupo.disabled=true;
       const r=await apiFetch('/api/agenda/grupos',{
         method:'POST',
         body:JSON.stringify({
@@ -367,7 +386,8 @@ async function loadGrupos(){
         })
       });
       setMsg('grupoMsg',r.ok?`Grupo criado com ${r.data.encontros_criados||0} encontro(s).`:r.data?.error||'Erro.',r.ok);
-      if(r.ok)loadGrupos();
+      btnGrupo.disabled=false;
+      if(r.ok){gNome.value='';gObs.value='';await loadGrupos();}
     };
   }
 

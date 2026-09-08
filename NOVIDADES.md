@@ -1,3 +1,12 @@
+# 2.20.2 — estabilidade da Agenda e Grupos
+
+- referências explícitas aos elementos da Agenda e do detalhe do grupo, evitando dependência de variáveis globais criadas pelo navegador;
+- mensagens de erro mais claras ao carregar grupos e atendimentos;
+- validação do formulário de criação de grupo antes do envio;
+- inclusão de guia sem equipe definida como candidata quando a especialidade é compatível;
+- bloqueio temporário dos botões durante gravações para evitar clique duplicado;
+- sem alteração no D1; banco permanece 2.20.1.
+
 # 2.20.1 — correção da Administração
 
 - submenu administrativo passa a usar referências explícitas aos elementos;
