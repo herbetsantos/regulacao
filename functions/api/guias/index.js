@@ -84,15 +84,6 @@ export async function onRequestGet({ request, env }) {
   }
 
   const whereSql = where.length ? 'WHERE ' + where.join(' AND ') : '';
-  const countRow = await env.DB_REGULACAO.prepare(`
-    SELECT COUNT(*) AS total
-    FROM guias g
-    JOIN especialidades e ON e.id = g.especialidade_id
-    JOIN pacientes p ON p.cpf = g.cpf
-    ${whereSql}`
-  ).bind(...binds).first();
-  const total = Number(countRow?.total || 0);
-
   const orderSql = ordem === 'antigas' ? 'g.created_at ASC, g.id ASC' : 'g.created_at DESC, g.id DESC';
   const sql = `
     SELECT g.*, e.nome AS especialidade_nome, p.nome AS paciente_nome
@@ -103,7 +94,22 @@ export async function onRequestGet({ request, env }) {
     ORDER BY ${orderSql}
     LIMIT ? OFFSET ?`;
 
-  const { results } = await env.DB_REGULACAO.prepare(sql).bind(...binds, pageSize, offset).all();
+  // COUNT e página de resultados não dependem um do outro.
+  // Executá-los em paralelo reduz a latência percebida da fila sem alterar
+  // a regra de negócio nem o schema do D1.
+  const [countRow, listResult] = await Promise.all([
+    env.DB_REGULACAO.prepare(`
+      SELECT COUNT(*) AS total
+      FROM guias g
+      JOIN especialidades e ON e.id = g.especialidade_id
+      JOIN pacientes p ON p.cpf = g.cpf
+      ${whereSql}`
+    ).bind(...binds).first(),
+    env.DB_REGULACAO.prepare(sql).bind(...binds, pageSize, offset).all(),
+  ]);
+
+  const total = Number(countRow?.total || 0);
+  const results = listResult.results || [];
   return json({
     guias: results,
     total,

@@ -1,6 +1,6 @@
 # eMulti / Regulação — Cajamar Saúde
 
-Versão de avaliação: **2.19.0**
+Versão de avaliação: **2.19.1**
 
 Esta evolução reorganiza a Administração, separa o profissional assistencial do usuário do sistema e introduz acesso híbrido: **Portal APS ou credencial própria da Regulação**.
 
@@ -73,3 +73,22 @@ Quando a versão for aprovada, a migração deverá ser feita de forma controlad
 - `database/VALIDAR_2_19_0.sql`
 
 Não use `database/update.sql` para instalar a evolução 2.19.0.
+
+
+## Desempenho 2.19.1
+
+A versão 2.19.1 otimiza apenas o código de carregamento da interface e das APIs.
+
+O schema do `regulacao-vagas-db` continua sendo **2.19.0** e não há SQL novo a executar.
+
+Fluxo inicial:
+
+```text
+/api/me
+   ↓
+guias ───────────────┐
+                     ├─ em paralelo
+filtros compactos ───┘
+   ↓
+notificações/chat em segundo plano
+```

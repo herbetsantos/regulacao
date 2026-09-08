@@ -1,3 +1,12 @@
+# 2.19.1 — desempenho da Regulação
+
+- A fila de guias não espera mais o carregamento dos filtros avançados.
+- Especialidades, unidades e equipes são obtidas por um único endpoint compacto.
+- `COUNT(*)` e consulta paginada de guias passam a executar em paralelo.
+- Notificações e badges de chat deixam de competir com o carregamento inicial.
+- Inclui a correção do middleware para URLs limpas do Cloudflare Pages.
+- **Sem alteração de schema/D1:** `emulti_schema_version` permanece `2.19.0`.
+
 # Versão 2.19.0 — Administração e autenticação híbrida
 
 - Nova Administração por submenu.

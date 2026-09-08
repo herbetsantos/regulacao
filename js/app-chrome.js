@@ -333,6 +333,14 @@ function timeAgo(iso) {
   return `há ${Math.floor(h / 24)}d`;
 }
 
+function scheduleNonCritical(task, delay = 1600) {
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => task(), { timeout: delay + 1200 });
+    return;
+  }
+  window.setTimeout(() => task(), delay);
+}
+
 async function carregarNotificacoes() {
   try {
     const res = await fetch('/api/notificacoes', { credentials: 'same-origin' });
@@ -377,7 +385,8 @@ function setupNotificacoes() {
   panel.addEventListener('click', (e) => e.stopPropagation());
   document.addEventListener('click', close);
 
-  carregarNotificacoes();
+  // O primeiro carregamento fica em segundo plano para priorizar a fila.
+  scheduleNonCritical(carregarNotificacoes, 1800);
   setInterval(carregarNotificacoes, 60000);
 }
 
@@ -407,7 +416,8 @@ async function initPortalChrome() {
   setupLogout();
   const bellBtn = document.getElementById('bellBtn');
   if (bellBtn && !bellBtn.hidden) setupNotificacoes();
-  updateEmultiChatBadges();
-  setInterval(updateEmultiChatBadges, 10000);
+  // Chat também é secundário no primeiro paint.
+  scheduleNonCritical(updateEmultiChatBadges, 2400);
+  setInterval(updateEmultiChatBadges, 30000);
   return user;
 }

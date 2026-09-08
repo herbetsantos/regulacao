@@ -133,13 +133,6 @@
     return new Intl.DateTimeFormat('pt-BR', { dateStyle:'short', timeStyle:'short' }).format(d);
   };
 
-  const [especResp, unidResp, equipesResp] = await Promise.all([
-    apiFetch('/api/especialidades'), apiFetch('/api/unidades'), apiFetch('/api/equipes')
-  ]);
-  if (especResp.ok) especResp.data.especialidades.forEach((e) => els.especialidade.insertAdjacentHTML('beforeend', `<option value="${e.id}">${escapeHtml(e.nome)}</option>`));
-  if (unidResp.ok) (unidResp.data.todas || []).forEach((u) => els.unidade.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(u.code)}">${escapeHtml(u.nome)}</option>`));
-  if (equipesResp.ok) equipesResp.data.equipes.forEach((eq) => els.equipe.insertAdjacentHTML('beforeend', `<option value="${eq.id}">${escapeHtml(eq.nome)}</option>`));
-
   function buildParams(includePage = true) {
     const p = new URLSearchParams();
     if (els.busca.value.trim()) p.set('q', els.busca.value.trim());
@@ -161,21 +154,73 @@
     history.replaceState(null, '', `${location.pathname}?${p.toString()}`);
   }
 
-  function restoreFromUrl() {
-    const p = new URLSearchParams(location.search);
+  const initialUrlParams = new URLSearchParams(location.search);
+
+  function restoreImmediateFromUrl() {
+    const p = initialUrlParams;
     els.busca.value = p.get('q') || '';
     els.situacao.value = p.get('situacao') || '';
-    els.especialidade.value = p.get('especialidade_id') || '';
-    els.unidade.value = p.get('unidade_solicitante') || '';
-    els.equipe.value = p.get('equipe_id') || '';
     els.profissional.value = p.get('medico_solicitante') || '';
     els.dataDe.value = p.get('data_de') || '';
     els.dataAte.value = p.get('data_ate') || '';
     els.ordem.value = p.get('ordem') || 'recentes';
     page = Math.max(1, Number(p.get('page')) || 1);
     pageSize = [10,20,50,100].includes(Number(p.get('page_size'))) ? Number(p.get('page_size')) : 20;
-    const hasAdvanced = ['situacao','especialidade_id','unidade_solicitante','equipe_id','medico_solicitante','data_de','data_ate'].some((k) => p.get(k));
-    if (hasAdvanced) { els.advanced.classList.add('is-open'); els.btnAdvanced.setAttribute('aria-expanded','true'); }
+
+    const hasAdvanced = [
+      'situacao','especialidade_id','unidade_solicitante','equipe_id',
+      'medico_solicitante','data_de','data_ate'
+    ].some((k) => p.get(k));
+
+    if (hasAdvanced) {
+      els.advanced.classList.add('is-open');
+      els.btnAdvanced.setAttribute('aria-expanded','true');
+    }
+  }
+
+  function restoreDynamicFiltersFromUrl() {
+    els.especialidade.value = initialUrlParams.get('especialidade_id') || '';
+    els.unidade.value = initialUrlParams.get('unidade_solicitante') || '';
+    els.equipe.value = initialUrlParams.get('equipe_id') || '';
+  }
+
+  function initialGuideParams() {
+    const p = new URLSearchParams(initialUrlParams);
+    if (!p.get('ordem')) p.set('ordem', 'recentes');
+    p.set('page', String(page));
+    p.set('page_size', String(pageSize));
+    return p;
+  }
+
+  async function loadFilterOptions() {
+    const response = await apiFetch('/api/regulacao-bootstrap');
+    if (!response.ok) return false;
+
+    const data = response.data || {};
+
+    (data.especialidades || []).forEach((e) => {
+      els.especialidade.insertAdjacentHTML(
+        'beforeend',
+        `<option value="${e.id}">${escapeHtml(e.nome)}</option>`
+      );
+    });
+
+    (data.unidades || []).forEach((u) => {
+      els.unidade.insertAdjacentHTML(
+        'beforeend',
+        `<option value="${escapeHtml(u.code)}">${escapeHtml(u.nome)}</option>`
+      );
+    });
+
+    (data.equipes || []).forEach((eq) => {
+      els.equipe.insertAdjacentHTML(
+        'beforeend',
+        `<option value="${eq.id}">${escapeHtml(eq.nome)}</option>`
+      );
+    });
+
+    restoreDynamicFiltersFromUrl();
+    return true;
   }
 
   function pageButtons(current, totalPages) {
@@ -191,17 +236,22 @@
     return html;
   }
 
-  async function loadGuias() {
+  async function loadGuias(paramsOverride = null, sync = true) {
     const area = document.getElementById('listArea');
     area.innerHTML = '<div class="skeleton-loading">Carregando guias…</div>';
-    syncUrl();
-    const params = buildParams(true);
+
+    const params = paramsOverride instanceof URLSearchParams
+      ? new URLSearchParams(paramsOverride)
+      : buildParams(true);
+
+    if (sync && !paramsOverride) syncUrl();
+
     const { ok, data } = await apiFetch(`/api/guias?${params.toString()}`);
     if (!ok) { area.innerHTML = '<div class="empty-state">Não foi possível carregar as guias.</div>'; return; }
     const guias = data.guias || [];
     const total = Number(data.total ?? guias.length);
     const totalPages = Math.max(1, Number(data.total_pages) || Math.ceil(total / pageSize));
-    if (page > totalPages) { page = totalPages; return loadGuias(); }
+    if (page > totalPages) { page = totalPages; return loadGuias(null, true); }
     if (!guias.length) { area.innerHTML = '<div class="empty-state">Nenhuma guia encontrada com os filtros atuais.</div>'; return; }
 
     const retorno = `${location.pathname}${location.search}`;
@@ -362,8 +412,16 @@
     finally { input.value = ''; const b=document.getElementById('btnImportar'); if(b){b.disabled=false; if(b.textContent==='Importando…') b.textContent='Importar CSV';} }
   });
 
-  restoreFromUrl();
-  loadGuias();
+  restoreImmediateFromUrl();
+
+  // Caminho crítico:
+  // 1) /api/me já foi concluído por initPortalChrome()
+  // 2) a fila e os filtros começam ao mesmo tempo
+  // 3) notificações/chat só entram depois, em idle
+  const initialGuidesPromise = loadGuias(initialGuideParams(), false);
+  const filtersPromise = loadFilterOptions();
+
+  await Promise.allSettled([initialGuidesPromise, filtersPromise]);
 })();
 </script>
 </body>
