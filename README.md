@@ -1,6 +1,8 @@
+> Revisão de código atual: **2.25.1** (schema Regulação 2.25.0).
+
 # eMulti / Regulação — Cajamar Saúde
 
-Versão consolidada: **2.25.0**
+Versão de código consolidada: **2.25.1** · Schema da Regulação: **2.25.0**
 
 Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**: evolução, conduta, procedimentos e demais registros clínicos não são gravados neste ambiente.
 

@@ -1,7 +1,7 @@
 import { json } from '../_utils.js';
 import { requireAdminAccess } from '../_shared.js';
 
-const APP_VERSION = '2.25.0';
+const APP_VERSION = '2.25.1';
 const PORTAL_SCHEMA_VERSION = '2.18.2';
 
 async function readDbVersion(db) {
@@ -25,7 +25,7 @@ export async function onRequestGet({ request, env }) {
     app_version: APP_VERSION,
     portal,
     regulacao,
-    atualizado: portal.version === PORTAL_SCHEMA_VERSION && regulacao.version === APP_VERSION,
+    atualizado: portal.version === PORTAL_SCHEMA_VERSION && regulacao.version === '2.25.0',
     portal_schema_esperado: PORTAL_SCHEMA_VERSION,
   });
 }

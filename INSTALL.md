@@ -1,6 +1,8 @@
-# Implantação controlada — eMulti / Regulação 2.25.0
+> Revisão de código atual: **2.25.1** (schema Regulação 2.25.0).
 
-A versão 2.25.0 mantém os dois bancos já utilizados:
+# Implantação controlada — eMulti / Regulação 2.25.1
+
+A revisão de código 2.25.1 mantém os dois bancos já utilizados e o schema 2.25.0:
 
 ```text
 DB            → portal-saude-db
@@ -11,11 +13,13 @@ Ela não cria um terceiro banco e não exige recriação dos bancos existentes.
 
 ## Atualização de uma instalação 2.20.x
 
+> **Quem já aplicou a migração 025 na versão 2.25.0 não deve executá-la novamente.** Para 2.25.0 → 2.25.1 basta publicar o novo código.
+
 ### 1. Backup
 Antes da alteração, faça backup/clone seguro do `regulacao-vagas-db` e preserve o commit atualmente publicado.
 
 ### 2. Migração do banco
-Na raiz do projeto 2.25.0, execute **uma única vez**:
+Se você vem de 2.20.x, na raiz do projeto execute **uma única vez**:
 
 ```bash
 npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/025_consolidacao_2_25_0.sql

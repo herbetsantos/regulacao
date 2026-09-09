@@ -3,7 +3,7 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.25.0';
+const APP_VERSION = '2.25.1';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {
@@ -151,6 +151,8 @@ function renderChrome() {
         </a>
       </div>
     </aside>
+
+    <div class="app-version-stamp" id="appVersionStamp" aria-label="Versão do eMulti Regulação">v${APP_VERSION}</div>
 
     <div class="bell-panel" id="bellPanel" hidden>
       <div class="bell-panel__head">

@@ -2,12 +2,15 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="/js/theme.js"></script>
+<script src="/js/theme.js?v=2.25.1"></script>
 <title>Regulação de Vagas — Portal Saúde Cajamar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/style.css?v=2.25.1">
 <style>
   .queue-toolbar { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
   .queue-search { flex:1 1 520px; display:flex; gap:8px; align-items:flex-end; }
@@ -19,7 +22,7 @@
   .advanced-grid .field { margin:0; }
   .advanced-footer { display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
   .queue-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:4px 0 10px; color:var(--muted); font-size:13px; }
-  .queue-table { table-layout:fixed; width:100%; min-width:930px; border-collapse:separate; border-spacing:0; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); }
+  .queue-table { table-layout:auto; width:100%; min-width:860px; border-collapse:separate; border-spacing:0; border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); }
   .queue-table th, .queue-table td { vertical-align:middle; text-align:left !important; padding:12px 14px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); }
   .queue-table thead th { background:color-mix(in srgb, var(--surface) 92%, var(--primary) 8%); font-size:12px; font-weight:700; color:var(--ink); }
   .queue-table th:last-child, .queue-table td:last-child { border-right:0; }
@@ -27,15 +30,18 @@
   .queue-table tbody tr:hover td { background:color-mix(in srgb, var(--surface) 96%, var(--primary) 4%); }
   .queue-table td:last-child { text-align:center !important; }
   .table-wrap { overflow-x:auto; border-radius:10px; }
-  .queue-table th:nth-child(1) { width:14%; }
-  .queue-table th:nth-child(2) { width:27%; }
-  .queue-table th:nth-child(3) { width:17%; }
-  .queue-table th:nth-child(4) { width:23%; }
-  .queue-table th:nth-child(5) { width:13%; }
-  .queue-table th:nth-child(6) { width:6%; }
+  .queue-table th:nth-child(1), .queue-table td:nth-child(1) { width:118px; min-width:118px; }
+  .queue-table th:nth-child(2), .queue-table td:nth-child(2) { width:28%; min-width:220px; }
+  .queue-table th:nth-child(3), .queue-table td:nth-child(3) { width:22%; min-width:170px; }
+  .queue-table th:nth-child(4), .queue-table td:nth-child(4) { width:24%; min-width:210px; }
+  .queue-table th:nth-child(5), .queue-table td:nth-child(5) { width:150px; min-width:150px; }
+  .queue-table th:nth-child(6), .queue-table td:nth-child(6) { width:104px; min-width:104px; }
+  .queue-table td:nth-child(1), .queue-table td:nth-child(5), .queue-table td:nth-child(6) { white-space:nowrap; }
+  .queue-table td:nth-child(6) .btn { width:100%; padding-left:10px; padding-right:10px; }
   .patient-cell strong, .request-cell strong { display:block; font-weight:600; color:var(--ink); }
   .patient-cell small, .request-cell small { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
   .guide-code { font-weight:700; color:var(--primary); white-space:nowrap; }
+  .queue-tag{display:inline-flex;align-items:center;border:1px solid color-mix(in srgb,var(--primary) 28%,var(--line));background:color-mix(in srgb,var(--primary) 7%,var(--surface));color:var(--primary);border-radius:999px;padding:2px 7px;font-size:10px;font-weight:700;line-height:1.35}
   .queue-pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding-top:14px; }
   .queue-pages { display:flex; align-items:center; gap:6px; }
   .queue-pages .btn { min-width:36px; padding-left:10px; padding-right:10px; }
@@ -45,7 +51,7 @@
   @media (max-width:980px) { .advanced-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:620px) { .advanced-grid { grid-template-columns:1fr; } .queue-search { flex-basis:100%; } }
 </style>
-<link rel="stylesheet" href="/css/theme.css">
+<link rel="stylesheet" href="/css/theme.css?v=2.25.1">
 </head>
 <body>
 <div id="app-topbar"></div>
@@ -105,8 +111,8 @@
   <div id="listArea"><div class="skeleton-loading">Carregando guias…</div></div>
 </main>
 
-<script src="/js/app-chrome.js"></script>
-<script src="/js/regulacao.js"></script>
+<script src="/js/app-chrome.js?v=2.25.1"></script>
+<script src="/js/regulacao.js?v=2.25.1"></script>
 <script>
 (async () => {
   const user = await initPortalChrome();
@@ -264,13 +270,13 @@
       <div class="queue-summary"><strong>${total.toLocaleString('pt-BR')} encaminhamento${total===1?'':'s'} encontrado${total===1?'':'s'}</strong><span>Página ${page} de ${totalPages}</span></div>
       <div class="table-wrap">
         <table class="queue-table">
-          <thead><tr><th>Guia</th><th>Paciente</th><th>Especialidade</th><th>Solicitação</th><th>Situação</th><th></th></tr></thead>
+          <thead><tr><th>Guia</th><th>Paciente</th><th>Especialidade / etiquetas</th><th>Solicitação</th><th>Situação</th><th></th></tr></thead>
           <tbody>${guias.map((g) => {
             const href = `/guia-detalhe.html?id=${g.id}&retorno=${encodeURIComponent(retorno)}`;
             return `<tr>
               <td><span class="guide-code">${escapeHtml(formatGuideCode(g))}</span></td>
               <td class="patient-cell"><strong>${escapeHtml(g.paciente_nome)}</strong><small>CPF ${maskCPF(g.cpf)}</small></td>
-              <td>${escapeHtml(g.especialidade_nome)}${(g.etiquetas||[]).length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">${g.etiquetas.map(t=>`<span class="status-badge">${escapeHtml(t.nome)}</span>`).join('')}</div>`:''}</td>
+              <td>${escapeHtml(g.especialidade_nome)}${(g.etiquetas||[]).length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">${g.etiquetas.map(t=>`<span class="queue-tag">${escapeHtml(t.nome)}</span>`).join('')}</div>`:''}</td>
               <td class="request-cell"><strong>${formatDateTimeBR(g.created_at)}</strong><small>${escapeHtml(g.medico_solicitante || 'Profissional não informado')}</small></td>
               <td>${situacaoBadgeHtml(g.situacao)}</td>
               <td><a class="btn btn--outline btn--sm" href="${href}">${(access.regulador || access.administrador) ? 'Regular' : 'Abrir'}</a></td>

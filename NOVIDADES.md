@@ -1,3 +1,14 @@
+# 2.25.1 — correções de interface e fechamento funcional
+
+- corrigida a página **Novidades da Versão**, que podia aparecer em branco por conflito de CSS;
+- identificação visual atualizada e proteção contra cache de versões antigas;
+- tabela da **Regulação** redistribuída para melhor leitura de paciente, especialidade/etiquetas, solicitação, situação e ações;
+- painéis internos da **Administração** corrigidos;
+- **Agenda e Atendimentos** passa a abrir uma visão compatível com a responsabilidade do usuário;
+- gestão de **Etiquetas de guias** disponibilizada na Administração, com criação, edição, ordenação, ativação/desativação, aplicação e filtro;
+- fluxo **Criar acesso** disponibilizado diretamente em profissionais sem login, com senha temporária, vínculo automático e troca obrigatória no primeiro acesso;
+- schema permanece em **2.25.0**; não há nova migração para quem já aplicou a migration 025.
+
 # 2.25.0 — consolidação gerencial
 
 - novo perfil **Gestor**, combinável com os demais e responsável por profissionais, vínculos, especialidades, equipes e escalas;

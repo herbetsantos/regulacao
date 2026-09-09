@@ -2,12 +2,15 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="/js/theme.js"></script>
+<script src="/js/theme.js?v=2.25.1"></script>
 <title>Guia de Encaminhamento — Regulação de Vagas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css">
+<link rel="stylesheet" href="/css/style.css?v=2.25.1">
 <style>
   .reg-grid-2 { display:grid; grid-template-columns:1.3fr 1fr; gap:24px; align-items:start; }
   @media (max-width:900px) { .reg-grid-2 { grid-template-columns:1fr; } }
@@ -116,7 +119,7 @@
     .guide-hero__meta { justify-content:flex-start; }
   }
 </style>
-<link rel="stylesheet" href="/css/theme.css">
+<link rel="stylesheet" href="/css/theme.css?v=2.25.1">
 </head>
 <body>
 
@@ -213,6 +216,7 @@
         <div id="tagEditor" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
           <div class="field"><label for="tagSelect">Adicionar etiqueta</label><select id="tagSelect"><option value="">Selecione</option></select></div>
           <button class="btn btn--outline btn--sm" type="button" id="btnAddTag">Adicionar</button>
+          <a class="btn btn--outline btn--sm" id="manageTagsLink" href="/admin.html#etiquetas" style="display:none">Gerenciar etiquetas</a>
         </div>
         <div class="notice-box" style="margin-top:16px"><strong>Registro clínico:</strong> o eMulti/Regulação é um ambiente gerencial. Evolução, conduta, procedimentos e demais informações de prontuário devem ser registrados exclusivamente no PEC e-SUS.</div>
       </div>
@@ -231,8 +235,8 @@
   </div>
 </main>
 
-<script src="/js/app-chrome.js"></script>
-<script src="/js/regulacao.js"></script>
+<script src="/js/app-chrome.js?v=2.25.1"></script>
+<script src="/js/regulacao.js?v=2.25.1"></script>
 <script>
 (async () => {
   const user = await initPortalChrome();
@@ -311,7 +315,7 @@
     if(box)box.innerHTML=ativas.length?ativas.map(t=>`<span class="mini-badge">${escapeHtml(t.nome)}${(access.regulador||access.organizador||access.gestor||access.administrador)?` <button type="button" data-tag-remove="${t.id}" style="border:0;background:transparent;cursor:pointer">×</button>`:''}</span>`).join(''):'<span class="muted">Sem etiquetas.</span>';
     if(sel)sel.innerHTML='<option value="">Selecione</option>'+todas.filter(t=>!activeSet.has(Number(t.id))).map(t=>`<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
     box?.querySelectorAll('[data-tag-remove]').forEach(b=>b.onclick=async()=>{await apiFetch(`/api/guias/${guiaId}/etiquetas?etiqueta_id=${b.dataset.tagRemove}`,{method:'DELETE'});carregarEtiquetas();});
-    const editor=document.getElementById('tagEditor'); if(editor)editor.style.display=(access.regulador||access.organizador||access.gestor||access.administrador)?'flex':'none';
+    const editor=document.getElementById('tagEditor'); if(editor)editor.style.display=(access.regulador||access.organizador||access.gestor||access.administrador)?'flex':'none'; const manage=document.getElementById('manageTagsLink'); if(manage)manage.style.display=(access.gestor||access.administrador)?'inline-flex':'none';
   }
   document.getElementById('btnAddTag')?.addEventListener('click',async()=>{const id=Number(document.getElementById('tagSelect')?.value);if(!id)return;const r=await apiFetch(`/api/guias/${guiaId}/etiquetas`,{method:'POST',body:JSON.stringify({etiqueta_id:id})});if(!r.ok)alert(r.data?.error||'Não foi possível adicionar a etiqueta.');else carregarEtiquetas();});
 
