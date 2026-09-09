@@ -1,3 +1,21 @@
+# 2.25.3 — Múltiplas equipes
+
+- Um profissional pode estar vinculado a duas ou mais equipes simultaneamente.
+- Administração e Agenda passam a respeitar todos os vínculos de equipe.
+- Migration 026 preserva os vínculos existentes e converte o modelo para N:N.
+
+# 2.25.2 — desempenho da Administração
+
+- Otimização das telas de Administração para bases com muitos usuários e profissionais.
+- Usuários e acessos: substituição de consultas N+1 por carregamento agrupado de responsabilidades, unidades e equipes.
+- Profissionais: vínculos e contas são carregados em lote apenas para a página atual.
+- Equipes e Unidades: métricas consolidadas por consultas agregadas, sem uma sequência de consultas por item.
+- Referências de filtros são carregadas uma vez e reutilizadas na paginação/pesquisa.
+- Abas administrativas possuem cache em memória de 45 segundos; voltar para uma aba recente é imediato.
+- Verificação estrutural do banco é executada após o primeiro conteúdo da tela, evitando competir com o carregamento inicial.
+- Sincronizações de compatibilidade legada foram removidas dos GETs administrativos; a migração controlada continua sendo o mecanismo oficial de atualização.
+- Nenhuma nova migração SQL: schema permanece em 2.25.0.
+
 # 2.25.1 — correções de interface e fechamento funcional
 
 - corrigida a página **Novidades da Versão**, que podia aparecer em branco por conflito de CSS;

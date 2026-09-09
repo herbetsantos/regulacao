@@ -1,6 +1,5 @@
 import { json } from '../_utils.js';
 import { requireGestorAccess } from '../_shared.js';
-import { syncLegacyAccessModel,syncLegacyProfessionalModel } from '../_hybrid.js';
 
 async function exists(db,name){
   return !!await db.prepare("SELECT 1 ok FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
@@ -25,9 +24,6 @@ export async function onRequestGet({request,env}){
     },409);
   }
 
-  try{
-    await Promise.all([syncLegacyAccessModel(env),syncLegacyProfessionalModel(env)]);
-  }catch{}
 
   const q=async(sql)=>Number((await env.DB_REGULACAO.prepare(sql).first())?.n||0);
 

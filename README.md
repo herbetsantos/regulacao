@@ -1,8 +1,8 @@
-> Revisão de código atual: **2.25.1** (schema Regulação 2.25.0).
+> Revisão de código atual: **2.25.3** (schema Regulação 2.25.3).
 
 # eMulti / Regulação — Cajamar Saúde
 
-Versão de código consolidada: **2.25.1** · Schema da Regulação: **2.25.0**
+Versão de código consolidada: **2.25.3** · Schema da Regulação: **2.25.3**
 
 Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**: evolução, conduta, procedimentos e demais registros clínicos não são gravados neste ambiente.
 
@@ -38,6 +38,19 @@ Os perfis são combináveis e independentes do papel geral do usuário no Portal
 - **Administrador:** gestão ampliada do ambiente e de acessos.
 
 A concessão ou revogação da responsabilidade **Administrador** é exclusiva do **Super Administrador do Portal APS**.
+
+
+## Múltiplas equipes — 2.25.3
+
+Um profissional pode pertencer simultaneamente a **uma ou mais equipes eMulti**. O vínculo é N:N e vale tanto para o cadastro assistencial quanto para o escopo operacional da conta vinculada. Cada agenda, grupo ou atendimento continua associado a uma equipe específica.
+
+Para uma instalação que já está na linha 2.25.x, aplique uma única vez:
+
+```bash
+npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/026_multiplas_equipes_profissional.sql
+```
+
+Não execute novamente a migration 025 se ela já foi aplicada.
 
 ## Administração 2.25.0
 
@@ -91,3 +104,15 @@ Estruturas antigas de acompanhamento podem continuar presentes no banco para pre
 - `CHANGELOG_2.25.0.md`
 - `MIGRACAO_2.25.0_LEIA-ME.md`
 - `database/VALIDAR_2_25_0.sql`
+
+## Desempenho da Administração — 2.25.2
+
+As listas administrativas foram ajustadas para crescer sem multiplicar consultas por registro:
+
+- usuários/acessos são enriquecidos em lote;
+- vínculos e contas dos profissionais são carregados em lote para a página atual;
+- equipes e unidades usam agregações agrupadas;
+- filtros de referência são reaproveitados durante paginação e pesquisa;
+- abas já visitadas possuem cache curto em memória (45 s), invalidado quando cadastros relacionados são alterados.
+
+A sincronização de estruturas legadas não é mais executada em cada consulta GET administrativa. A atualização oficial continua sendo feita pelas migrations documentadas.

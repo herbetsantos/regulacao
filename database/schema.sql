@@ -396,12 +396,13 @@ CREATE TABLE IF NOT EXISTS regulacao_principal_unidades (
 CREATE INDEX IF NOT EXISTS idx_reg_principal_unidades_unit ON regulacao_principal_unidades(unidade_code, principal_id);
 
 CREATE TABLE IF NOT EXISTS regulacao_principal_equipes (
-  principal_id TEXT PRIMARY KEY,
+  principal_id TEXT NOT NULL,
   equipe_id INTEGER NOT NULL,
   updated_by_principal TEXT,
-  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (principal_id, equipe_id)
 );
-CREATE INDEX IF NOT EXISTS idx_reg_principal_equipes_team ON regulacao_principal_equipes(equipe_id);
+CREATE INDEX IF NOT EXISTS idx_reg_principal_equipes_team ON regulacao_principal_equipes(equipe_id, principal_id);
 
 CREATE TABLE IF NOT EXISTS regulacao_profissionais (
   id TEXT PRIMARY KEY,
@@ -419,6 +420,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_reg_prof_legacy_base ON regulacao_profissio
 CREATE UNIQUE INDEX IF NOT EXISTS uq_reg_prof_principal ON regulacao_profissionais(principal_id) WHERE principal_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_reg_prof_nome ON regulacao_profissionais(ativo, nome);
 CREATE INDEX IF NOT EXISTS idx_reg_prof_equipe ON regulacao_profissionais(equipe_id, ativo);
+
+
+-- Vínculo N:N entre profissional assistencial e equipes eMulti.
+-- regulacao_profissionais.equipe_id permanece como equipe principal/legada
+-- para compatibilidade, mas esta tabela é a fonte de verdade para múltiplas equipes.
+CREATE TABLE IF NOT EXISTS regulacao_profissional_equipes (
+  profissional_id TEXT NOT NULL REFERENCES regulacao_profissionais(id) ON DELETE CASCADE,
+  equipe_id INTEGER NOT NULL,
+  is_principal INTEGER NOT NULL DEFAULT 0 CHECK (is_principal IN (0,1)),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (profissional_id, equipe_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reg_prof_equipes_team ON regulacao_profissional_equipes(equipe_id, profissional_id);
 
 CREATE TABLE IF NOT EXISTS regulacao_profissional_vinculos (
   id TEXT PRIMARY KEY,
@@ -463,4 +478,4 @@ CREATE INDEX IF NOT EXISTS idx_guia_etiquetas_tag ON guia_etiquetas(etiqueta_id,
 CREATE TABLE IF NOT EXISTS regulacao_execucoes_administrativas (id INTEGER PRIMARY KEY AUTOINCREMENT,tipo TEXT NOT NULL CHECK(tipo IN('individual','grupo')),referencia_id TEXT NOT NULL,guia_id INTEGER NOT NULL,resultado TEXT NOT NULL CHECK(resultado IN('realizado','falta','abandono','cancelado','removido')),observacao_administrativa TEXT,registrado_por_principal TEXT,registrado_em TEXT NOT NULL DEFAULT(datetime('now')),FOREIGN KEY(guia_id) REFERENCES guias(id) ON DELETE RESTRICT);
 CREATE INDEX IF NOT EXISTS idx_exec_admin_guia ON regulacao_execucoes_administrativas(guia_id,registrado_em DESC);
 INSERT OR IGNORE INTO regulacao_etiquetas(nome,sort_order) VALUES ('Prioridade',10),('Retorno',20),('Contato pendente',30),('Documentação pendente',40),('Atenção compartilhada',50);
-INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.25.0',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.25.0',updated_at=datetime('now');
+INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.25.3',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.25.3',updated_at=datetime('now');

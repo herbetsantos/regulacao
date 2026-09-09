@@ -44,8 +44,9 @@ export async function getEquipeProfissionais(env, equipeId) {
   // como executores da agenda; profissionais sem login continuam compondo carga.
   try {
     const { results: pros } = await env.DB_REGULACAO.prepare(`
-      SELECT id,nome,principal_id FROM regulacao_profissionais
-      WHERE equipe_id=? AND ativo=1 AND principal_id IS NOT NULL ORDER BY nome
+      SELECT DISTINCT p.id,p.nome,p.principal_id FROM regulacao_profissionais p
+      JOIN regulacao_profissional_equipes pe ON pe.profissional_id=p.id
+      WHERE pe.equipe_id=? AND p.ativo=1 AND p.principal_id IS NOT NULL ORDER BY p.nome
     `).bind(Number(equipeId)).all();
     if ((pros || []).length) {
       const out=[];
@@ -83,7 +84,7 @@ export async function getProfissionalNaEquipe(env,equipeId,userId){
   try {
     const account=await accountForNumericActor(env,userId);
     if(account){
-      const p=await env.DB_REGULACAO.prepare('SELECT id,nome,principal_id,equipe_id FROM regulacao_profissionais WHERE principal_id=? AND equipe_id=? AND ativo=1').bind(account.principal_id,Number(equipeId)).first();
+      const p=await env.DB_REGULACAO.prepare('SELECT p.id,p.nome,p.principal_id,p.equipe_id FROM regulacao_profissionais p JOIN regulacao_profissional_equipes pe ON pe.profissional_id=p.id WHERE p.principal_id=? AND pe.equipe_id=? AND p.ativo=1').bind(account.principal_id,Number(equipeId)).first();
       if(p){const {results:esp}=await env.DB_REGULACAO.prepare('SELECT DISTINCT especialidade_id FROM regulacao_profissional_vinculos WHERE profissional_id=? AND ativo=1').bind(p.id).all();return{id:Number(userId),professional_id:p.id,name:p.nome,username:account.username,cargo:'',especialidade_ids:(esp||[]).map(x=>Number(x.especialidade_id))}}
     }
   } catch {}
@@ -145,7 +146,7 @@ export async function listProfissionaisAssistenciais(env, {
   const binds = [];
 
   if (equipeId) {
-    where.push('p.equipe_id=?');
+    where.push('EXISTS(SELECT 1 FROM regulacao_profissional_equipes pe WHERE pe.profissional_id=p.id AND pe.equipe_id=?)');
     binds.push(Number(equipeId));
   }
   if (unidadeCode) {
@@ -189,11 +190,11 @@ export async function profissionalCompativelComVinculo(env, profissionalId, equi
     SELECT p.id,p.nome,p.principal_id,p.equipe_id,v.carga_horaria_semanal
     FROM regulacao_profissionais p
     JOIN regulacao_profissional_vinculos v ON v.profissional_id=p.id AND v.ativo=1
+    JOIN regulacao_profissional_equipes pe ON pe.profissional_id=p.id AND pe.equipe_id=?
     WHERE p.id=? AND p.ativo=1
-      AND p.equipe_id=?
       AND v.especialidade_id=?
       AND v.unidade_code=?
     LIMIT 1
-  `).bind(String(profissionalId),Number(equipeId),Number(especialidadeId),String(unidadeCode)).first();
+  `).bind(Number(equipeId),String(profissionalId),Number(especialidadeId),String(unidadeCode)).first();
   return p || null;
 }

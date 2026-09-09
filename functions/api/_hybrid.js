@@ -183,14 +183,17 @@ export async function syncLegacyProfessionalModel(env) {
       if (!profId) {
         profId = crypto.randomUUID();
         let equipeId = null;
+        let equipeIds = [];
         if (p.user_id) {
-          const eq = await env.DB.prepare('SELECT equipe_id FROM regulacao_equipe_profissionais WHERE user_id=? LIMIT 1').bind(p.user_id).first();
-          equipeId = eq?.equipe_id ?? null;
+          const eqs = await env.DB.prepare('SELECT equipe_id FROM regulacao_equipe_profissionais WHERE user_id=? ORDER BY equipe_id').bind(p.user_id).all();
+          equipeIds=(eqs.results||[]).map(x=>Number(x.equipe_id)).filter(Boolean);
+          equipeId=equipeIds[0]||null;
         }
         await env.DB_REGULACAO.prepare(`
           INSERT INTO regulacao_profissionais(id,nome,principal_id,equipe_id,ativo,origem,legacy_base_id)
           VALUES(?,?,?,?,1,'escala_legada',?)
         `).bind(profId, p.nome, p.user_id ? `portal:${p.user_id}` : null, equipeId, p.id).run();
+        for(const eqId of equipeIds)await env.DB_REGULACAO.prepare('INSERT OR IGNORE INTO regulacao_profissional_equipes(profissional_id,equipe_id,is_principal) VALUES(?,?,?)').bind(profId,eqId,eqId===equipeId?1:0).run();
         imported++;
       }
       let spec = specByName.get(normalizeName(p.especialidade));
@@ -235,8 +238,10 @@ export async function syncLegacyProfessionalModel(env) {
           INSERT INTO regulacao_profissionais(id,nome,principal_id,equipe_id,ativo,origem)
           VALUES(?,?,?,?,1,'equipe_legada')
         `).bind(id, r.name, pid, r.equipe_id).run();
+        prof={id};
         imported++;
       }
+      await env.DB_REGULACAO.prepare('INSERT OR IGNORE INTO regulacao_profissional_equipes(profissional_id,equipe_id,is_principal) VALUES(?,?,CASE WHEN EXISTS(SELECT 1 FROM regulacao_profissional_equipes WHERE profissional_id=?) THEN 0 ELSE 1 END)').bind(prof.id,r.equipe_id,prof.id).run();
     }
   } catch {
     // A sincronização será tentada novamente quando as tabelas legadas existirem.

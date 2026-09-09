@@ -24,6 +24,7 @@ export async function onRequestGet({request,env}){
     'regulacao_principal_equipes',
     'regulacao_profissionais',
     'regulacao_profissional_vinculos',
+    'regulacao_profissional_equipes',
     'regulacao_local_audit',
   ];
 
@@ -56,12 +57,13 @@ export async function onRequestGet({request,env}){
 
   const ready219=required219.every(x=>!missingTables.includes(x));
   const ready220=ready219 && !missingTables.includes('agenda_grupo_profissionais') && !missingColumns.includes('regulacao_principal_acessos.organizador') && !missingColumns.includes('agenda_escalas.profissional_id') && !missingColumns.includes('agenda_individuais.profissional_id');
-  const ready225=ready220 && ['regulacao_etiquetas','guia_etiquetas','regulacao_execucoes_administrativas'].every(x=>!missingTables.includes(x)) && !missingColumns.includes('regulacao_principal_acessos.gestor') && version==='2.25.0';
+  const ready225=ready220 && ['regulacao_etiquetas','guia_etiquetas','regulacao_execucoes_administrativas'].every(x=>!missingTables.includes(x)) && !missingColumns.includes('regulacao_principal_acessos.gestor') && version==='2.25.3';
 
   return json({
     version,
     ready_2_19:ready219,
     ready_2_25:ready225,
+    ready_2_25_3:ready225,
     missing_tables:missingTables,
     missing_columns:missingColumns,
   });

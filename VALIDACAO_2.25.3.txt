@@ -1,0 +1,24 @@
+eMulti / Regulação 2.25.3 — validação local
+Data: 2026-09-09
+
+Objetivo: múltiplas equipes simultâneas por profissional/usuário.
+
+Resultados:
+- JavaScript verificado: 78 arquivos — OK
+- Scripts embutidos em HTML: 17 — OK
+- Imports relativos: 0 referências quebradas — OK
+- Referências de assets ?v=2.25.2: 0 — OK
+- Restrição antiga "profissional pertence a no máximo uma equipe": removida — OK
+- Instalação nova schema.sql: versão 2.25.3 — OK
+- Chave regulacao_principal_equipes: (principal_id,equipe_id) — OK
+- Tabela regulacao_profissional_equipes: criada — OK
+- Profissional com duas equipes em instalação nova: OK
+- Migração 2.25.2 -> 2.25.3: OK
+- Vínculo existente preservado na migração: OK
+- Inclusão de segunda equipe após migração: OK
+- Reexecução da migration 026 sem duplicar vínculos: OK
+- PRAGMA quick_check: ok
+- PRAGMA foreign_key_check: 0 violações
+
+Observação:
+A migration 026 é necessária em bancos já existentes na linha 2.25.x. Em instalação nova, schema.sql já contém a estrutura multi-equipe.

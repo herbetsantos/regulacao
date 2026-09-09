@@ -8,9 +8,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Novidades da Versão | eMulti Regulação</title>
   <link rel="icon" href="/assets/favicon.png">
-  <link rel="stylesheet" href="/css/theme.css?v=2.25.1">
-  <link rel="stylesheet" href="/css/style.css?v=2.25.1">
-  <script src="/js/theme.js?v=2.25.1"></script>
+  <link rel="stylesheet" href="/css/theme.css?v=2.25.3">
+  <link rel="stylesheet" href="/css/style.css?v=2.25.3">
+  <script src="/js/theme.js?v=2.25.3"></script>
 </head>
 <body>
   <div id="app-topbar"></div>
@@ -21,6 +21,28 @@
           <div><div class="eyebrow">Atualizações</div><h1 style="margin-bottom:6px">Novidades da Versão</h1><p class="muted" style="margin:0">Acompanhe as melhorias e mudanças do eMulti Regulação.</p></div>
           <span class="badge" id="currentVersion">Versão atual</span>
         </div>
+      </section>
+      <section class="panel-section" style="margin-top:16px">
+        <h2>Versão 2.25.3</h2>
+        <p class="muted">Profissionais em múltiplas equipes</p>
+        <ul>
+          <li>Um mesmo profissional pode ser vinculado simultaneamente a duas ou mais equipes eMulti.</li>
+          <li>Administração de profissionais e acessos passa a aceitar seleção múltipla de equipes.</li>
+          <li>Agenda, grupos, escalas e permissões consideram todas as equipes vinculadas ao profissional/usuário.</li>
+          <li>Vínculos existentes são preservados pela migration 026; nenhuma guia ou agenda é apagada.</li>
+        </ul>
+      </section>
+      <section class="panel-section" style="margin-top:16px">
+        <h2>Versão 2.25.2</h2>
+        <p class="muted">Desempenho da Administração</p>
+        <ul>
+          <li>Consultas de usuários e acessos foram agrupadas para eliminar consultas repetidas por usuário.</li>
+          <li>Profissionais e vínculos passam a ser carregados em lote apenas para a página atual.</li>
+          <li>Equipes e unidades usam consultas agregadas, reduzindo o número de acessos aos bancos D1.</li>
+          <li>Filtros e referências administrativas são reutilizados durante paginação e pesquisa.</li>
+          <li>Abas recém-carregadas ficam em cache por curto período, tornando a navegação entre áreas praticamente imediata.</li>
+          <li>A verificação estrutural do banco foi retirada do caminho crítico do primeiro carregamento.</li>
+        </ul>
       </section>
       <section class="panel-section" style="margin-top:16px">
         <h2>Versão 2.25.1</h2>
@@ -50,8 +72,8 @@
       </section>
     </div>
   </main>
-  <script src="/js/regulacao.js?v=2.25.1"></script>
-  <script src="/js/app-chrome.js?v=2.25.1"></script>
+  <script src="/js/regulacao.js?v=2.25.3"></script>
+  <script src="/js/app-chrome.js?v=2.25.3"></script>
   <script>
     const releases = [
       ['2.17.4','Novidades da Versão','Histórico de alterações centralizado em uma página do sistema e em um único documento.'],
@@ -78,7 +100,7 @@
       ['2.6','Responsabilidades','Introdução das responsabilidades Cadastrante, Regulador, Executor e Administrador.']
     ];
     document.addEventListener('DOMContentLoaded',()=>{
-      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.25.1');
+      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.25.3');
       const h=document.getElementById('history');
       h.innerHTML=releases.map(r=>`<article style="padding:16px 0;border-bottom:1px solid var(--border,#e3e7ee)"><div style="display:flex;gap:10px;align-items:center"><strong>v${r[0]}</strong><span>${r[1]}</span></div><p class="muted" style="margin:6px 0 0">${r[2]}</p></article>`).join('');
     });

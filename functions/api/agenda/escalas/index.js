@@ -1,5 +1,5 @@
 import { json, logAudit } from '../../_utils.js';
-import { requireRegulacaoAccess, isEquipeMember } from '../../_shared.js';
+import { requireRegulacaoAccess, isEquipeMember, getUserEquipeIds } from '../../_shared.js';
 import { principalId } from '../../_hybrid.js';
 import { getProfissionalAssistencialPorPrincipal } from '../../_professionals.js';
 import {
@@ -27,12 +27,13 @@ export async function onRequestGet({ request, env }) {
   if (!profissionalId) return json({ escalas: [] });
 
   if (!(access.gestor || access.administrador)) {
+    const equipeIds=await getUserEquipeIds(env,user);
+    if(!equipeIds.length)return json({ error: 'Você não possui equipe vinculada.' }, 403);
+    const ph=equipeIds.map(()=>'?').join(',');
     const prof = await env.DB_REGULACAO.prepare(
-      'SELECT equipe_id FROM regulacao_profissionais WHERE id=? AND ativo=1'
-    ).bind(profissionalId).first();
-    if (!prof) return json({ error: 'Profissional não encontrado.' }, 404);
-    const membro = await isEquipeMember(env, user, Number(prof.equipe_id), access);
-    if (!membro) return json({ error: 'Profissional fora da sua equipe.' }, 403);
+      `SELECT 1 ok FROM regulacao_profissionais p JOIN regulacao_profissional_equipes pe ON pe.profissional_id=p.id WHERE p.id=? AND p.ativo=1 AND pe.equipe_id IN (${ph}) LIMIT 1`
+    ).bind(profissionalId,...equipeIds).first();
+    if (!prof) return json({ error: 'Profissional fora das suas equipes.' }, 403);
   }
 
   const { results } = await env.DB_REGULACAO.prepare(`

@@ -92,6 +92,7 @@ const REGULACAO_TABLES = [
   'regulacao_etiquetas',
   'guia_etiquetas',
   'regulacao_execucoes_administrativas',
+  'regulacao_profissional_equipes',
   'emulti_schema_version',
 ];
 
@@ -360,6 +361,8 @@ export async function ensureRegulacaoSchema(env) {
     `CREATE TABLE IF NOT EXISTS regulacao_etiquetas (id INTEGER PRIMARY KEY AUTOINCREMENT,nome TEXT NOT NULL COLLATE NOCASE UNIQUE,ativo INTEGER NOT NULL DEFAULT 1 CHECK(ativo IN(0,1)),sort_order INTEGER NOT NULL DEFAULT 0,created_by_principal TEXT,created_at TEXT NOT NULL DEFAULT(datetime('now')))`,
     `CREATE TABLE IF NOT EXISTS guia_etiquetas (guia_id INTEGER NOT NULL,etiqueta_id INTEGER NOT NULL,added_by_principal TEXT,added_at TEXT NOT NULL DEFAULT(datetime('now')),PRIMARY KEY(guia_id,etiqueta_id),FOREIGN KEY(guia_id) REFERENCES guias(id) ON DELETE CASCADE,FOREIGN KEY(etiqueta_id) REFERENCES regulacao_etiquetas(id) ON DELETE CASCADE)`,
     `CREATE TABLE IF NOT EXISTS regulacao_execucoes_administrativas (id INTEGER PRIMARY KEY AUTOINCREMENT,tipo TEXT NOT NULL CHECK(tipo IN('individual','grupo')),referencia_id TEXT NOT NULL,guia_id INTEGER NOT NULL,resultado TEXT NOT NULL CHECK(resultado IN('realizado','falta','abandono','cancelado','removido')),observacao_administrativa TEXT,registrado_por_principal TEXT,registrado_em TEXT NOT NULL DEFAULT(datetime('now')),FOREIGN KEY(guia_id) REFERENCES guias(id) ON DELETE RESTRICT)`,
+    `CREATE TABLE IF NOT EXISTS regulacao_profissional_equipes (profissional_id TEXT NOT NULL REFERENCES regulacao_profissionais(id) ON DELETE CASCADE,equipe_id INTEGER NOT NULL,is_principal INTEGER NOT NULL DEFAULT 0 CHECK(is_principal IN(0,1)),created_at TEXT NOT NULL DEFAULT(datetime('now')),updated_at TEXT NOT NULL DEFAULT(datetime('now')),PRIMARY KEY(profissional_id,equipe_id))`,
+    `CREATE INDEX IF NOT EXISTS idx_reg_prof_equipes_team ON regulacao_profissional_equipes(equipe_id,profissional_id)`,
     `CREATE TABLE IF NOT EXISTS emulti_schema_version (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       version TEXT NOT NULL,
@@ -427,9 +430,9 @@ export async function ensureRegulacaoSchema(env) {
   }
 
   await env.DB_REGULACAO.prepare(`INSERT INTO emulti_schema_version (id, version, updated_at)
-    VALUES (1, '2.25.0', datetime('now'))
+    VALUES (1, '2.25.3', datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
-      version = '2.25.0', updated_at = datetime('now')`).run();
+      version = '2.25.3', updated_at = datetime('now')`).run();
 
   const especialidades = [
     ['Fisioterapia', 1],

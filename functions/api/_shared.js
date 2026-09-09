@@ -74,16 +74,18 @@ export async function getRegulacaoScope(env, user, access = null) {
     const { results: diretos } = await env.DB_REGULACAO.prepare(
       `SELECT unidade_code,pode_emitir,pode_executar FROM regulacao_principal_unidades WHERE principal_id=?`
     ).bind(pid).all();
-    const team = await env.DB_REGULACAO.prepare('SELECT equipe_id FROM regulacao_principal_equipes WHERE principal_id=?').bind(pid).first();
+    const teams = await env.DB_REGULACAO.prepare('SELECT equipe_id FROM regulacao_principal_equipes WHERE principal_id=? ORDER BY equipe_id').bind(pid).all();
     let equipeUnits = [];
-    if (team?.equipe_id) {
-      const r = await env.DB.prepare(`SELECT eu.unidade_code FROM regulacao_equipe_unidades eu JOIN regulacao_equipes e ON e.id=eu.equipe_id AND e.ativo=1 JOIN unidades u ON u.code=eu.unidade_code AND u.ativo=1 WHERE eu.equipe_id=?`).bind(team.equipe_id).all();
+    const equipeIds=(teams.results||[]).map(x=>Number(x.equipe_id)).filter(Boolean);
+    if (equipeIds.length) {
+      const ph=equipeIds.map(()=>'?').join(',');
+      const r = await env.DB.prepare(`SELECT DISTINCT eu.unidade_code FROM regulacao_equipe_unidades eu JOIN regulacao_equipes e ON e.id=eu.equipe_id AND e.ativo=1 JOIN unidades u ON u.code=eu.unidade_code AND u.ativo=1 WHERE eu.equipe_id IN (${ph})`).bind(...equipeIds).all();
       equipeUnits = (r.results || []).map((x) => x.unidade_code);
     }
     const emissoras = access.cadastrante ? (diretos || []).filter(r=>r.pode_emitir).map(r=>r.unidade_code) : [];
     const executantes = (access.regulador || access.organizador || access.executor)
       ? Array.from(new Set([...(diretos || []).filter(r=>r.pode_executar).map(r=>r.unidade_code), ...equipeUnits])) : [];
-    if ((diretos || []).length || team?.equipe_id || user.source === 'local') return { isAdmin:false, emissoras, executantes };
+    if ((diretos || []).length || equipeIds.length || user.source === 'local') return { isAdmin:false, emissoras, executantes };
   } catch { /* fallback abaixo */ }
 
   if (user.source === 'local') return { isAdmin:false, emissoras:[], executantes:[] };
@@ -102,8 +104,9 @@ export async function getRegulacaoScope(env, user, access = null) {
 export async function getUserEquipeIds(env, user) {
   const pid = principalId(user);
   try {
-    const row = await env.DB_REGULACAO.prepare('SELECT equipe_id FROM regulacao_principal_equipes WHERE principal_id=?').bind(pid).first();
-    return row?.equipe_id ? [row.equipe_id] : [];
+    const {results} = await env.DB_REGULACAO.prepare('SELECT equipe_id FROM regulacao_principal_equipes WHERE principal_id=? ORDER BY equipe_id').bind(pid).all();
+    const ids=(results||[]).map(r=>Number(r.equipe_id)).filter(Boolean);
+    if(ids.length || user.source==='local') return ids;
   } catch {}
   if (user.source === 'local') return [];
   try { const { results } = await env.DB.prepare('SELECT equipe_id FROM regulacao_equipe_profissionais WHERE user_id=?').bind(user.id).all(); return (results||[]).map(r=>r.equipe_id); } catch { return []; }

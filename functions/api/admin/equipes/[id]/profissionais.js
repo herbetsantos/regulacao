@@ -1,4 +1,4 @@
-// Profissional pertence a no máximo UMA equipe eMulti.
+// Profissional pode pertencer a uma ou mais equipes eMulti simultaneamente.
 // POST body: { user_id, cargo, especialidade_ids[] }
 // PUT  body: { user_id, cargo, especialidade_ids[] }
 // DELETE ?user_id=...
@@ -29,14 +29,6 @@ async function salvar({ request, env, params, atualizar = false }) {
   const profissional = await env.DB.prepare('SELECT id, name FROM users WHERE id = ? AND active = 1').bind(userId).first();
   if (!profissional) return json({ error: 'Usuário não encontrado.' }, 400);
 
-  const vinculoAtual = await env.DB.prepare(`
-    SELECT ep.equipe_id, e.nome AS equipe_nome FROM regulacao_equipe_profissionais ep
-    JOIN regulacao_equipes e ON e.id = ep.equipe_id WHERE ep.user_id = ? LIMIT 1
-  `).bind(userId).first();
-  if (vinculoAtual && Number(vinculoAtual.equipe_id) !== equipeId) {
-    return json({ error: `${profissional.name} já está vinculado à equipe ${vinculoAtual.equipe_nome}. Remova o vínculo atual antes de vincular a outra equipe.` }, 409);
-  }
-
   await env.DB.prepare(`INSERT INTO regulacao_equipe_profissionais (equipe_id, user_id, cargo)
     VALUES (?, ?, ?) ON CONFLICT(equipe_id, user_id) DO UPDATE SET cargo = excluded.cargo`
   ).bind(equipeId, userId, cargo).run();
@@ -57,7 +49,8 @@ export async function onRequestDelete({ request, env, params }) {
   const url = new URL(request.url);
   const userId = Number(url.searchParams.get('user_id'));
   if (!userId) return json({ error: 'Informe user_id.' }, 400);
-  await env.DB.prepare('DELETE FROM regulacao_profissional_especialidades WHERE user_id = ?').bind(userId).run();
+  const remaining=await env.DB.prepare('SELECT COUNT(*) n FROM regulacao_equipe_profissionais WHERE user_id=? AND equipe_id<>?').bind(userId,equipeId).first();
+  if(!Number(remaining?.n||0))await env.DB.prepare('DELETE FROM regulacao_profissional_especialidades WHERE user_id = ?').bind(userId).run();
   await env.DB.prepare('DELETE FROM regulacao_equipe_profissionais WHERE equipe_id = ? AND user_id = ?').bind(equipeId, userId).run();
   await syncPortalRegulacaoFeature(env, userId);
   await logAudit(env, user, 'delete', 'equipe_profissional', equipeId, { userId });

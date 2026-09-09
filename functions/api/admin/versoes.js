@@ -1,7 +1,7 @@
 import { json } from '../_utils.js';
 import { requireAdminAccess } from '../_shared.js';
 
-const APP_VERSION = '2.25.1';
+const APP_VERSION = '2.25.3';
 const PORTAL_SCHEMA_VERSION = '2.18.2';
 
 async function readDbVersion(db) {

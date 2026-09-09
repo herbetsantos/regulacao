@@ -12,12 +12,13 @@ function normalizeProfile(row,extra={}){if(!row)return emptyProfile(extra);const
 export function fullRegulacaoProfile(extra={}){return{acesso:true,cadastrante:true,regulador:true,organizador:true,executor:true,gestor:true,administrador:true,fonte:'super_admin',...extra}}
 
 async function getNewBinding(env,pid){
-  const [eq,unitRows]=await Promise.all([
-    env.DB_REGULACAO.prepare('SELECT equipe_id FROM regulacao_principal_equipes WHERE principal_id=?').bind(pid).first(),
+  const [eqRows,unitRows]=await Promise.all([
+    env.DB_REGULACAO.prepare('SELECT equipe_id FROM regulacao_principal_equipes WHERE principal_id=? ORDER BY equipe_id').bind(pid).all(),
     env.DB_REGULACAO.prepare('SELECT unidade_code FROM regulacao_principal_unidades WHERE principal_id=?').bind(pid).all(),
   ]);
   let equipe=false, unidade=false;
-  if(eq?.equipe_id){try{equipe=!!await env.DB.prepare('SELECT 1 ok FROM regulacao_equipes WHERE id=? AND ativo=1').bind(eq.equipe_id).first()}catch{equipe=false}}
+  const equipeIds=(eqRows.results||[]).map(x=>Number(x.equipe_id)).filter(Boolean);
+  if(equipeIds.length){try{const ph=equipeIds.map(()=>'?').join(',');equipe=!!await env.DB.prepare(`SELECT 1 ok FROM regulacao_equipes WHERE id IN (${ph}) AND ativo=1 LIMIT 1`).bind(...equipeIds).first()}catch{equipe=false}}
   for(const row of unitRows.results || []){
     try{if(await env.DB.prepare('SELECT 1 ok FROM unidades WHERE code=? AND ativo=1').bind(row.unidade_code).first()){unidade=true;break}}catch{}
   }
