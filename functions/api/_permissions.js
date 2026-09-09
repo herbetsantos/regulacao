@@ -5,11 +5,11 @@
 import { principalId } from './_hybrid.js';
 
 const LEGACY_FEATURE_KEY = 'regulacao_vagas';
-export const REGULACAO_CAPABILITIES = ['cadastrante', 'regulador', 'organizador', 'executor', 'administrador'];
+export const REGULACAO_CAPABILITIES = ['cadastrante', 'regulador', 'organizador', 'executor', 'gestor', 'administrador'];
 
-function emptyProfile(extra={}){return{acesso:false,cadastrante:false,regulador:false,organizador:false,executor:false,administrador:false,fonte:'regulacao_principal_acessos',...extra}}
-function normalizeProfile(row,extra={}){if(!row)return emptyProfile(extra);const administrador=!!row.administrador;const p={cadastrante:administrador||!!row.cadastrante,regulador:administrador||!!row.regulador,organizador:administrador||!!row.organizador,executor:administrador||!!row.executor,administrador,...extra};p.acesso=p.cadastrante||p.regulador||p.organizador||p.executor||p.administrador;return p}
-export function fullRegulacaoProfile(extra={}){return{acesso:true,cadastrante:true,regulador:true,organizador:true,executor:true,administrador:true,fonte:'super_admin',...extra}}
+function emptyProfile(extra={}){return{acesso:false,cadastrante:false,regulador:false,organizador:false,executor:false,gestor:false,administrador:false,fonte:'regulacao_principal_acessos',...extra}}
+function normalizeProfile(row,extra={}){if(!row)return emptyProfile(extra);const administrador=!!row.administrador;const p={cadastrante:administrador||!!row.cadastrante,regulador:administrador||!!row.regulador,organizador:administrador||!!row.organizador,executor:administrador||!!row.executor,gestor:administrador||!!row.gestor,administrador,...extra};p.acesso=p.cadastrante||p.regulador||p.organizador||p.executor||p.gestor||p.administrador;return p}
+export function fullRegulacaoProfile(extra={}){return{acesso:true,cadastrante:true,regulador:true,organizador:true,executor:true,gestor:true,administrador:true,fonte:'super_admin',...extra}}
 
 async function getNewBinding(env,pid){
   const [eq,unitRows]=await Promise.all([
@@ -38,7 +38,7 @@ export async function getRegulacaoBinding(env,userIdOrUser){
 export async function syncPortalRegulacaoFeature(env,userOrId){
   const user=typeof userOrId==='object'?userOrId:{id:userOrId,source:'portal'};
   if(user.source==='local')return{enabled:true,responsabilidades:true,equipe:false,unidade:false};
-  const pid=`portal:${user.id}`;let responsabilidades=false;try{const r=await env.DB_REGULACAO.prepare('SELECT cadastrante,regulador,organizador,executor,administrador FROM regulacao_principal_acessos WHERE principal_id=? AND active=1').bind(pid).first();responsabilidades=!!(r&&(r.cadastrante||r.regulador||r.organizador||r.executor||r.administrador))}catch{}
+  const pid=`portal:${user.id}`;let responsabilidades=false;try{const r=await env.DB_REGULACAO.prepare('SELECT cadastrante,regulador,organizador,executor,gestor,administrador FROM regulacao_principal_acessos WHERE principal_id=? AND active=1').bind(pid).first();responsabilidades=!!(r&&(r.cadastrante||r.regulador||r.organizador||r.executor||r.gestor||r.administrador))}catch{}
   const binding=await getRegulacaoBinding(env,user);const enabled=responsabilidades||binding.acesso;
   await env.DB.prepare(`INSERT INTO user_permissions(user_id,feature_key,enabled) VALUES(?,?,?) ON CONFLICT(user_id,feature_key) DO UPDATE SET enabled=excluded.enabled`).bind(user.id,LEGACY_FEATURE_KEY,enabled?1:0).run();
   return{enabled,responsabilidades,...binding};
@@ -46,7 +46,7 @@ export async function syncPortalRegulacaoFeature(env,userOrId){
 
 export async function getRegulacaoAccessProfile(env,user){
   if(!user)return emptyProfile();if(user.source==='portal'&&user.role==='super_admin')return fullRegulacaoProfile();const pid=principalId(user);
-  try{const row=await env.DB_REGULACAO.prepare('SELECT cadastrante,regulador,organizador,executor,administrador,active FROM regulacao_principal_acessos WHERE principal_id=?').bind(pid).first();const p=normalizeProfile(row&&row.active?row:null,{fonte:'regulacao_principal_acessos'});const b=await getNewBinding(env,pid);if(b.acesso){p.acesso=true;p.vinculo_equipe=b.equipe;p.vinculo_unidade=b.unidade;if(!row)p.fonte=b.equipe?'vinculo_equipe':'vinculo_unidade'}if(row||b.acesso||user.source==='local')return p}catch{}
+  try{const row=await env.DB_REGULACAO.prepare('SELECT cadastrante,regulador,organizador,executor,gestor,administrador,active FROM regulacao_principal_acessos WHERE principal_id=?').bind(pid).first();const p=normalizeProfile(row&&row.active?row:null,{fonte:'regulacao_principal_acessos'});const b=await getNewBinding(env,pid);if(b.acesso){p.acesso=true;p.vinculo_equipe=b.equipe;p.vinculo_unidade=b.unidade;if(!row)p.fonte=b.equipe?'vinculo_equipe':'vinculo_unidade'}if(row||b.acesso||user.source==='local')return p}catch{}
   return inferLegacyResponsibilities(env,user);
 }
 export function hasRegulacaoCapability(profile,capability){return REGULACAO_CAPABILITIES.includes(capability)&&!!(profile?.administrador||profile?.[capability])}

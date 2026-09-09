@@ -1,94 +1,91 @@
 # eMulti / Regulação — Cajamar Saúde
 
-Versão de avaliação: **2.19.1**
+Versão consolidada: **2.25.0**
 
-Esta evolução reorganiza a Administração, separa o profissional assistencial do usuário do sistema e introduz acesso híbrido: **Portal APS ou credencial própria da Regulação**.
+Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**: evolução, conduta, procedimentos e demais registros clínicos não são gravados neste ambiente.
 
-## Bancos D1
+## Arquitetura
+
+O projeto utiliza dois bancos D1:
 
 ```text
 DB            → portal-saude-db
 DB_REGULACAO  → regulacao-vagas-db
 ```
 
-### `portal-saude-db`
-Continua sendo a fonte central para:
-- usuários internos do Portal APS;
-- sessão/handoff do Portal;
-- cadastro mestre de unidades;
-- estruturas legadas ainda mantidas durante a transição.
+O `portal-saude-db` permanece como fonte de usuários do Portal, sessões/handoff e cadastro mestre de unidades. O `regulacao-vagas-db` armazena pacientes, guias, fila, autorizações funcionais, profissionais assistenciais, vínculos, escalas, agenda, grupos, etiquetas e resultados administrativos.
 
-### `regulacao-vagas-db`
-Continua armazenando pacientes, guias, fila, agenda, grupos e atendimentos.
-
-Na 2.19.0 passa também a armazenar:
-- credenciais externas da Regulação;
-- autorização funcional por principal;
-- vínculos de unidade/equipe das autorizações;
-- profissionais assistenciais independentes;
-- vínculos `profissional + unidade + especialidade + carga horária semanal`.
-
-## Identidade
+A Regulação aceita duas origens de identidade:
 
 ```text
-portal:<id>       → conta do Portal APS
-local:<uuid>      → credencial própria da Regulação
+portal:<id>  → conta do Portal APS
+local:<uuid> → credencial própria da Regulação
 ```
 
-O profissional assistencial é um cadastro separado e pode existir sem possuir login.
+O cadastro de **profissional assistencial é independente da conta de usuário**. Assim, um profissional pode constar nas listas e escalas mesmo antes de possuir login.
 
-## Administração
+## Perfis funcionais
 
-A Administração foi dividida em:
+Os perfis são combináveis e independentes do papel geral do usuário no Portal:
 
-1. Visão geral
-2. Usuários e acessos
-3. Profissionais
-4. Especialidades
-5. Equipes
-6. Unidades
-7. Configurações
+- **Cadastrante:** cadastro de pacientes e emissão de guias nas unidades autorizadas.
+- **Regulador:** análise, lista de espera, negativa e transferência administrativa.
+- **Organizador:** agenda individual, grupos e alocação de pacientes.
+- **Executor:** registra apenas resultados administrativos de execução, como realizado, falta e abandono.
+- **Gestor:** administra profissionais, vínculos, especialidades, equipes e escalas.
+- **Administrador:** gestão ampliada do ambiente e de acessos.
 
-## Carga horária das especialidades
+A concessão ou revogação da responsabilidade **Administrador** é exclusiva do **Super Administrador do Portal APS**.
 
-A carga horária de uma especialidade não é digitada manualmente.
+## Administração 2.25.0
 
-Ela é calculada pela soma dos vínculos assistenciais ativos:
+A Administração possui visão geral e áreas para acessos, profissionais, especialidades, equipes, unidades e configurações. Listas extensas usam paginação e filtros, incluindo unidade, função, especialidade e equipe conforme a tela.
 
-```text
-profissional + unidade + especialidade + horas/semana
+O Gestor pode administrar a estrutura assistencial e escalas sem receber automaticamente poderes para regular, organizar ou executar. Administradores continuam responsáveis pela gestão ampliada de acessos.
+
+## Etiquetas e execução administrativa
+
+As guias podem receber etiquetas administrativas filtráveis, inicialmente:
+
+- Prioridade;
+- Retorno;
+- Contato pendente;
+- Documentação pendente;
+- Atenção compartilhada.
+
+Atendimentos individuais e grupos registram resultados administrativos em estrutura própria. Esses registros **não substituem evolução clínica** e não devem conter conteúdo de prontuário.
+
+## Atualização da linha 2.20.x para 2.25.0
+
+1. Faça backup do `regulacao-vagas-db`.
+2. Aplique **uma única vez**:
+
+```bash
+npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/025_consolidacao_2_25_0.sql
 ```
 
-Assim, um profissional pode distribuir corretamente sua jornada entre unidades e/ou especialidades sem duplicação indevida.
+3. Execute a validação somente leitura, se desejar:
 
-## Avaliação
-
-Consulte `AVALIACAO_2.19.0.md`.
-
-**Não execute SQL no D1 apenas para avaliar os arquivos e a proposta.**
-
-Quando a versão for aprovada, a migração deverá ser feita de forma controlada no Cloudflare D1 usando:
-
-- `database/019_admin_profissionais_acesso_hibrido.sql`
-- `database/VALIDAR_2_19_0.sql`
-
-Não use `database/update.sql` para instalar a evolução 2.19.0.
-
-
-## Desempenho 2.19.1
-
-A versão 2.19.1 otimiza apenas o código de carregamento da interface e das APIs.
-
-O schema do `regulacao-vagas-db` continua sendo **2.19.0** e não há SQL novo a executar.
-
-Fluxo inicial:
-
-```text
-/api/me
-   ↓
-guias ───────────────┐
-                     ├─ em paralelo
-filtros compactos ───┘
-   ↓
-notificações/chat em segundo plano
+```bash
+npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/VALIDAR_2_25_0.sql
 ```
+
+4. Publique o código 2.25.0.
+5. Valide login, perfis, Administração, escalas, Agenda, grupos, etiquetas e fluxo da guia.
+
+> `025_consolidacao_2_25_0.sql` contém `ALTER TABLE` e deve ser executado somente uma vez em uma base 2.20.x ainda não migrada.
+
+## Instalação nova
+
+`database/schema.sql` já representa o schema consolidado da 2.25.0. Não aplique a migração 025 depois de criar uma base nova usando esse schema.
+
+## Compatibilidade clínica legada
+
+Estruturas antigas de acompanhamento podem continuar presentes no banco para preservar histórico e compatibilidade de bases existentes. Na 2.25.0, as rotas de criação de acompanhamento/sessão clínica retornam bloqueio e a interface não oferece formulários de evolução. Novos registros clínicos devem ser feitos no PEC e-SUS.
+
+## Documentação da versão
+
+- `RELEASE_2.25.0.md`
+- `CHANGELOG_2.25.0.md`
+- `MIGRACAO_2.25.0_LEIA-ME.md`
+- `database/VALIDAR_2_25_0.sql`

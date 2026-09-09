@@ -38,6 +38,16 @@ export async function requireRegulacaoCapability(request, env, capability, mensa
   return auth;
 }
 
+
+export async function requireGestorAccess(request, env) {
+  const auth = await requireRegulacaoAccess(request, env);
+  if (auth.error) return auth;
+  if (!auth.access.gestor && !auth.access.administrador) {
+    return { error: json({ error: 'Apenas Gestor ou Administrador pode acessar esta configuração.', codigo: 'SEM_PERMISSAO_GESTAO' }, 403) };
+  }
+  return auth;
+}
+
 export async function requireAdminAccess(request, env) {
   return requireRegulacaoCapability(
     request,

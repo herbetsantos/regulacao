@@ -82,9 +82,6 @@ const REGULACAO_TABLES = [
   'pacientes',
   'guias',
   'guia_atribuicoes',
-  'acompanhamentos',
-  'acompanhamento_guias',
-  'acompanhamento_sessoes',
   'notificacoes',
   'notificacao_lidas',
   'agenda_escalas',
@@ -92,6 +89,9 @@ const REGULACAO_TABLES = [
   'agenda_grupo_encontros',
   'agenda_grupo_pacientes',
   'agenda_individuais',
+  'regulacao_etiquetas',
+  'guia_etiquetas',
+  'regulacao_execucoes_administrativas',
   'emulti_schema_version',
 ];
 
@@ -104,7 +104,7 @@ export async function getRegulacaoSchemaStatus(env) {
       tabelasFaltantes: [...REGULACAO_TABLES],
       colunasPacienteEnderecoFaltantes: [...PACIENTE_ENDERECO_COLUMNS],
       colunasPacienteIntegracaoFaltantes: ['cns'],
-      colunasFluxoV210Faltantes: ['guias.codigo_guia','acompanhamentos.data_inicio','acompanhamentos.horario_inicio','acompanhamento_sessoes.profissional_user_id'],
+      colunasFluxoV210Faltantes: ['guias.codigo_guia'],
       colunasAgendaFaltantes: ['especialidades.duracao_padrao_min','guias.desfecho_atendimento'],
       erro: 'Binding DB_REGULACAO não configurado no projeto Cloudflare Pages.',
     };
@@ -139,17 +139,6 @@ export async function getRegulacaoSchemaStatus(env) {
       const cols = new Set((info.results || []).map((c) => c.name));
       if (!cols.has('duracao_padrao_min')) colunasAgendaFaltantes.push('especialidades.duracao_padrao_min');
     }
-    if (existentes.has('acompanhamentos')) {
-      const info = await env.DB_REGULACAO.prepare("PRAGMA table_info('acompanhamentos')").all();
-      const cols = new Set((info.results || []).map((c) => c.name));
-      if (!cols.has('data_inicio')) colunasFluxoV210Faltantes.push('acompanhamentos.data_inicio');
-      if (!cols.has('horario_inicio')) colunasFluxoV210Faltantes.push('acompanhamentos.horario_inicio');
-    }
-    if (existentes.has('acompanhamento_sessoes')) {
-      const info = await env.DB_REGULACAO.prepare("PRAGMA table_info('acompanhamento_sessoes')").all();
-      const cols = new Set((info.results || []).map((c) => c.name));
-      if (!cols.has('profissional_user_id')) colunasFluxoV210Faltantes.push('acompanhamento_sessoes.profissional_user_id');
-    }
 
     return {
       bindingOk: true,
@@ -170,7 +159,7 @@ export async function getRegulacaoSchemaStatus(env) {
       tabelasFaltantes: [...REGULACAO_TABLES],
       colunasPacienteEnderecoFaltantes: [...PACIENTE_ENDERECO_COLUMNS],
       colunasPacienteIntegracaoFaltantes: ['cns'],
-      colunasFluxoV210Faltantes: ['guias.codigo_guia','acompanhamentos.data_inicio','acompanhamentos.horario_inicio','acompanhamento_sessoes.profissional_user_id'],
+      colunasFluxoV210Faltantes: ['guias.codigo_guia'],
       colunasAgendaFaltantes: ['especialidades.duracao_padrao_min','guias.desfecho_atendimento'],
       erro: messageOf(err),
     };
@@ -368,6 +357,9 @@ export async function ensureRegulacaoSchema(env) {
       FOREIGN KEY (guia_id) REFERENCES guias(id) ON DELETE RESTRICT,
       FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
     )`,
+    `CREATE TABLE IF NOT EXISTS regulacao_etiquetas (id INTEGER PRIMARY KEY AUTOINCREMENT,nome TEXT NOT NULL COLLATE NOCASE UNIQUE,ativo INTEGER NOT NULL DEFAULT 1 CHECK(ativo IN(0,1)),sort_order INTEGER NOT NULL DEFAULT 0,created_by_principal TEXT,created_at TEXT NOT NULL DEFAULT(datetime('now')))`,
+    `CREATE TABLE IF NOT EXISTS guia_etiquetas (guia_id INTEGER NOT NULL,etiqueta_id INTEGER NOT NULL,added_by_principal TEXT,added_at TEXT NOT NULL DEFAULT(datetime('now')),PRIMARY KEY(guia_id,etiqueta_id),FOREIGN KEY(guia_id) REFERENCES guias(id) ON DELETE CASCADE,FOREIGN KEY(etiqueta_id) REFERENCES regulacao_etiquetas(id) ON DELETE CASCADE)`,
+    `CREATE TABLE IF NOT EXISTS regulacao_execucoes_administrativas (id INTEGER PRIMARY KEY AUTOINCREMENT,tipo TEXT NOT NULL CHECK(tipo IN('individual','grupo')),referencia_id TEXT NOT NULL,guia_id INTEGER NOT NULL,resultado TEXT NOT NULL CHECK(resultado IN('realizado','falta','abandono','cancelado','removido')),observacao_administrativa TEXT,registrado_por_principal TEXT,registrado_em TEXT NOT NULL DEFAULT(datetime('now')),FOREIGN KEY(guia_id) REFERENCES guias(id) ON DELETE RESTRICT)`,
     `CREATE TABLE IF NOT EXISTS emulti_schema_version (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       version TEXT NOT NULL,
@@ -380,9 +372,6 @@ export async function ensureRegulacaoSchema(env) {
     `CREATE INDEX IF NOT EXISTS idx_guias_unidade_executante ON guias(unidade_executante_code)`,
     `CREATE INDEX IF NOT EXISTS idx_guias_equipe ON guias(equipe_id)`,
     `CREATE INDEX IF NOT EXISTS idx_guias_especialidade ON guias(especialidade_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_acompanhamentos_equipe ON acompanhamentos(equipe_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_acomp_guias_guia ON acompanhamento_guias(guia_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_sessoes_acompanhamento ON acompanhamento_sessoes(acompanhamento_id)`,
     `CREATE INDEX IF NOT EXISTS idx_notificacoes_equipe ON notificacoes(equipe_id)`,
     `CREATE INDEX IF NOT EXISTS idx_agenda_escalas_prof ON agenda_escalas(profissional_user_id, ativo)`,
     `CREATE INDEX IF NOT EXISTS idx_agenda_grupos_prof ON agenda_grupos(profissional_user_id, ativo)`,
@@ -421,16 +410,8 @@ export async function ensureRegulacaoSchema(env) {
     WHERE codigo_guia IS NULL OR trim(codigo_guia) = ''`).run();
   await env.DB_REGULACAO.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_guias_codigo ON guias(codigo_guia)').run();
 
-  const acompInfo = await env.DB_REGULACAO.prepare("PRAGMA table_info('acompanhamentos')").all();
-  const acompCols = new Set((acompInfo.results || []).map((c) => c.name));
-  if (!acompCols.has('data_inicio')) await env.DB_REGULACAO.prepare('ALTER TABLE acompanhamentos ADD COLUMN data_inicio TEXT').run();
-  if (!acompCols.has('horario_inicio')) await env.DB_REGULACAO.prepare('ALTER TABLE acompanhamentos ADD COLUMN horario_inicio TEXT').run();
-
-  const sessaoInfo = await env.DB_REGULACAO.prepare("PRAGMA table_info('acompanhamento_sessoes')").all();
-  const sessaoCols = new Set((sessaoInfo.results || []).map((c) => c.name));
-  if (!sessaoCols.has('profissional_user_id')) {
-    await env.DB_REGULACAO.prepare('ALTER TABLE acompanhamento_sessoes ADD COLUMN profissional_user_id INTEGER').run();
-  }
+  try { const ai=await env.DB_REGULACAO.prepare("PRAGMA table_info('regulacao_principal_acessos')").all(); const cols=new Set((ai.results||[]).map(c=>c.name)); if(!cols.has('gestor')) await env.DB_REGULACAO.prepare('ALTER TABLE regulacao_principal_acessos ADD COLUMN gestor INTEGER NOT NULL DEFAULT 0 CHECK (gestor IN (0,1))').run(); } catch {}
+  await env.DB_REGULACAO.prepare("INSERT OR IGNORE INTO regulacao_etiquetas(nome,sort_order) VALUES ('Prioridade',10),('Retorno',20),('Contato pendente',30),('Documentação pendente',40),('Atenção compartilhada',50)").run();
 
   // v2.17 — agenda e desfecho de atendimento.
   const espInfo = await env.DB_REGULACAO.prepare("PRAGMA table_info('especialidades')").all();
@@ -446,10 +427,9 @@ export async function ensureRegulacaoSchema(env) {
   }
 
   await env.DB_REGULACAO.prepare(`INSERT INTO emulti_schema_version (id, version, updated_at)
-    VALUES (1, '2.18.2', datetime('now'))
+    VALUES (1, '2.25.0', datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
-      version = CASE WHEN emulti_schema_version.version = '2.19.0' THEN emulti_schema_version.version ELSE excluded.version END,
-      updated_at = CASE WHEN emulti_schema_version.version = '2.19.0' THEN emulti_schema_version.updated_at ELSE excluded.updated_at END`).run();
+      version = '2.25.0', updated_at = datetime('now')`).run();
 
   const especialidades = [
     ['Fisioterapia', 1],

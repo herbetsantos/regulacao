@@ -1,5 +1,5 @@
 import { json } from '../_utils.js';
-import { requireAdminAccess } from '../_shared.js';
+import { requireGestorAccess } from '../_shared.js';
 
 async function tableExists(db,name){
   const row=await db.prepare("SELECT 1 ok FROM sqlite_master WHERE type='table' AND name=?").bind(name).first();
@@ -12,7 +12,7 @@ async function columnExists(db,table,column){
 }
 
 export async function onRequestGet({request,env}){
-  const {error}=await requireAdminAccess(request,env);
+  const {error}=await requireGestorAccess(request,env);
   if(error)return error;
 
   const required219=[
@@ -34,6 +34,7 @@ export async function onRequestGet({request,env}){
 
   const requiredColumns=[
     ['regulacao_principal_acessos','organizador'],
+    ['regulacao_principal_acessos','gestor'],
     ['agenda_escalas','profissional_id'],
     ['agenda_individuais','profissional_id'],
   ];
@@ -44,8 +45,8 @@ export async function onRequestGet({request,env}){
     }
   }
 
-  if(!await tableExists(env.DB_REGULACAO,'agenda_grupo_profissionais')){
-    missingTables.push('agenda_grupo_profissionais');
+  for(const name of ['agenda_grupo_profissionais','regulacao_etiquetas','guia_etiquetas','regulacao_execucoes_administrativas']){
+    if(!await tableExists(env.DB_REGULACAO,name) && !missingTables.includes(name)) missingTables.push(name);
   }
 
   let version=null;
@@ -54,14 +55,13 @@ export async function onRequestGet({request,env}){
   }catch{}
 
   const ready219=required219.every(x=>!missingTables.includes(x));
-  const ready220=ready219 &&
-    !missingTables.includes('agenda_grupo_profissionais') &&
-    missingColumns.length===0;
+  const ready220=ready219 && !missingTables.includes('agenda_grupo_profissionais') && !missingColumns.includes('regulacao_principal_acessos.organizador') && !missingColumns.includes('agenda_escalas.profissional_id') && !missingColumns.includes('agenda_individuais.profissional_id');
+  const ready225=ready220 && ['regulacao_etiquetas','guia_etiquetas','regulacao_execucoes_administrativas'].every(x=>!missingTables.includes(x)) && !missingColumns.includes('regulacao_principal_acessos.gestor') && version==='2.25.0';
 
   return json({
     version,
     ready_2_19:ready219,
-    ready_2_20:ready220,
+    ready_2_25:ready225,
     missing_tables:missingTables,
     missing_columns:missingColumns,
   });

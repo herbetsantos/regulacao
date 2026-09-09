@@ -11,14 +11,14 @@ import {
 export async function onRequestGet({ request, env }) {
   const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
-  if (!access.organizador && !access.executor && !access.administrador) {
+  if (!access.organizador && !access.executor && !(access.gestor || access.administrador)) {
     return json({ error: 'Sem acesso à escala.' }, 403);
   }
 
   const url = new URL(request.url);
   let profissionalId = String(url.searchParams.get('profissional_id') || '').trim();
 
-  if (access.executor && !access.organizador && !access.administrador) {
+  if (access.executor && !access.organizador && !(access.gestor || access.administrador)) {
     const own = await getProfissionalAssistencialPorPrincipal(env, user);
     if (!own) return json({ escalas: [] });
     profissionalId = own.id;
@@ -26,7 +26,7 @@ export async function onRequestGet({ request, env }) {
 
   if (!profissionalId) return json({ escalas: [] });
 
-  if (!access.administrador) {
+  if (!(access.gestor || access.administrador)) {
     const prof = await env.DB_REGULACAO.prepare(
       'SELECT equipe_id FROM regulacao_profissionais WHERE id=? AND ativo=1'
     ).bind(profissionalId).first();
@@ -50,8 +50,8 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPost({ request, env }) {
   const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
-  if (!access.administrador) {
-    return json({ error: 'A configuração das escalas é exclusiva do Administrador.' }, 403);
+  if (!(access.gestor || access.administrador)) {
+    return json({ error: 'A configuração das escalas é exclusiva do Gestor ou Administrador.' }, 403);
   }
 
   let body;

@@ -3,7 +3,7 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.19.0';
+const APP_VERSION = '2.25.0';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {
@@ -197,6 +197,7 @@ function renderUser(user) {
   if (teamEl) {
     if (user.equipe?.nome) teamEl.textContent = user.equipe.nome;
     else if (access.administrador) teamEl.textContent = 'Administração da Regulação';
+    else if (access.gestor) teamEl.textContent = 'Gestão eMulti';
     else if (access.cadastrante) teamEl.textContent = 'Cadastrante';
     else if (access.regulador) teamEl.textContent = 'Regulação';
     else if (access.organizador) teamEl.textContent = 'Organização da agenda';
@@ -208,10 +209,10 @@ function renderUser(user) {
   if (regulacaoItem) regulacaoItem.hidden = !(access.regulador || access.administrador || access.cadastrante || access.organizador || access.executor);
 
   const agendaItem = document.getElementById('navAgendaItem');
-  if (agendaItem) agendaItem.hidden = !(access.organizador || access.executor || access.administrador);
+  if (agendaItem) agendaItem.hidden = !(access.organizador || access.executor || access.gestor || access.administrador);
 
   const adminItem = document.getElementById('navAdminItem');
-  if (adminItem) adminItem.hidden = !access.administrador;
+  if (adminItem) adminItem.hidden = !(access.gestor || access.administrador);
 
   const novaGuia = document.querySelector('.side-nav__item[data-path="/guia-nova.html"]');
   if (novaGuia) novaGuia.hidden = !(access.cadastrante || access.administrador);

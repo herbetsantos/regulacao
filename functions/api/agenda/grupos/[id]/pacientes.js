@@ -91,7 +91,6 @@ export async function onRequestPost({ request, env, params }) {
     SET situacao='em_atendimento',
         equipe_id=?,
         unidade_executante_code=?,
-        desfecho_atendimento=NULL,
         updated_at=datetime('now')
     WHERE id=?
   `).bind(grupo.equipe_id, grupo.unidade_code, guiaId).run();
@@ -151,16 +150,21 @@ export async function onRequestDelete({ request, env, params }) {
   if (desfecho === 'removido') {
     await env.DB_REGULACAO.prepare(`
       UPDATE guias
-      SET situacao='lista_espera',desfecho_atendimento=NULL,updated_at=datetime('now')
+      SET situacao='lista_espera',updated_at=datetime('now')
       WHERE id=?
     `).bind(guiaId).run();
   } else {
     await env.DB_REGULACAO.prepare(`
       UPDATE guias
-      SET situacao='concluido',desfecho_atendimento=?,updated_at=datetime('now')
+      SET situacao='concluido',updated_at=datetime('now')
       WHERE id=?
-    `).bind(desfecho, guiaId).run();
+    `).bind(guiaId).run();
   }
+
+  await env.DB_REGULACAO.prepare(`
+    INSERT INTO regulacao_execucoes_administrativas(tipo,referencia_id,guia_id,resultado,observacao_administrativa,registrado_por_principal)
+    VALUES('grupo',?,?,?,?,?)
+  `).bind(String(grupoId),guiaId,desfecho,String(body.motivo||'').trim()||null,principalId(user)).run();
 
   await logAudit(env, user, 'update', 'grupo_paciente', guiaId, { grupoId, desfecho });
   return json({ ok: true });

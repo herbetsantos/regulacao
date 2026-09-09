@@ -2,7 +2,7 @@
 // POST /api/regulacao/especialidades  -> cadastra nova (admin/super_admin)
 
 import { json, logAudit } from '../_utils.js';
-import { requireRegulacaoAccess, requireAdminAccess } from '../_shared.js';
+import { requireRegulacaoAccess, requireGestorAccess } from '../_shared.js';
 
 export async function onRequestGet({ request, env }) {
   const { error } = await requireRegulacaoAccess(request, env);
@@ -18,7 +18,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const { user, error } = await requireAdminAccess(request, env);
+  const { user, error } = await requireGestorAccess(request, env);
   if (error) return error;
 
   let body;

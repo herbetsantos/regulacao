@@ -15,5 +15,5 @@ export async function onRequestPost({ request, env }) {
     const token=await createLocalSession(env,u.id);
     await env.DB_REGULACAO.prepare("UPDATE regulacao_local_users SET last_login_at=datetime('now'),updated_at=datetime('now') WHERE id=?").bind(u.id).run();
     return json({ok:true,must_change_password:!!u.must_change_password},200,{'Set-Cookie':localSessionCookieHeader(token)});
-  }catch(err){return json({error:'A autenticação própria ainda não está disponível. Aplique a migração 2.19.0.',detalhe:String(err?.message||'')},503)}
+  }catch(err){return json({error:'A autenticação própria ainda não está disponível. Aplique a migração 2.25.0.',detalhe:String(err?.message||'')},503)}
 }

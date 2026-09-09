@@ -5,7 +5,7 @@ import { principalId } from '../../_hybrid.js';
 export async function onRequestGet({ request, env, params }) {
   const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
-  if (!access.organizador && !access.executor && !access.administrador) {
+  if (!access.organizador && !access.executor && !access.gestor && !access.administrador) {
     return json({ error: 'Sem acesso a grupos.' }, 403);
   }
 
@@ -19,7 +19,7 @@ export async function onRequestGet({ request, env, params }) {
 
   if (!grupo) return json({ error: 'Grupo não encontrado.' }, 404);
 
-  if (!access.administrador) {
+  if (!access.administrador && !access.gestor) {
     if (access.organizador) {
       const membro = await isEquipeMember(env, user, Number(grupo.equipe_id), access);
       if (!membro) return json({ error: 'Grupo fora da sua equipe.' }, 403);

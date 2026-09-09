@@ -25,7 +25,7 @@ function datesBetween(start, end, dow) {
 export async function onRequestGet({ request, env }) {
   const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
-  if (!access.organizador && !access.executor && !access.administrador) {
+  if (!access.organizador && !access.executor && !access.gestor && !access.administrador) {
     return json({ error: 'Sem acesso aos grupos.' }, 403);
   }
 
@@ -44,8 +44,8 @@ export async function onRequestGet({ request, env }) {
     WHERE ag.ativo=1`;
   const binds = [];
 
-  if (access.administrador) {
-    // visão global
+  if (access.administrador || access.gestor) {
+    // visão global de gestão
   } else if (access.organizador) {
     const equipes = await getUserEquipeIds(env, user);
     if (!equipes.length) return json({ grupos: [] });

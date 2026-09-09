@@ -1,5 +1,5 @@
 import { json } from '../_utils.js';
-import { requireAdminAccess } from '../_shared.js';
+import { requireGestorAccess } from '../_shared.js';
 import { syncLegacyAccessModel,syncLegacyProfessionalModel } from '../_hybrid.js';
 
 async function exists(db,name){
@@ -7,7 +7,7 @@ async function exists(db,name){
 }
 
 export async function onRequestGet({request,env}){
-  const {error}=await requireAdminAccess(request,env);
+  const {error}=await requireGestorAccess(request,env);
   if(error)return error;
 
   const required=[
@@ -20,7 +20,7 @@ export async function onRequestGet({request,env}){
   for(const t of required)if(!await exists(env.DB_REGULACAO,t))missing.push(t);
   if(missing.length){
     return json({
-      error:'A estrutura administrativa 2.19.0 ainda não foi aplicada ao regulacao-vagas-db.',
+      error:'A estrutura administrativa 2.25.0 ainda não foi aplicada ao regulacao-vagas-db.',
       missing_tables:missing,
     },409);
   }

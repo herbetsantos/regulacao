@@ -1,52 +1,65 @@
-# Implantação controlada — eMulti / Regulação 2.19.0
+# Implantação controlada — eMulti / Regulação 2.25.0
 
-> **Esta pasta é uma versão de avaliação.**
->
-> Não altere o D1 atual apenas para analisar a interface ou o código.
-
-O fluxo do projeto considera **GitHub + VS Code online do GitHub + Cloudflare**.
-
-## Bancos utilizados
+A versão 2.25.0 mantém os dois bancos já utilizados:
 
 ```text
 DB            → portal-saude-db
 DB_REGULACAO  → regulacao-vagas-db
 ```
 
-A 2.19.0 não cria um terceiro banco.
+Ela não cria um terceiro banco e não exige recriação dos bancos existentes.
 
-## O que muda no banco
+## Atualização de uma instalação 2.20.x
 
-Somente o `regulacao-vagas-db` recebe novas estruturas através de:
+### 1. Backup
+Antes da alteração, faça backup/clone seguro do `regulacao-vagas-db` e preserve o commit atualmente publicado.
 
-```text
-database/019_admin_profissionais_acesso_hibrido.sql
+### 2. Migração do banco
+Na raiz do projeto 2.25.0, execute **uma única vez**:
+
+```bash
+npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/025_consolidacao_2_25_0.sql
 ```
 
-A migração é aditiva:
-- não apaga pacientes;
-- não apaga guias;
-- não remove estruturas legadas;
-- não renomeia tabelas existentes;
-- mantém fallback durante a transição.
+A migração adiciona:
+- responsabilidade `gestor`;
+- catálogo de etiquetas administrativas;
+- relação entre guias e etiquetas;
+- registros administrativos de execução.
 
-## Procedimento depois da aprovação
+Ela não apaga pacientes, guias, agendas, grupos nem estruturas clínicas legadas.
 
-No **Cloudflare → D1 → regulacao-vagas-db**:
+### 3. Validação somente leitura
 
-1. crie um `/bookmark`;
-2. guarde o código retornado;
-3. confira a versão atual;
-4. execute **somente** `database/019_admin_profissionais_acesso_hibrido.sql`;
-5. execute `database/VALIDAR_2_19_0.sql`;
-6. confirme:
-   - `emulti_schema_version = 2.19.0`;
-   - `PRAGMA quick_check` = `ok`;
-   - `PRAGMA foreign_key_check` sem linhas;
-7. somente então publique o código 2.19.0 pelo fluxo GitHub/Cloudflare.
+```bash
+npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/VALIDAR_2_25_0.sql
+```
 
-## Importante
+Confirme principalmente:
+- `schema_version = 2.25.0`;
+- coluna `gestor` existente;
+- três novas estruturas administrativas existentes;
+- etiquetas iniciais cadastradas.
 
-**Não execute `database/update.sql` para instalar a 2.19.0.**
+### 4. Publicação
+Publique o conteúdo da versão 2.25.0 pelo fluxo GitHub/Cloudflare já utilizado pelo projeto.
 
-O arquivo permanece por compatibilidade com versões anteriores, mas esta evolução possui uma migração específica e controlada.
+### 5. Homologação
+Teste com contas distintas:
+- Cadastrante;
+- Regulador;
+- Organizador;
+- Executor;
+- Gestor;
+- Administrador;
+- Super Administrador.
+
+Confira também filtros/paginação, escalas, grupos, atendimento individual, etiquetas e bloqueio de novas evoluções clínicas.
+
+## Instalação nova
+
+Para um banco novo, use `database/schema.sql`, que já representa a 2.25.0. **Não aplique a migração 025 depois do schema completo.**
+
+## Arquivos legados
+
+`database/019_admin_profissionais_acesso_hibrido.sql`, `database/020_organizacao_agenda.sql`, `database/update.sql` e validadores antigos permanecem no pacote apenas como histórico/compatibilidade. Para atualizar uma base 2.20.x já funcional para 2.25.0, use somente `database/025_consolidacao_2_25_0.sql`.

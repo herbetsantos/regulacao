@@ -231,17 +231,17 @@ async function refreshScaleProfessionals(){
 }
 async function loadEscala(){
   let profissionalId='';
-  if(USER?.regulacao?.administrador)profissionalId=eProf?.value||'';
+  if(USER?.regulacao?.gestor||USER?.regulacao?.administrador)profissionalId=eProf?.value||'';
   else if(USER?.regulacao?.executor){
     const r=await apiFetch('/api/agenda/profissionais');
     profissionalId=r.data?.profissionais?.[0]?.id||'';
   } else {
-    escalaList.innerHTML='<div class="empty-state">O Organizador consulta a disponibilidade dos profissionais durante a montagem da agenda. A edição da escala é exclusiva do Administrador.</div>';
+    escalaList.innerHTML='<div class="empty-state">O Organizador consulta a disponibilidade durante a montagem da agenda. A edição da escala é exclusiva do Gestor ou Administrador.</div>';
     return;
   }
   if(!profissionalId){escalaList.innerHTML='<div class="empty-state">Selecione um profissional para consultar a escala.</div>';return}
   const r=await apiFetch('/api/agenda/escalas?profissional_id='+encodeURIComponent(profissionalId));
-  const editable=!!USER?.regulacao?.administrador;
+  const editable=!!(USER?.regulacao?.gestor||USER?.regulacao?.administrador);
   escalaList.innerHTML=!r.ok?'<div class="empty-state">Erro ao carregar escala.</div>':
     (r.data.escalas||[]).map(x=>`<div class="agenda-card">
       <strong>${dias[x.dia_semana]} · ${x.hora_inicio}–${x.hora_fim}</strong>
@@ -252,7 +252,7 @@ async function loadEscala(){
     </div>`).join('')||'<div class="empty-state">Nenhum período cadastrado.</div>';
 }
 async function delEscala(id){
-  if(!USER?.regulacao?.administrador)return;
+  if(!(USER?.regulacao?.gestor||USER?.regulacao?.administrador))return;
   if(!confirm('Remover este período da escala?'))return;
   const r=await apiFetch('/api/agenda/escalas/'+id,{method:'DELETE'});
   if(!r.ok)alert(r.data?.error||'Não foi possível remover o período.');
@@ -261,11 +261,26 @@ async function delEscala(id){
 async function loadInd(){
   const r=await apiFetch('/api/agenda/individuais');
   if(!r.ok){individualList.innerHTML=`<div class="empty-state">${escapeHtml(r.data?.error||'Erro ao carregar atendimentos individuais.')}</div>`;return}
-  individualList.innerHTML=(r.data?.atendimentos||[]).map(x=>`<div class="agenda-card">
-    <strong>${formatDateBR(x.data_atendimento)} às ${x.hora_inicio} · ${x.duracao_minutos} min</strong>
-    <div>${escapeHtml(x.paciente_nome)} · ${escapeHtml(x.especialidade_nome)}</div>
-    <div class="muted">${escapeHtml(x.profissional_nome||'Profissional não identificado')} · Guia ${escapeHtml(x.codigo_guia||'#'+x.guia_id)} · ${escapeHtml(x.guia_situacao||'')}</div>
-  </div>`).join('')||'<div class="empty-state">Nenhum atendimento individual agendado.</div>';
+  const a=USER?.regulacao||{};
+  individualList.innerHTML=(r.data?.atendimentos||[]).map(x=>{
+    const outcome=x.resultado_administrativo||'';
+    const canExec=(a.executor||a.administrador)&&x.situacao==='agendado';
+    const canCancel=(a.organizador||a.administrador)&&x.situacao==='agendado';
+    return `<div class="agenda-card">
+      <strong>${formatDateBR(x.data_atendimento)} às ${x.hora_inicio} · ${x.duracao_minutos} min</strong>
+      <div>${escapeHtml(x.paciente_nome)} · ${escapeHtml(x.especialidade_nome)}</div>
+      <div class="muted">${escapeHtml(x.profissional_nome||'Profissional não identificado')} · Guia ${escapeHtml(x.codigo_guia||'#'+x.guia_id)} · ${escapeHtml(outcome||x.situacao||x.guia_situacao||'')}</div>
+      ${(canExec||canCancel)?`<div class="agenda-actions">${canExec?`<button class="btn btn--accent btn--sm" onclick="resultadoIndividual(${x.id},'realizado')">Realizado</button><button class="btn btn--outline btn--sm" onclick="resultadoIndividual(${x.id},'falta')">Falta</button>`:''}${canCancel?`<button class="btn btn--outline btn--sm" onclick="resultadoIndividual(${x.id},'cancelado')">Cancelar</button>`:''}</div>`:''}
+    </div>`;
+  }).join('')||'<div class="empty-state">Nenhum atendimento individual agendado.</div>';
+}
+async function resultadoIndividual(id,resultado){
+  const labels={realizado:'realizado',falta:'falta do paciente',cancelado:'cancelamento'};
+  if(!confirm(`Confirmar ${labels[resultado]||resultado}?`))return;
+  const observacao=prompt('Observação administrativa (opcional):','')||'';
+  const r=await apiFetch('/api/agenda/individuais/'+id,{method:'PATCH',body:JSON.stringify({resultado,observacao_administrativa:observacao})});
+  if(!r.ok)return alert(r.data?.error||'Não foi possível registrar o resultado.');
+  await Promise.all([loadInd(),loadWaiting()]);
 }
 async function loadGrupos(){
   gruposList.innerHTML='<div class="empty-state">Carregando grupos...</div>';
@@ -283,8 +298,8 @@ async function loadGrupos(){
   USER=await initPortalChrome();
   if(!USER)return;
   const a=USER.regulacao||{};
-  if(!a.organizador&&!a.executor&&!a.administrador){
-    document.querySelector('main').innerHTML='<div class="empty-state">A Agenda é destinada aos perfis Organizador, Executor e Administrador.</div>';
+  if(!a.organizador&&!a.executor&&!a.gestor&&!a.administrador){
+    document.querySelector('main').innerHTML='<div class="empty-state">A Agenda é destinada aos perfis Organizador, Executor, Gestor e Administrador.</div>';
     return;
   }
 
@@ -298,7 +313,7 @@ async function loadGrupos(){
   individualOrganizePanel.hidden=!(a.organizador||a.administrador);
   grupoOrganizePanel.hidden=!(a.organizador||a.administrador);
 
-  if(a.administrador){
+  if(a.gestor||a.administrador){
     escalaAdminPanel.hidden=false;
     escalaTitulo.textContent='Escala selecionada';
     escalaDesc.textContent='Selecione equipe, unidade, especialidade e profissional para consultar ou administrar os períodos.';

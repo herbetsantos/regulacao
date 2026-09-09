@@ -23,6 +23,7 @@ export async function onRequestGet({ request, env }) {
   const unidadeSolicitante = (url.searchParams.get('unidade_solicitante') || '').trim();
   const equipeId = Number(url.searchParams.get('equipe_id') || 0);
   const medicoSolicitante = (url.searchParams.get('medico_solicitante') || '').trim();
+  const etiquetaId = Number(url.searchParams.get('etiqueta_id') || 0);
   const dataDe = (url.searchParams.get('data_de') || '').trim();
   const dataAte = (url.searchParams.get('data_ate') || '').trim();
   const q = (url.searchParams.get('q') || '').trim();
@@ -60,6 +61,7 @@ export async function onRequestGet({ request, env }) {
   if (unidadeSolicitante) { where.push('g.unidade_solicitante_code = ?'); binds.push(unidadeSolicitante); }
   if (equipeId) { where.push('g.equipe_id = ?'); binds.push(equipeId); }
   if (medicoSolicitante) { where.push('LOWER(g.medico_solicitante) LIKE LOWER(?)'); binds.push(`%${medicoSolicitante}%`); }
+  if (etiquetaId) { where.push('EXISTS(SELECT 1 FROM guia_etiquetas ge WHERE ge.guia_id=g.id AND ge.etiqueta_id=?)'); binds.push(etiquetaId); }
   if (/^\d{4}-\d{2}-\d{2}$/.test(dataDe)) { where.push('date(g.created_at) >= date(?)'); binds.push(dataDe); }
   if (/^\d{4}-\d{2}-\d{2}$/.test(dataAte)) { where.push('date(g.created_at) <= date(?)'); binds.push(dataAte); }
   if (cpf) { where.push('g.cpf = ?'); binds.push(cpf); }
@@ -110,6 +112,7 @@ export async function onRequestGet({ request, env }) {
 
   const total = Number(countRow?.total || 0);
   const results = listResult.results || [];
+  for (const g of results) { try { const t=await env.DB_REGULACAO.prepare(`SELECT e.id,e.nome FROM guia_etiquetas ge JOIN regulacao_etiquetas e ON e.id=ge.etiqueta_id AND e.ativo=1 WHERE ge.guia_id=? ORDER BY e.sort_order,e.nome`).bind(g.id).all(); g.etiquetas=t.results||[]; } catch { g.etiquetas=[]; } }
   return json({
     guias: results,
     total,

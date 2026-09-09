@@ -10,7 +10,7 @@ export async function onRequestGet({ request, env }) {
   if (error) return error;
 
   let equipeIds;
-  if (access.administrador) {
+  if (access.administrador || access.gestor) {
     const { results } = await env.DB.prepare('SELECT id FROM regulacao_equipes WHERE ativo = 1 ORDER BY nome').all();
     equipeIds = results.map((r) => r.id);
   } else {

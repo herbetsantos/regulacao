@@ -2,11 +2,11 @@
 // DELETE /api/admin/equipes/:id/unidades?unidade_code=xxx
 
 import { json, logAudit } from '../../../_utils.js';
-import { requireAdminAccess } from '../../../_shared.js';
+import { requireGestorAccess } from '../../../_shared.js';
 import { getUnidadeAtivaComTipo } from '../../../_db.js';
 
 export async function onRequestPost({ request, env, params }) {
-  const { user, error } = await requireAdminAccess(request, env);
+  const { user, error } = await requireGestorAccess(request, env);
   if (error) return error;
 
   const equipeId = Number(params.id);
@@ -34,7 +34,7 @@ export async function onRequestPost({ request, env, params }) {
 }
 
 export async function onRequestDelete({ request, env, params }) {
-  const { user, error } = await requireAdminAccess(request, env);
+  const { user, error } = await requireGestorAccess(request, env);
   if (error) return error;
 
   const equipeId = Number(params.id);

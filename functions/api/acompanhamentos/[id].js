@@ -1,3 +1,4 @@
+// LEGADO SOMENTE LEITURA — novos registros clínicos são feitos no PEC e-SUS.
 // GET /api/regulacao/acompanhamentos/:id -> guias vinculadas + sessões + evoluções
 
 import { json } from '../_utils.js';

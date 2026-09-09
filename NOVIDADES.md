@@ -1,40 +1,28 @@
+# 2.25.0 — consolidação gerencial
+
+- novo perfil **Gestor**, combinável com os demais e responsável por profissionais, vínculos, especialidades, equipes e escalas;
+- perfis consolidados: Cadastrante, Regulador, Organizador, Executor, Gestor e Administrador;
+- concessão e revogação de Administrador restritas ao Super Administrador do Portal APS;
+- paginação e filtros administrativos por unidade, função, especialidade e equipe;
+- etiquetas administrativas filtráveis nas guias;
+- registro de resultado administrativo em atendimentos individuais e grupos;
+- retirada dos formulários de evolução/conduta da interface e bloqueio de novas gravações clínicas;
+- PEC e-SUS mantido como prontuário oficial;
+- migração aditiva `database/025_consolidacao_2_25_0.sql` para bases 2.20.x;
+- schema de instalação nova e diagnóstico interno atualizados para 2.25.0.
+
 # 2.20.2 — estabilidade da Agenda e Grupos
 
-- referências explícitas aos elementos da Agenda e do detalhe do grupo, evitando dependência de variáveis globais criadas pelo navegador;
-- mensagens de erro mais claras ao carregar grupos e atendimentos;
-- validação do formulário de criação de grupo antes do envio;
-- inclusão de guia sem equipe definida como candidata quando a especialidade é compatível;
-- bloqueio temporário dos botões durante gravações para evitar clique duplicado;
-- sem alteração no D1; banco permanece 2.20.1.
+- referências explícitas aos elementos da Agenda e do detalhe do grupo;
+- mensagens de erro mais claras;
+- validação de grupos e compatibilidade de escalas;
+- bloqueio de clique duplicado durante gravações.
 
 # 2.20.1 — correção da Administração
 
-- submenu administrativo passa a usar referências explícitas aos elementos;
-- troca de opção continua funcionando mesmo quando uma API específica falha;
-- diagnóstico visual da estrutura 2.19/2.20 do `regulacao-vagas-db`;
-- novo endpoint somente leitura `/api/admin/estrutura`;
-- mensagens de erro administrativas mais precisas;
-- fallback dos ícones em Configurações;
-- remoção de arquivo temporário `_shared.js.tmp`;
-- sem alteração automática no D1.
-
-# 2.19.1 — desempenho da Regulação
-
-- A fila de guias não espera mais o carregamento dos filtros avançados.
-- Especialidades, unidades e equipes são obtidas por um único endpoint compacto.
-- `COUNT(*)` e consulta paginada de guias passam a executar em paralelo.
-- Notificações e badges de chat deixam de competir com o carregamento inicial.
-- Inclui a correção do middleware para URLs limpas do Cloudflare Pages.
-- **Sem alteração de schema/D1:** `emulti_schema_version` permanece `2.19.0`.
-
-# Versão 2.19.0 — Administração e autenticação híbrida
-
-- Nova Administração por submenu.
-- Credenciais próprias para usuários externos ao Portal APS.
-- Novo cadastro de profissionais independente de login.
-- Carga horária de Especialidades calculada a partir dos vínculos profissionais.
-- Modelo de autorização unificado por principal.
-- Compatibilidade preservada com usuários e vínculos existentes do Portal.
+- correções de navegação e diagnóstico da estrutura administrativa;
+- endpoint somente leitura `/api/admin/estrutura`;
+- mensagens administrativas e fallback de ícones aprimorados.
 
 # Novidades do eMulti Regulação
 

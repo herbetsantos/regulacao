@@ -48,10 +48,10 @@ export function dateWeekday(v) {
 export async function canOrganizeAssistentialProfessional(
   env, user, access, equipeId, profissionalId, especialidadeId, unidadeCode
 ) {
-  if (!access.administrador && !access.organizador) {
-    return { error: json({ error: 'Apenas Organizador ou Administrador pode definir agenda e profissionais.' }, 403) };
+  if (!access.administrador && !access.organizador && !access.gestor) {
+    return { error: json({ error: 'Apenas Organizador, Gestor ou Administrador pode definir agenda e profissionais.' }, 403) };
   }
-  if (!access.administrador) {
+  if (!access.administrador && !access.gestor) {
     const membro = await isEquipeMember(env, user, Number(equipeId), access);
     if (!membro) return { error: json({ error: 'Você só pode organizar a agenda da sua própria equipe.' }, 403) };
   }

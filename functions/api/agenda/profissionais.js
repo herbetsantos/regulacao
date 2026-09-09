@@ -6,8 +6,8 @@ import { listProfissionaisAssistenciais } from '../_professionals.js';
 export async function onRequestGet({ request, env }) {
   const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
-  if (!access.organizador && !access.executor && !access.administrador) {
-    return json({ error: 'Apenas Organizador, Executor ou Administrador pode consultar profissionais da agenda.' }, 403);
+  if (!access.organizador && !access.executor && !access.gestor && !access.administrador) {
+    return json({ error: 'Apenas Organizador, Executor, Gestor ou Administrador pode consultar profissionais da agenda.' }, 403);
   }
 
   const url = new URL(request.url);
@@ -17,7 +17,7 @@ export async function onRequestGet({ request, env }) {
 
   let onlyPrincipal = null;
 
-  if (!access.administrador) {
+  if (!access.administrador && !access.gestor) {
     if (!equipeId && access.organizador) {
       const equipes = await getUserEquipeIds(env, user);
       equipeId = equipes[0] || null;

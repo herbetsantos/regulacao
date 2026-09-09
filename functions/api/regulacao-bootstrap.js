@@ -45,15 +45,13 @@ export async function onRequestGet({ request, env }) {
     ).bind(...binds).all();
   })();
 
-  const [especialidades, unidades, equipes] = await Promise.all([
-    especialidadesPromise,
-    unidadesPromise,
-    equipesPromise,
-  ]);
+  const etiquetasPromise = env.DB_REGULACAO.prepare(`SELECT id,nome FROM regulacao_etiquetas WHERE ativo=1 ORDER BY sort_order,nome`).all();
+  const [especialidades, unidades, equipes, etiquetas] = await Promise.all([especialidadesPromise,unidadesPromise,equipesPromise,etiquetasPromise]);
 
   return json({
     especialidades: especialidades.results || [],
     unidades: unidades.results || [],
     equipes: equipes.results || [],
+    etiquetas: etiquetas.results || [],
   });
 }

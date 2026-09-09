@@ -4,12 +4,12 @@
 // DELETE ?user_id=...
 
 import { json, logAudit } from '../../../_utils.js';
-import { requireAdminAccess } from '../../../_shared.js';
+import { requireGestorAccess } from '../../../_shared.js';
 import { ensureProfissionalSchema, setProfissionalEspecialidades } from '../../../_professionals.js';
 import { syncPortalRegulacaoFeature } from '../../../_permissions.js';
 
 async function salvar({ request, env, params, atualizar = false }) {
-  const { user, error } = await requireAdminAccess(request, env);
+  const { user, error } = await requireGestorAccess(request, env);
   if (error) return error;
   await ensureProfissionalSchema(env);
 
@@ -50,7 +50,7 @@ export async function onRequestPost(ctx) { return salvar({ ...ctx, atualizar:fal
 export async function onRequestPut(ctx) { return salvar({ ...ctx, atualizar:true }); }
 
 export async function onRequestDelete({ request, env, params }) {
-  const { user, error } = await requireAdminAccess(request, env);
+  const { user, error } = await requireGestorAccess(request, env);
   if (error) return error;
   await ensureProfissionalSchema(env);
   const equipeId = Number(params.id);

@@ -13,7 +13,7 @@ import {
 export async function onRequestGet({ request, env }) {
   const { user, access, error } = await requireRegulacaoAccess(request, env);
   if (error) return error;
-  if (!access.organizador && !access.executor && !access.administrador) {
+  if (!access.organizador && !access.executor && !access.gestor && !access.administrador) {
     return json({ error: 'Sem acesso aos atendimentos individuais.' }, 403);
   }
 
@@ -23,7 +23,8 @@ export async function onRequestGet({ request, env }) {
   let sql = `
     SELECT ai.*, g.codigo_guia, g.situacao AS guia_situacao,
            p.nome AS paciente_nome, e.nome AS especialidade_nome,
-           rp.nome AS profissional_nome
+           rp.nome AS profissional_nome,
+           (SELECT rea.resultado FROM regulacao_execucoes_administrativas rea WHERE rea.tipo='individual' AND rea.referencia_id=CAST(ai.id AS TEXT) ORDER BY rea.id DESC LIMIT 1) AS resultado_administrativo
     FROM agenda_individuais ai
     JOIN guias g ON g.id = ai.guia_id
     JOIN pacientes p ON p.cpf = g.cpf
@@ -32,7 +33,7 @@ export async function onRequestGet({ request, env }) {
     WHERE 1=1`;
   const binds = [];
 
-  if (access.administrador) {
+  if (access.administrador || access.gestor) {
     if (requestedProf) {
       sql += ' AND ai.profissional_id=?';
       binds.push(requestedProf);

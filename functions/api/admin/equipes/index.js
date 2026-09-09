@@ -3,11 +3,11 @@
 // POST /api/admin/equipes -> cria nova equipe { nome }
 
 import { json, logAudit } from '../../_utils.js';
-import { requireAdminAccess } from '../../_shared.js';
+import { requireGestorAccess } from '../../_shared.js';
 import { getEquipeProfissionais, ensureProfissionalSchema } from '../../_professionals.js';
 
 export async function onRequestGet({ request, env }) {
-  const { error } = await requireAdminAccess(request, env);
+  const { error } = await requireGestorAccess(request, env);
   if (error) return error;
 
   await ensureProfissionalSchema(env);
@@ -31,7 +31,7 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const { user, error } = await requireAdminAccess(request, env);
+  const { user, error } = await requireGestorAccess(request, env);
   if (error) return error;
 
   let body;

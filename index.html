@@ -90,6 +90,7 @@
       <div class="field"><label for="fEspecialidade">Especialidade</label><select id="fEspecialidade"><option value="">Todas</option></select></div>
       <div class="field"><label for="fUnidade">Unidade solicitante</label><select id="fUnidade"><option value="">Todas</option></select></div>
       <div class="field"><label for="fEquipe">Equipe responsável</label><select id="fEquipe"><option value="">Todas</option></select></div>
+      <div class="field"><label for="fEtiqueta">Etiqueta</label><select id="fEtiqueta"><option value="">Todas</option></select></div>
       <div class="field"><label for="fProfissional">Profissional requisitante</label><input id="fProfissional" type="text" placeholder="Nome do solicitante"></div>
       <div class="field"><label for="fDataDe">Solicitada a partir de</label><input id="fDataDe" type="date"></div>
       <div class="field"><label for="fDataAte">Solicitada até</label><input id="fDataAte" type="date"></div>
@@ -119,7 +120,7 @@
   const els = {
     busca: document.getElementById('fBusca'), situacao: document.getElementById('fSituacao'),
     especialidade: document.getElementById('fEspecialidade'), unidade: document.getElementById('fUnidade'),
-    equipe: document.getElementById('fEquipe'), profissional: document.getElementById('fProfissional'),
+    equipe: document.getElementById('fEquipe'), etiqueta: document.getElementById('fEtiqueta'), profissional: document.getElementById('fProfissional'),
     dataDe: document.getElementById('fDataDe'), dataAte: document.getElementById('fDataAte'), ordem: document.getElementById('fOrdem'),
     advanced: document.getElementById('advancedFilters'), btnAdvanced: document.getElementById('btnAdvanced')
   };
@@ -140,6 +141,7 @@
     if (els.especialidade.value) p.set('especialidade_id', els.especialidade.value);
     if (els.unidade.value) p.set('unidade_solicitante', els.unidade.value);
     if (els.equipe.value) p.set('equipe_id', els.equipe.value);
+    if (els.etiqueta.value) p.set('etiqueta_id', els.etiqueta.value);
     if (els.profissional.value.trim()) p.set('medico_solicitante', els.profissional.value.trim());
     if (els.dataDe.value) p.set('data_de', els.dataDe.value);
     if (els.dataAte.value) p.set('data_ate', els.dataAte.value);
@@ -168,7 +170,7 @@
     pageSize = [10,20,50,100].includes(Number(p.get('page_size'))) ? Number(p.get('page_size')) : 20;
 
     const hasAdvanced = [
-      'situacao','especialidade_id','unidade_solicitante','equipe_id',
+      'situacao','especialidade_id','unidade_solicitante','equipe_id','etiqueta_id',
       'medico_solicitante','data_de','data_ate'
     ].some((k) => p.get(k));
 
@@ -182,6 +184,7 @@
     els.especialidade.value = initialUrlParams.get('especialidade_id') || '';
     els.unidade.value = initialUrlParams.get('unidade_solicitante') || '';
     els.equipe.value = initialUrlParams.get('equipe_id') || '';
+    els.etiqueta.value = initialUrlParams.get('etiqueta_id') || '';
   }
 
   function initialGuideParams() {
@@ -211,6 +214,8 @@
         `<option value="${escapeHtml(u.code)}">${escapeHtml(u.nome)}</option>`
       );
     });
+
+    (data.etiquetas || []).forEach((tag) => els.etiqueta.insertAdjacentHTML('beforeend', `<option value="${tag.id}">${escapeHtml(tag.nome)}</option>`));
 
     (data.equipes || []).forEach((eq) => {
       els.equipe.insertAdjacentHTML(
@@ -265,7 +270,7 @@
             return `<tr>
               <td><span class="guide-code">${escapeHtml(formatGuideCode(g))}</span></td>
               <td class="patient-cell"><strong>${escapeHtml(g.paciente_nome)}</strong><small>CPF ${maskCPF(g.cpf)}</small></td>
-              <td>${escapeHtml(g.especialidade_nome)}</td>
+              <td>${escapeHtml(g.especialidade_nome)}${(g.etiquetas||[]).length?`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">${g.etiquetas.map(t=>`<span class="status-badge">${escapeHtml(t.nome)}</span>`).join('')}</div>`:''}</td>
               <td class="request-cell"><strong>${formatDateTimeBR(g.created_at)}</strong><small>${escapeHtml(g.medico_solicitante || 'Profissional não informado')}</small></td>
               <td>${situacaoBadgeHtml(g.situacao)}</td>
               <td><a class="btn btn--outline btn--sm" href="${href}">${(access.regulador || access.administrador) ? 'Regular' : 'Abrir'}</a></td>
@@ -294,7 +299,7 @@
   els.busca.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); page=1; loadGuias(); } });
   document.getElementById('btnAplicar').addEventListener('click', () => { page=1; loadGuias(); });
   document.getElementById('btnLimpar').addEventListener('click', () => {
-    [els.busca,els.situacao,els.especialidade,els.unidade,els.equipe,els.profissional,els.dataDe,els.dataAte].forEach((el) => el.value='');
+    [els.busca,els.situacao,els.especialidade,els.unidade,els.equipe,els.etiqueta,els.profissional,els.dataDe,els.dataAte].forEach((el) => el.value='');
     els.ordem.value='recentes'; page=1; loadGuias();
   });
 

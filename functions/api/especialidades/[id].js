@@ -1,8 +1,8 @@
 import { json, logAudit } from '../_utils.js';
-import { requireAdminAccess } from '../_shared.js';
+import { requireGestorAccess } from '../_shared.js';
 
 export async function onRequestPut({ request, env, params }) {
-  const { user, error } = await requireAdminAccess(request, env);
+  const { user, error } = await requireGestorAccess(request, env);
   if (error) return error;
 
   const id = Number(params.id);
