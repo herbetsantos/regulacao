@@ -49,14 +49,6 @@ export async function onRequestGet({ request, env, params }) {
     || (!guia.unidade_executante_code && podeTriar);
   if (!visivel) return json({ error: 'Você não tem acesso a esta guia.' }, 403);
 
-  const acompanhamento = await env.DB_REGULACAO.prepare(`
-    SELECT a.*
-    FROM acompanhamentos a
-    JOIN acompanhamento_guias ag ON ag.acompanhamento_id=a.id
-    WHERE ag.guia_id=?
-    ORDER BY a.id DESC LIMIT 1
-  `).bind(id).first();
-
   let equipeAtual = null;
   if (guia.equipe_id) equipeAtual = await getEquipeInfo(env, guia.equipe_id);
 
@@ -91,7 +83,6 @@ export async function onRequestGet({ request, env, params }) {
 
   return json({
     guia,
-    acompanhamento: acompanhamento || null,
     equipeAtual,
     profissionalAtual,
     grupoAtual,

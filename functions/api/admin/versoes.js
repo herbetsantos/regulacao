@@ -1,31 +1,3 @@
 import { json } from '../_utils.js';
 import { requireAdminAccess } from '../_shared.js';
-
-const APP_VERSION = '2.25.3';
-const PORTAL_SCHEMA_VERSION = '2.18.2';
-
-async function readDbVersion(db) {
-  if (!db) return { ok:false, version:null, updated_at:null };
-  try {
-    const row = await db.prepare('SELECT version, updated_at FROM emulti_schema_version WHERE id = 1').first();
-    return { ok:!!row, version:row?.version || null, updated_at:row?.updated_at || null };
-  } catch {
-    return { ok:false, version:null, updated_at:null };
-  }
-}
-
-export async function onRequestGet({ request, env }) {
-  const { error } = await requireAdminAccess(request, env);
-  if (error) return error;
-  const [portal, regulacao] = await Promise.all([
-    readDbVersion(env.DB),
-    readDbVersion(env.DB_REGULACAO),
-  ]);
-  return json({
-    app_version: APP_VERSION,
-    portal,
-    regulacao,
-    atualizado: portal.version === PORTAL_SCHEMA_VERSION && regulacao.version === '2.25.0',
-    portal_schema_esperado: PORTAL_SCHEMA_VERSION,
-  });
-}
+export async function onRequestGet({request,env}){const{error}=await requireAdminAccess(request,env);if(error)return error;let version=null;try{version=(await env.DB_REGULACAO.prepare('SELECT version FROM emulti_schema_version WHERE id=1').first())?.version||null}catch{}return json({emulti:'2.26.0',regulacao_db:version,portal_integration:'login-only'})}

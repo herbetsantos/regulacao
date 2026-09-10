@@ -2,17 +2,17 @@ name = "emulti"
 compatibility_date = "2024-09-23"
 pages_build_output_dir = "."
 
-# Banco de LOGIN/unidades/equipes — o MESMO banco do Portal Saúde Cajamar
-# (portal-saude-db). Este projeto só LÊ usuários/sessões/unidades/equipes
-# daqui (login em si continua acontecendo só no portal) e ESCREVE sessões
-# novas ao consumir um código de repasse (ver functions/_middleware.js).
+# Banco do Portal APS usado SOMENTE para autenticação/handoff e para a importação
+# única de migração 2.26.0. Nenhuma regra operacional da Regulação lê ou grava
+# unidades, equipes, permissões ou profissionais neste banco durante o uso normal.
 [[d1_databases]]
 binding = "DB"
 database_name = "portal-saude-db"
 database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
 
-# Banco de CONTEÚDO deste projeto (pacientes, guias, acompanhamentos,
-# notificações) — exclusivo, criado com:
+# Banco PRÓPRIO da eMulti/Regulação: identidade local do módulo, permissões,
+# unidades, equipes, profissionais, pacientes, guias, agenda, etiquetas e auditoria.
+# Criado com:
 #   wrangler d1 create regulacao-vagas-db
 # Troque o database_id abaixo pelo id retornado.
 [[d1_databases]]

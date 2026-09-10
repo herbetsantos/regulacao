@@ -1,118 +1,103 @@
-> Revisão de código atual: **2.25.3** (schema Regulação 2.25.3).
-
 # eMulti / Regulação — Cajamar Saúde
 
-Versão de código consolidada: **2.25.3** · Schema da Regulação: **2.25.3**
+**Versão da aplicação:** 2.26.0  
+**Schema da Regulação:** 2.26.0
 
 Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**: evolução, conduta, procedimentos e demais registros clínicos não são gravados neste ambiente.
 
-## Arquitetura
+## Arquitetura atual
 
-O projeto utiliza dois bancos D1:
-
-```text
-DB            → portal-saude-db
-DB_REGULACAO  → regulacao-vagas-db
-```
-
-O `portal-saude-db` permanece como fonte de usuários do Portal, sessões/handoff e cadastro mestre de unidades. O `regulacao-vagas-db` armazena pacientes, guias, fila, autorizações funcionais, profissionais assistenciais, vínculos, escalas, agenda, grupos, etiquetas e resultados administrativos.
-
-A Regulação aceita duas origens de identidade:
+A partir da 2.26.0, o Portal APS é utilizado somente para autenticação/handoff de identidade. Toda a operação e autorização da Regulação fica no `regulacao-vagas-db`.
 
 ```text
-portal:<id>  → conta do Portal APS
-local:<uuid> → credencial própria da Regulação
+Portal APS / portal-saude-db
+└─ login + handoff de identidade
+
+Regulação / regulacao-vagas-db
+├─ sessão do módulo
+├─ superusuários e responsabilidades
+├─ unidades e equipes
+├─ profissionais e vínculos
+├─ pacientes, guias e fila
+├─ agenda e grupos
+├─ etiquetas
+├─ preferências
+└─ auditoria
 ```
 
-O cadastro de **profissional assistencial é independente da conta de usuário**. Assim, um profissional pode constar nas listas e escalas mesmo antes de possuir login.
+Bindings Cloudflare:
 
-## Perfis funcionais
-
-Os perfis são combináveis e independentes do papel geral do usuário no Portal:
-
-- **Cadastrante:** cadastro de pacientes e emissão de guias nas unidades autorizadas.
-- **Regulador:** análise, lista de espera, negativa e transferência administrativa.
-- **Organizador:** agenda individual, grupos e alocação de pacientes.
-- **Executor:** registra apenas resultados administrativos de execução, como realizado, falta e abandono.
-- **Gestor:** administra profissionais, vínculos, especialidades, equipes e escalas.
-- **Administrador:** gestão ampliada do ambiente e de acessos.
-
-A concessão ou revogação da responsabilidade **Administrador** é exclusiva do **Super Administrador do Portal APS**.
-
-
-## Múltiplas equipes — 2.25.3
-
-Um profissional pode pertencer simultaneamente a **uma ou mais equipes eMulti**. O vínculo é N:N e vale tanto para o cadastro assistencial quanto para o escopo operacional da conta vinculada. Cada agenda, grupo ou atendimento continua associado a uma equipe específica.
-
-Para uma instalação que já está na linha 2.25.x, aplique uma única vez:
-
-```bash
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/026_multiplas_equipes_profissional.sql
+```text
+DB            → portal-saude-db      # login/handoff + importação única da transição
+DB_REGULACAO  → regulacao-vagas-db   # operação normal da Regulação
 ```
 
-Não execute novamente a migration 025 se ela já foi aplicada.
+Não existe credencial própria da Regulação. A senha permanece gerenciada pelo Portal APS.
 
-## Administração 2.25.0
+## Perfis e responsabilidades
 
-A Administração possui visão geral e áreas para acessos, profissionais, especialidades, equipes, unidades e configurações. Listas extensas usam paginação e filtros, incluindo unidade, função, especialidade e equipe conforme a tela.
+As responsabilidades são locais à Regulação e podem ser combinadas:
 
-O Gestor pode administrar a estrutura assistencial e escalas sem receber automaticamente poderes para regular, organizar ou executar. Administradores continuam responsáveis pela gestão ampliada de acessos.
+- **Cadastrante** — pacientes e guias nas unidades autorizadas;
+- **Regulador** — análise, lista de espera, negativa e transferência;
+- **Organizador** — agenda individual, grupos e alocação;
+- **Executor** — resultado administrativo do atendimento, sem evolução clínica;
+- **Gestor** — profissionais, vínculos, especialidades, equipes e escalas;
+- **Administrador** — gestão ampliada do módulo;
+- **Superusuário** — nível máximo local, responsável também por correções administrativas seguras.
 
-## Etiquetas e execução administrativa
+No primeiro acesso após a migração 027, se ainda não existir Superusuário local, o primeiro usuário autenticado pelo Portal com papel `super_admin` é usado apenas para o bootstrap. Depois disso, as permissões são administradas exclusivamente no eMulti/Regulação.
 
-As guias podem receber etiquetas administrativas filtráveis, inicialmente:
+## Catálogo operacional próprio
 
-- Prioridade;
-- Retorno;
-- Contato pendente;
-- Documentação pendente;
-- Atenção compartilhada.
+A Regulação mantém localmente:
 
-Atendimentos individuais e grupos registram resultados administrativos em estrutura própria. Esses registros **não substituem evolução clínica** e não devem conter conteúdo de prontuário.
+- `regulacao_unidades`;
+- `regulacao_equipes`;
+- profissionais e múltiplos vínculos de equipe;
+- permissões e escopos;
+- agenda, grupos, etiquetas e auditoria.
 
-## Atualização da linha 2.20.x para 2.25.0
+Os IDs de equipes e códigos de unidades são preservados na migração para evitar quebra de guias, agendas, grupos e vínculos existentes.
 
-1. Faça backup do `regulacao-vagas-db`.
-2. Aplique **uma única vez**:
+## Correções administrativas
 
-```bash
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/025_consolidacao_2_25_0.sql
+A área **Administração → Correções**, exclusiva do Superusuário, permite excluir fisicamente cadastros inseridos por engano apenas quando não existe vínculo nem histórico.
+
+Tipos suportados:
+
+- equipe;
+- especialidade;
+- unidade;
+- etiqueta.
+
+A API faz uma pré-validação de dependências e exige a digitação exata do nome do registro. Se houver qualquer utilização, a exclusão é bloqueada e o cadastro deve ser corrigido ou inativado.
+
+## Banco e migrations
+
+Para instalação nova, use:
+
+```text
+database/schema.sql
 ```
 
-3. Execute a validação somente leitura, se desejar:
+Principais migrations históricas ainda necessárias para atualização de bases antigas:
 
-```bash
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/VALIDAR_2_25_0.sql
+```text
+019_admin_profissionais_acesso_hibrido.sql
+020_organizacao_agenda.sql
+025_consolidacao_2_25_0.sql
+026_multiplas_equipes_profissional.sql
+027_desmembramento_portal.sql
 ```
 
-4. Publique o código 2.25.0.
-5. Valide login, perfis, Administração, escalas, Agenda, grupos, etiquetas e fluxo da guia.
+`database/update.sql` é apenas um marcador de compatibilidade. **Não use esse arquivo como migration.**
 
-> `025_consolidacao_2_25_0.sql` contém `ALTER TABLE` e deve ser executado somente uma vez em uma base 2.20.x ainda não migrada.
+## Documentação
 
-## Instalação nova
+A documentação foi consolidada para evitar dezenas de arquivos de release, avaliação e patch:
 
-`database/schema.sql` já representa o schema consolidado da 2.25.0. Não aplique a migração 025 depois de criar uma base nova usando esse schema.
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — histórico consolidado das versões;
+- [`docs/INSTALACAO_E_MIGRACAO.md`](docs/INSTALACAO_E_MIGRACAO.md) — instalação nova, atualização, homologação e recuperação.
 
-## Compatibilidade clínica legada
-
-Estruturas antigas de acompanhamento podem continuar presentes no banco para preservar histórico e compatibilidade de bases existentes. Na 2.25.0, as rotas de criação de acompanhamento/sessão clínica retornam bloqueio e a interface não oferece formulários de evolução. Novos registros clínicos devem ser feitos no PEC e-SUS.
-
-## Documentação da versão
-
-- `RELEASE_2.25.0.md`
-- `CHANGELOG_2.25.0.md`
-- `MIGRACAO_2.25.0_LEIA-ME.md`
-- `database/VALIDAR_2_25_0.sql`
-
-## Desempenho da Administração — 2.25.2
-
-As listas administrativas foram ajustadas para crescer sem multiplicar consultas por registro:
-
-- usuários/acessos são enriquecidos em lote;
-- vínculos e contas dos profissionais são carregados em lote para a página atual;
-- equipes e unidades usam agregações agrupadas;
-- filtros de referência são reaproveitados durante paginação e pesquisa;
-- abas já visitadas possuem cache curto em memória (45 s), invalidado quando cadastros relacionados são alterados.
-
-A sincronização de estruturas legadas não é mais executada em cada consulta GET administrativa. A atualização oficial continua sendo feita pelas migrations documentadas.
+A página `novidades.html` continua sendo a apresentação das mudanças para o usuário dentro do sistema e não depende de arquivos Markdown.

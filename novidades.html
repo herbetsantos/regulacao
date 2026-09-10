@@ -8,9 +8,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Novidades da Versão | eMulti Regulação</title>
   <link rel="icon" href="/assets/favicon.png">
-  <link rel="stylesheet" href="/css/theme.css?v=2.25.3">
-  <link rel="stylesheet" href="/css/style.css?v=2.25.3">
-  <script src="/js/theme.js?v=2.25.3"></script>
+  <link rel="stylesheet" href="/css/theme.css?v=2.26.0">
+  <link rel="stylesheet" href="/css/style.css?v=2.26.0">
+  <script src="/js/theme.js?v=2.26.0"></script>
 </head>
 <body>
   <div id="app-topbar"></div>
@@ -23,13 +23,27 @@
         </div>
       </section>
       <section class="panel-section" style="margin-top:16px">
+        <h2>Versão 2.26.0</h2>
+        <p class="muted">Regulação independente do Portal APS</p>
+        <ul>
+          <li>O Portal APS passa a fornecer somente autenticação e identidade por handoff.</li>
+          <li>Unidades, equipes, responsabilidades, profissionais, preferências e auditoria passam a pertencer ao <strong>regulacao-vagas-db</strong>.</li>
+          <li>A sessão do eMulti também passa a ser armazenada no banco próprio da Regulação.</li>
+          <li>O Superusuário torna-se uma autorização local da Regulação; o papel do Portal é usado apenas para o bootstrap inicial.</li>
+          <li>Foi criada uma importação única para copiar o catálogo operacional legado do Portal preservando IDs e códigos.</li>
+          <li>Nova área <strong>Correções administrativas</strong>: o Superusuário pode excluir equipes, especialidades, unidades e etiquetas inseridas por engano somente quando a pré-validação encontra zero vínculos e zero histórico.</li>
+          <li>A importação do catálogo legado é marcada como concluída e uma segunda execução acidental é bloqueada.</li>
+          <li>Instalações novas não criam tabelas de evolução/acompanhamento clínico; bases antigas preservam o legado sem expô-lo pelas APIs.</li>
+          <li>Credenciais locais do eMulti foram aposentadas: senha e autenticação permanecem exclusivamente no Portal APS.</li>
+        </ul>
+      </section>
+      <section class="panel-section" style="margin-top:16px">
         <h2>Versão 2.25.3</h2>
         <p class="muted">Profissionais em múltiplas equipes</p>
         <ul>
           <li>Um mesmo profissional pode ser vinculado simultaneamente a duas ou mais equipes eMulti.</li>
-          <li>Administração de profissionais e acessos passa a aceitar seleção múltipla de equipes.</li>
+          <li>Administração de profissionais e acessos aceita seleção múltipla de equipes.</li>
           <li>Agenda, grupos, escalas e permissões consideram todas as equipes vinculadas ao profissional/usuário.</li>
-          <li>Vínculos existentes são preservados pela migration 026; nenhuma guia ou agenda é apagada.</li>
         </ul>
       </section>
       <section class="panel-section" style="margin-top:16px">
@@ -72,8 +86,8 @@
       </section>
     </div>
   </main>
-  <script src="/js/regulacao.js?v=2.25.3"></script>
-  <script src="/js/app-chrome.js?v=2.25.3"></script>
+  <script src="/js/regulacao.js?v=2.26.0"></script>
+  <script src="/js/app-chrome.js?v=2.26.0"></script>
   <script>
     const releases = [
       ['2.17.4','Novidades da Versão','Histórico de alterações centralizado em uma página do sistema e em um único documento.'],
@@ -100,7 +114,7 @@
       ['2.6','Responsabilidades','Introdução das responsabilidades Cadastrante, Regulador, Executor e Administrador.']
     ];
     document.addEventListener('DOMContentLoaded',()=>{
-      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.25.3');
+      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.26.0');
       const h=document.getElementById('history');
       h.innerHTML=releases.map(r=>`<article style="padding:16px 0;border-bottom:1px solid var(--border,#e3e7ee)"><div style="display:flex;gap:10px;align-items:center"><strong>v${r[0]}</strong><span>${r[1]}</span></div><p class="muted" style="margin:6px 0 0">${r[2]}</p></article>`).join('');
     });

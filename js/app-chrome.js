@@ -3,7 +3,7 @@
 // uma sessão por handoff e lê o mesmo banco de usuários/equipes.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.25.3';
+const APP_VERSION = '2.26.0';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {
@@ -102,13 +102,9 @@ function renderChrome() {
             <span class="account-button__chevron">⌄</span>
           </button>
           <div class="account-menu" id="accountMenu" hidden>
-            <a href="/minha-conta.html">${appIconSvg('key')}<span>Alterar senha</span></a>
-            <a href="/links-uteis.html">${appIconSvg('links')}<span>Links úteis</span></a>
+            <a href="/minha-conta.html">${appIconSvg('key')}<span>Conta do Portal APS</span></a>
             <a href="/novidades.html">${appIconSvg('book')}<span>Novidades da Versão</span></a>
-            <a href="/comunicacao.html">${appIconSvg('message')}<span>Comunicação interna</span><b class="menu-unread-badge" id="emultiInternalBadge" hidden>0</b></a>
-            <a href="/suporte.html">${appIconSvg('message')}<span>Suporte</span><b class="menu-unread-badge" id="emultiSupportBadge" hidden>0</b></a>
             <a href="/assistente-rotinas.html">${appIconSvg('book')}<span>Assistente de Rotinas</span></a>
-            <a href="/chamados.html" id="ticketsAccountLink" hidden>${appIconSvg('tools')}<span>Chamados</span></a>
             <a href="/termos-de-uso.html">${appIconSvg('document')}<span>Termos de Uso e Privacidade</span></a>
             <a href="/sobre.html">${appIconSvg('info')}<span>Sobre o eMulti Regulação</span></a>
             <div class="account-menu__divider"></div>
@@ -204,7 +200,7 @@ function renderUser(user) {
     else if (access.regulador) teamEl.textContent = 'Regulação';
     else if (access.organizador) teamEl.textContent = 'Organização da agenda';
     else if (access.executor) teamEl.textContent = 'Execução';
-    else teamEl.textContent = user.source === 'local' ? 'Credencial própria' : 'eMulti';
+    else teamEl.textContent = 'eMulti';
   }
 
   const regulacaoItem = document.getElementById('navRegulacaoItem');
@@ -420,8 +416,5 @@ async function initPortalChrome() {
   setupLogout();
   const bellBtn = document.getElementById('bellBtn');
   if (bellBtn && !bellBtn.hidden) setupNotificacoes();
-  // Chat também é secundário no primeiro paint.
-  scheduleNonCritical(updateEmultiChatBadges, 2400);
-  setInterval(updateEmultiChatBadges, 30000);
   return user;
 }

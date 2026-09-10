@@ -1,58 +1,7 @@
-// Profissional pode pertencer a uma ou mais equipes eMulti simultaneamente.
-// POST body: { user_id, cargo, especialidade_ids[] }
-// PUT  body: { user_id, cargo, especialidade_ids[] }
-// DELETE ?user_id=...
-
-import { json, logAudit } from '../../../_utils.js';
+// Endpoint legado. Na 2.26.0 o vínculo oficial é Profissional ↔ Equipes em regulacao_profissional_equipes.
+import { json } from '../../../_utils.js';
 import { requireGestorAccess } from '../../../_shared.js';
-import { ensureProfissionalSchema, setProfissionalEspecialidades } from '../../../_professionals.js';
-import { syncPortalRegulacaoFeature } from '../../../_permissions.js';
-
-async function salvar({ request, env, params, atualizar = false }) {
-  const { user, error } = await requireGestorAccess(request, env);
-  if (error) return error;
-  await ensureProfissionalSchema(env);
-
-  const equipeId = Number(params.id);
-  const equipe = await env.DB.prepare('SELECT id, nome FROM regulacao_equipes WHERE id = ? AND ativo = 1').bind(equipeId).first();
-  if (!equipe) return json({ error: 'Equipe não encontrada ou inativa.' }, 404);
-
-  let body;
-  try { body = await request.json(); } catch { return json({ error: 'JSON inválido.' }, 400); }
-  const userId = Number(body.user_id);
-  const cargo = String(body.cargo || '').trim();
-  const especialidadeIds = Array.isArray(body.especialidade_ids) ? body.especialidade_ids.map(Number).filter(Boolean) : [];
-  if (!userId) return json({ error: 'Informe o profissional.' }, 400);
-  if (!cargo) return json({ error: 'Cargo/profissão do profissional é obrigatório.' }, 400);
-  if (especialidadeIds.length === 0) return json({ error: 'Informe ao menos uma especialidade atendida pelo profissional.' }, 400);
-
-  const profissional = await env.DB.prepare('SELECT id, name FROM users WHERE id = ? AND active = 1').bind(userId).first();
-  if (!profissional) return json({ error: 'Usuário não encontrado.' }, 400);
-
-  await env.DB.prepare(`INSERT INTO regulacao_equipe_profissionais (equipe_id, user_id, cargo)
-    VALUES (?, ?, ?) ON CONFLICT(equipe_id, user_id) DO UPDATE SET cargo = excluded.cargo`
-  ).bind(equipeId, userId, cargo).run();
-  await setProfissionalEspecialidades(env, userId, especialidadeIds);
-  await syncPortalRegulacaoFeature(env, userId);
-  await logAudit(env, user, atualizar ? 'update' : 'create', 'equipe_profissional', equipeId, { userId, cargo, especialidadeIds });
-  return json({ ok: true });
-}
-
-export async function onRequestPost(ctx) { return salvar({ ...ctx, atualizar:false }); }
-export async function onRequestPut(ctx) { return salvar({ ...ctx, atualizar:true }); }
-
-export async function onRequestDelete({ request, env, params }) {
-  const { user, error } = await requireGestorAccess(request, env);
-  if (error) return error;
-  await ensureProfissionalSchema(env);
-  const equipeId = Number(params.id);
-  const url = new URL(request.url);
-  const userId = Number(url.searchParams.get('user_id'));
-  if (!userId) return json({ error: 'Informe user_id.' }, 400);
-  const remaining=await env.DB.prepare('SELECT COUNT(*) n FROM regulacao_equipe_profissionais WHERE user_id=? AND equipe_id<>?').bind(userId,equipeId).first();
-  if(!Number(remaining?.n||0))await env.DB.prepare('DELETE FROM regulacao_profissional_especialidades WHERE user_id = ?').bind(userId).run();
-  await env.DB.prepare('DELETE FROM regulacao_equipe_profissionais WHERE equipe_id = ? AND user_id = ?').bind(equipeId, userId).run();
-  await syncPortalRegulacaoFeature(env, userId);
-  await logAudit(env, user, 'delete', 'equipe_profissional', equipeId, { userId });
-  return json({ ok: true });
-}
+export async function onRequestGet({request,env,params}){const{error}=await requireGestorAccess(request,env);if(error)return error;const equipeId=Number(params.id);const{results}=await env.DB_REGULACAO.prepare(`SELECT p.id,p.nome,p.principal_id,pe.is_principal FROM regulacao_profissional_equipes pe JOIN regulacao_profissionais p ON p.id=pe.profissional_id AND p.ativo=1 WHERE pe.equipe_id=? ORDER BY p.nome`).bind(equipeId).all();return json({profissionais:results||[]})}
+export async function onRequestPost(){return json({error:'Use Administração → Profissionais para vincular equipes. O vínculo legado usuário×equipe foi encerrado na 2.26.0.',codigo:'ENDPOINT_LEGADO'},410)}
+export async function onRequestPut(){return json({error:'Use Administração → Profissionais para vincular equipes.',codigo:'ENDPOINT_LEGADO'},410)}
+export async function onRequestDelete(){return json({error:'Use Administração → Profissionais para remover o vínculo de equipe.',codigo:'ENDPOINT_LEGADO'},410)}

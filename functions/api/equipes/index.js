@@ -11,7 +11,7 @@ export async function onRequestGet({ request, env }) {
 
   let equipeIds;
   if (access.administrador || access.gestor) {
-    const { results } = await env.DB.prepare('SELECT id FROM regulacao_equipes WHERE ativo = 1 ORDER BY nome').all();
+    const { results } = await env.DB_REGULACAO.prepare('SELECT id FROM regulacao_equipes WHERE ativo = 1 ORDER BY nome').all();
     equipeIds = results.map((r) => r.id);
   } else {
     equipeIds = await getUserEquipeIds(env, user);

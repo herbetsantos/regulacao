@@ -1,6 +1,5 @@
 import { json,logAudit } from '../../_utils.js';
 import { requireGestorAccess } from '../../_shared.js';
-import { parsePrincipalId } from '../../_hybrid.js';
 
 const MAX_IN_PARAMS=80;
 async function selectIn(db,sqlTemplate,ids){
@@ -41,27 +40,22 @@ export async function onRequestGet({request,env}){
   const teamLinks=ids.length?await selectIn(env.DB_REGULACAO,`SELECT profissional_id,equipe_id,is_principal FROM regulacao_profissional_equipes WHERE profissional_id IN (__IDS__) ORDER BY profissional_id,is_principal DESC,equipe_id`,ids):[];
   const profTeamMap=new Map();for(const x of teamLinks){if(!profTeamMap.has(x.profissional_id))profTeamMap.set(x.profissional_id,[]);profTeamMap.get(x.profissional_id).push(Number(x.equipe_id))}
 
-  const portalIds=[],localIds=[];
-  for(const p of profRows){const parsed=parsePrincipalId(p.principal_id);if(!parsed)continue;(parsed.source==='portal'?portalIds:localIds).push(parsed.id)}
-  const [portalAccounts,localAccounts]=await Promise.all([
-    portalIds.length?selectIn(env.DB,'SELECT id,name,username FROM users WHERE id IN (__IDS__)',portalIds.map(Number)):[],
-    localIds.length?selectIn(env.DB_REGULACAO,'SELECT id,name,username FROM regulacao_local_users WHERE id IN (__IDS__)',localIds):[],
-  ]);
-  const accountMap=new Map();for(const u of portalAccounts)accountMap.set(`portal:${u.id}`,{name:u.name,username:u.username,source:'portal'});for(const u of localAccounts)accountMap.set(`local:${u.id}`,{name:u.name,username:u.username,source:'local'});
+  const principalIds=[...new Set(profRows.map(p=>p.principal_id).filter(Boolean))];
+  const principalAccounts=principalIds.length?await selectIn(env.DB_REGULACAO,'SELECT principal_id,name,username FROM regulacao_principals WHERE principal_id IN (__IDS__) AND active=1',principalIds):[];
+  const accountMap=new Map(principalAccounts.map(u=>[u.principal_id,{name:u.name,username:u.username,source:'portal'}]));
 
   const profissionais=profRows.map(p=>{const vinculos=linksMap.get(p.id)||[];const equipe_ids=profTeamMap.get(p.id)||[...(p.equipe_id?[Number(p.equipe_id)]:[])];return{...p,equipe_ids,equipe_id:equipe_ids[0]??p.equipe_id??null,conta:accountMap.get(p.principal_id)||null,vinculos,carga_horaria_total:vinculos.filter(v=>v.ativo).reduce((a,v)=>a+Number(v.carga_horaria_semanal||0),0)}});
 
   let unidades=[],equipes=[],especialidades=[],contas=[];
   if(includeRefs){
-    const [units,teams,specs,portal,locals]=await Promise.all([
-      env.DB.prepare('SELECT code,nome,tipo FROM unidades WHERE ativo=1 ORDER BY nome').all(),
-      env.DB.prepare('SELECT id,nome FROM regulacao_equipes WHERE ativo=1 ORDER BY nome').all(),
+    const [units,teams,specs,principals]=await Promise.all([
+      env.DB_REGULACAO.prepare('SELECT code,nome,tipo FROM regulacao_unidades WHERE ativo=1 ORDER BY nome').all(),
+      env.DB_REGULACAO.prepare('SELECT id,nome FROM regulacao_equipes WHERE ativo=1 ORDER BY nome').all(),
       env.DB_REGULACAO.prepare('SELECT id,nome,ativo FROM especialidades WHERE ativo=1 ORDER BY nome').all(),
-      env.DB.prepare('SELECT id,name,username FROM users WHERE active=1 ORDER BY name').all(),
-      env.DB_REGULACAO.prepare('SELECT id,name,username FROM regulacao_local_users WHERE active=1 ORDER BY name').all(),
+      env.DB_REGULACAO.prepare('SELECT principal_id,name,username FROM regulacao_principals WHERE active=1 ORDER BY name').all(),
     ]);
     unidades=units.results||[];equipes=teams.results||[];especialidades=specs.results||[];
-    contas=[...(portal.results||[]).map(u=>({principal_id:`portal:${u.id}`,name:u.name,username:u.username,source:'portal'})),...(locals.results||[]).map(u=>({principal_id:`local:${u.id}`,name:u.name,username:u.username,source:'local'}))];
+    contas=(principals.results||[]).map(u=>({principal_id:u.principal_id,name:u.name,username:u.username,source:'portal'}));
   }
   return json({profissionais,pagination:{page:safePage,page_size:pageSize,total,pages},unidades,equipes,especialidades,contas,refs_included:includeRefs});
 }

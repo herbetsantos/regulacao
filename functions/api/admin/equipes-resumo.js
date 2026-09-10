@@ -4,9 +4,9 @@ import { requireGestorAccess } from '../_shared.js';
 export async function onRequestGet({request,env}){
   const {error}=await requireGestorAccess(request,env);if(error)return error;
   const [teamsResp,teamUnitsResp,allUnitsResp,profResp,userResp]=await Promise.all([
-    env.DB.prepare('SELECT id,nome,ativo FROM regulacao_equipes ORDER BY nome').all(),
-    env.DB.prepare(`SELECT eu.equipe_id,u.code,u.nome FROM regulacao_equipe_unidades eu JOIN unidades u ON u.code=eu.unidade_code ORDER BY eu.equipe_id,u.nome`).all(),
-    env.DB.prepare('SELECT code,nome,tipo FROM unidades WHERE ativo=1 ORDER BY nome').all(),
+    env.DB_REGULACAO.prepare('SELECT id,nome,ativo FROM regulacao_equipes ORDER BY nome').all(),
+    env.DB_REGULACAO.prepare(`SELECT eu.equipe_id,u.code,u.nome FROM regulacao_equipe_unidades eu JOIN regulacao_unidades u ON u.code=eu.unidade_code ORDER BY eu.equipe_id,u.nome`).all(),
+    env.DB_REGULACAO.prepare('SELECT code,nome,tipo FROM regulacao_unidades WHERE ativo=1 ORDER BY nome').all(),
     env.DB_REGULACAO.prepare(`SELECT pe.equipe_id,COUNT(DISTINCT p.id) profissionais,ROUND(COALESCE(SUM(CASE WHEN v.ativo=1 THEN v.carga_horaria_semanal ELSE 0 END),0),2) horas FROM regulacao_profissional_equipes pe JOIN regulacao_profissionais p ON p.id=pe.profissional_id AND p.ativo=1 LEFT JOIN regulacao_profissional_vinculos v ON v.profissional_id=p.id GROUP BY pe.equipe_id`).all(),
     env.DB_REGULACAO.prepare('SELECT equipe_id,COUNT(*) usuarios FROM regulacao_principal_equipes GROUP BY equipe_id').all(),
   ]);

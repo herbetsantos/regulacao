@@ -154,7 +154,7 @@ export async function onRequestPost({ request, env }) {
     return json({ error: 'Você não tem permissão para emitir guias por essa unidade.' }, 403);
   }
 
-  const unidade = await env.DB.prepare('SELECT code FROM unidades WHERE code = ? AND ativo = 1')
+  const unidade = await env.DB_REGULACAO.prepare('SELECT code FROM regulacao_unidades WHERE code = ? AND ativo = 1')
     .bind(unidade_solicitante_code).first();
   if (!unidade) return json({ error: 'Unidade solicitante inválida.' }, 400);
 

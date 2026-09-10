@@ -16,16 +16,16 @@ export async function onRequestGet({ request, env }) {
      ORDER BY sort_order ASC,nome ASC`
   ).all();
 
-  const unidadesPromise = env.DB.prepare(
+  const unidadesPromise = env.DB_REGULACAO.prepare(
     `SELECT code,nome
-     FROM unidades
+     FROM regulacao_unidades
      WHERE ativo=1
-     ORDER BY sort_order ASC,nome ASC`
+     ORDER BY nome ASC`
   ).all();
 
   const equipesPromise = (async () => {
     if (access.administrador) {
-      return env.DB.prepare(
+      return env.DB_REGULACAO.prepare(
         `SELECT id,nome
          FROM regulacao_equipes
          WHERE ativo=1
@@ -37,7 +37,7 @@ export async function onRequestGet({ request, env }) {
     if (!ids.length) return { results: [] };
 
     const { clause, binds } = inClause(ids);
-    return env.DB.prepare(
+    return env.DB_REGULACAO.prepare(
       `SELECT id,nome
        FROM regulacao_equipes
        WHERE ativo=1 AND id IN ${clause}

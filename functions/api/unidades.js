@@ -1,5 +1,5 @@
 // GET /api/unidades
-// Devolve unidades do Portal já considerando o escopo do usuário.
+// Devolve unidades próprias da Regulação considerando o escopo do usuário.
 // Compatível também com instalações antigas que ainda não possuem a coluna
 // unidades.tipo: nesse caso a classificação APS é inferida pela lista oficial.
 
@@ -35,7 +35,7 @@ export async function onRequestGet({ request, env }) {
     });
   } catch (err) {
     return json({
-      error: 'Não foi possível carregar as unidades do Portal.',
+      error: 'Não foi possível carregar as unidades da Regulação.',
       codigo: 'UNIDADES_INDISPONIVEIS',
       detalhe: String(err?.message || ''),
     }, 503);

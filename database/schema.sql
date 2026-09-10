@@ -1,7 +1,7 @@
 -- Regulação de Vagas — Cajamar Saúde
--- Banco D1 DEDICADO a este projeto (conteúdo clínico: pacientes, guias,
--- acompanhamentos). O login, as unidades e as equipes multidisciplinares
--- vivem no banco do Portal (portal-saude-db).
+-- Banco D1 DEDICADO à eMulti/Regulação. Desde a 2.26.0, unidades, equipes,
+-- profissionais, permissões, guias, agenda, etiquetas e auditoria pertencem
+-- a este banco. O Portal APS permanece somente como provedor de login/identidade.
 --
 -- Criar o banco:
 --   wrangler d1 create regulacao-vagas-db
@@ -12,12 +12,10 @@
 -- Usa CREATE ... IF NOT EXISTS / INSERT OR IGNORE e NUNCA apaga pacientes,
 -- guias ou acompanhamentos existentes.
 --
--- Este módulo referencia códigos de unidade (ex.: 'jordanesia'), ids de
--- equipe (ex.: 1 = 'Estratégia 1') e ids de usuário (ex.: 42) que vivem no
--- OUTRO banco (portal-saude-db). Como D1 não permite foreign key entre
--- bancos diferentes, esses campos são guardados como texto/inteiro
--- "soltos" (sem FK) — a validação de que o código/id existe de fato é
--- feita na camada de API, não pelo SQLite.
+-- Alguns campos históricos continuam sem FK por compatibilidade com bases
+-- anteriores. Na 2.26.0, a API valida códigos de unidade e ids de equipe contra
+-- regulacao_unidades e regulacao_equipes, ambas neste mesmo banco. Campos
+-- created_by numéricos antigos permanecem apenas como legado de auditoria.
 
 
 -- Especialidades atendidas pela regulação. Começa com as 4 pedidas; novas
@@ -49,8 +47,8 @@ CREATE TABLE IF NOT EXISTS pacientes (
   tel1 TEXT,
   tel2 TEXT,
   tel3 TEXT,
-  -- Código da unidade de referência (APS) do paciente. Corresponde a
-  -- unidades.code no banco do portal (não há FK entre bancos — ver acima).
+  -- Código da unidade de referência (APS) do paciente. Na 2.26.0 corresponde
+  -- a regulacao_unidades.code; permanece sem FK por compatibilidade histórica.
   unidade_referencia_code TEXT NOT NULL,
   endereco TEXT,                                  -- representação legada/formatada
   cep TEXT,
@@ -75,11 +73,11 @@ CREATE TABLE IF NOT EXISTS guias (
   -- Unidade de Atenção Primária onde a guia será executada. Só unidades
   -- tipo='aps' podem aparecer aqui (CER II, Policlínica, CAPS e CAPS IJ só
   -- emitem guias, não executam, por enquanto) — validado na API, não pelo
-  -- SQLite (unidades vive no outro banco). Fica NULL enquanto a guia ainda
+  -- SQLite. Na 2.26.0 o catálogo está em regulacao_unidades. Fica NULL enquanto a guia ainda
   -- não foi triada.
   unidade_executante_code TEXT,
   -- Equipe multidisciplinar responsável pela triagem/execução (referência
-  -- solta a regulacao_equipes.id, no banco do portal). Preenchida junto com
+  -- lógica a regulacao_equipes.id neste banco). Preenchida junto com
   -- unidade_executante_code no momento da triagem.
   equipe_id INTEGER,
   motivo TEXT NOT NULL,
@@ -92,10 +90,9 @@ CREATE TABLE IF NOT EXISTS guias (
       'concluido',               -- Concluído
       'negado'                   -- Negado
     )),
-  created_by INTEGER,                           -- id do usuário (banco do portal), sem FK
+  created_by INTEGER,                           -- id numérico legado do usuário do Portal; auditoria nova usa principal_id
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
-  desfecho_atendimento TEXT,
   FOREIGN KEY (cpf) REFERENCES pacientes(cpf) ON DELETE RESTRICT,
   FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
 );
@@ -123,67 +120,9 @@ CREATE TABLE IF NOT EXISTS guia_atribuicoes (
 CREATE INDEX IF NOT EXISTS idx_guia_atribuicoes_guia ON guia_atribuicoes(guia_id);
 CREATE INDEX IF NOT EXISTS idx_guia_atribuicoes_prof ON guia_atribuicoes(profissional_user_id);
 
--- Acompanhamentos: agrupam 1 guia (atendimento individual) ou 2+ guias
--- (atendimento em grupo) sob uma mesma agenda/sessões. Um grupo PODE
--- combinar guias que originalmente tinham unidades executantes diferentes
--- (a critério do profissional, ao juntar demanda parecida de mais de uma
--- unidade da mesma equipe) — por isso a "unidade executante" e o "local de
--- execução" vivem aqui no acompanhamento, não obrigatoriamente repetindo o
--- que cada guia tinha antes de entrar no grupo.
-CREATE TABLE IF NOT EXISTS acompanhamentos (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  tipo TEXT NOT NULL CHECK (tipo IN ('individual','grupo')),
-  especialidade_id INTEGER NOT NULL,
-  -- Equipe responsável (referência solta a regulacao_equipes.id, banco do
-  -- portal) — sempre obrigatória: quem inicia um acompanhamento faz isso
-  -- como profissional de uma equipe.
-  equipe_id INTEGER NOT NULL,
-  -- Unidade de Atenção Primária de referência deste acompanhamento (uma
-  -- das unidades cobertas pela equipe acima). Continua obrigatória mesmo
-  -- quando o atendimento acontece fisicamente em outro lugar (ver
-  -- local_execucao) — é o vínculo administrativo/estatístico.
-  unidade_executante_code TEXT NOT NULL,
-  -- Local físico do atendimento, quando DIFERENTE da unidade de saúde
-  -- acima (ex.: escola, quadra, outro espaço público). Opcional — quando
-  -- NULL, entende-se que o atendimento acontece na própria unidade.
-  local_execucao TEXT,
-  data_inicio TEXT,
-  horario_inicio TEXT,
-  created_by INTEGER,
-  created_at TEXT DEFAULT (datetime('now')),
-  encerrado_em TEXT,
-  FOREIGN KEY (especialidade_id) REFERENCES especialidades(id)
-);
-CREATE INDEX IF NOT EXISTS idx_acompanhamentos_equipe ON acompanhamentos(equipe_id);
-
--- Vínculo N:N entre acompanhamento e guias. 1 linha = individual.
--- 2+ linhas (guias diferentes) = grupo.
-CREATE TABLE IF NOT EXISTS acompanhamento_guias (
-  acompanhamento_id INTEGER NOT NULL,
-  guia_id INTEGER NOT NULL,
-  PRIMARY KEY (acompanhamento_id, guia_id),
-  FOREIGN KEY (acompanhamento_id) REFERENCES acompanhamentos(id) ON DELETE CASCADE,
-  FOREIGN KEY (guia_id) REFERENCES guias(id) ON DELETE RESTRICT
-);
-CREATE INDEX IF NOT EXISTS idx_acomp_guias_guia ON acompanhamento_guias(guia_id);
-
--- Sessões/atividades executadas dentro de um acompanhamento. Cada sessão
--- tem sua própria data, horário e evolução (nota clínica em texto) — para
--- atendimento em grupo, a evolução pode ser geral da sessão e/ou por
--- paciente via presentes (JSON com os guia_id presentes naquela sessão).
-CREATE TABLE IF NOT EXISTS acompanhamento_sessoes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  acompanhamento_id INTEGER NOT NULL,
-  data_sessao TEXT NOT NULL,     -- YYYY-MM-DD
-  horario TEXT NOT NULL,         -- HH:MM
-  presentes TEXT,                -- JSON com lista de guia_id presentes (grupo); NULL = todos
-  evolucao TEXT NOT NULL,
-  created_by INTEGER,
-  profissional_user_id INTEGER,                 -- profissional que realizou a sessão (Portal)
-  created_at TEXT DEFAULT (datetime('now')),
-  FOREIGN KEY (acompanhamento_id) REFERENCES acompanhamentos(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_sessoes_acompanhamento ON acompanhamento_sessoes(acompanhamento_id);
+-- Estruturas clínicas de acompanhamento/evolução não são criadas em instalações novas.
+-- Bases atualizadas de versões anteriores podem manter essas tabelas como legado histórico,
+-- mas as APIs 2.26.0 não expõem nem gravam evolução clínica. O PEC e-SUS é o prontuário oficial.
 
 CREATE TABLE IF NOT EXISTS agenda_escalas (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -287,8 +226,7 @@ CREATE INDEX IF NOT EXISTS idx_agenda_ind_data ON agenda_individuais(profissiona
 CREATE INDEX IF NOT EXISTS idx_agenda_ind_profissional ON agenda_individuais(profissional_id, data_atendimento, hora_inicio);
 
 
--- Notificações dirigidas a uma EQUIPE (referência solta a
--- regulacao_equipes.id, banco do portal) — hoje usada só para avisar sobre
+-- Notificações dirigidas a uma EQUIPE da própria Regulação — hoje usada para
 -- transferência de guia entre equipes (ex.: paciente mudou de endereço e a
 -- guia foi redirecionada para outra equipe de regulação). guia_id é FK de
 -- verdade porque guias vive neste mesmo banco.
@@ -327,50 +265,11 @@ PRAGMA foreign_keys = ON;
 
 -- eMulti / Regulação 2.19.0
 -- Migração aditiva para:
--- 1) autenticação híbrida (Portal APS ou credencial própria),
--- 2) autorizações próprias da Regulação por principal,
--- 3) profissionais assistenciais independentes de usuários,
--- 4) vínculos profissional + unidade + especialidade + carga horária.
+-- Estruturas operacionais consolidadas. Na 2.26.0 o login local foi aposentado;
+-- o Portal APS fornece somente autenticação/identidade e a autorização é local.
 
-CREATE TABLE IF NOT EXISTS regulacao_local_users (
-  id TEXT PRIMARY KEY,
-  username TEXT NOT NULL COLLATE NOCASE UNIQUE,
-  name TEXT NOT NULL,
-  legacy_numeric_id INTEGER NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  password_salt TEXT NOT NULL,
-  password_iterations INTEGER NOT NULL DEFAULT 210000,
-  active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
-  must_change_password INTEGER NOT NULL DEFAULT 1 CHECK (must_change_password IN (0,1)),
-  theme TEXT NOT NULL DEFAULT 'light' CHECK (theme IN ('auto','light','dark','contrast')),
-  created_by_principal TEXT,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-  last_login_at TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_reg_local_users_active ON regulacao_local_users(active, username);
-
-CREATE TABLE IF NOT EXISTS regulacao_local_sessions (
-  token TEXT PRIMARY KEY,
-  local_user_id TEXT NOT NULL REFERENCES regulacao_local_users(id) ON DELETE CASCADE,
-  expires_at TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_reg_local_sessions_exp ON regulacao_local_sessions(expires_at);
-CREATE INDEX IF NOT EXISTS idx_reg_local_sessions_user ON regulacao_local_sessions(local_user_id);
-
-CREATE TABLE IF NOT EXISTS regulacao_login_attempts (
-  id TEXT PRIMARY KEY,
-  username TEXT NOT NULL COLLATE NOCASE,
-  ip TEXT,
-  success INTEGER NOT NULL DEFAULT 0 CHECK (success IN (0,1)),
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_reg_login_attempts_user_time ON regulacao_login_attempts(username, created_at);
-
--- principal_id usa duas origens:
--- portal:<id do users no portal-saude-db>
--- local:<uuid do regulacao_local_users>
+-- Na instalação nova 2.26.0 não são criadas credenciais locais.
+-- O login é exclusivamente fornecido pelo Portal APS; principal_id usa portal:<id>.
 CREATE TABLE IF NOT EXISTS regulacao_principal_acessos (
   principal_id TEXT PRIMARY KEY,
   cadastrante INTEGER NOT NULL DEFAULT 0 CHECK (cadastrante IN (0,1)),
@@ -478,4 +377,65 @@ CREATE INDEX IF NOT EXISTS idx_guia_etiquetas_tag ON guia_etiquetas(etiqueta_id,
 CREATE TABLE IF NOT EXISTS regulacao_execucoes_administrativas (id INTEGER PRIMARY KEY AUTOINCREMENT,tipo TEXT NOT NULL CHECK(tipo IN('individual','grupo')),referencia_id TEXT NOT NULL,guia_id INTEGER NOT NULL,resultado TEXT NOT NULL CHECK(resultado IN('realizado','falta','abandono','cancelado','removido')),observacao_administrativa TEXT,registrado_por_principal TEXT,registrado_em TEXT NOT NULL DEFAULT(datetime('now')),FOREIGN KEY(guia_id) REFERENCES guias(id) ON DELETE RESTRICT);
 CREATE INDEX IF NOT EXISTS idx_exec_admin_guia ON regulacao_execucoes_administrativas(guia_id,registrado_em DESC);
 INSERT OR IGNORE INTO regulacao_etiquetas(nome,sort_order) VALUES ('Prioridade',10),('Retorno',20),('Contato pendente',30),('Documentação pendente',40),('Atenção compartilhada',50);
-INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.25.3',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.25.3',updated_at=datetime('now');
+
+
+-- eMulti / Regulação 2.26.0 — catálogo operacional próprio e autenticação por handoff do Portal.
+CREATE TABLE IF NOT EXISTS regulacao_principals (
+  principal_id TEXT PRIMARY KEY,
+  portal_user_id INTEGER,
+  username TEXT,
+  name TEXT NOT NULL,
+  portal_role TEXT,
+  active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+  first_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_reg_principal_portal_user ON regulacao_principals(portal_user_id) WHERE portal_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_reg_principals_name ON regulacao_principals(active,name);
+CREATE TABLE IF NOT EXISTS regulacao_superusers (
+  principal_id TEXT PRIMARY KEY REFERENCES regulacao_principals(principal_id) ON DELETE CASCADE,
+  granted_by_principal TEXT,
+  granted_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS regulacao_auth_sessions (
+  token TEXT PRIMARY KEY,
+  principal_id TEXT NOT NULL REFERENCES regulacao_principals(principal_id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reg_auth_sessions_principal ON regulacao_auth_sessions(principal_id,expires_at);
+CREATE TABLE IF NOT EXISTS regulacao_user_preferences (
+  principal_id TEXT PRIMARY KEY REFERENCES regulacao_principals(principal_id) ON DELETE CASCADE,
+  theme TEXT NOT NULL DEFAULT 'light' CHECK(theme IN ('auto','light','dark','contrast')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS regulacao_unidades (
+  code TEXT PRIMARY KEY,
+  nome TEXT NOT NULL,
+  tipo TEXT NOT NULL DEFAULT 'aps',
+  ativo INTEGER NOT NULL DEFAULT 1 CHECK(ativo IN(0,1)),
+  origem TEXT NOT NULL DEFAULT 'local',
+  created_at TEXT NOT NULL DEFAULT(datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT(datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reg_unidades_ativo_nome ON regulacao_unidades(ativo,nome);
+CREATE TABLE IF NOT EXISTS regulacao_equipes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nome TEXT NOT NULL COLLATE NOCASE UNIQUE,
+  ativo INTEGER NOT NULL DEFAULT 1 CHECK(ativo IN(0,1)),
+  created_by_principal TEXT,
+  created_at TEXT NOT NULL DEFAULT(datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT(datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reg_equipes_ativo_nome ON regulacao_equipes(ativo,nome);
+CREATE TABLE IF NOT EXISTS regulacao_equipe_unidades (
+  equipe_id INTEGER NOT NULL REFERENCES regulacao_equipes(id) ON DELETE CASCADE,
+  unidade_code TEXT NOT NULL REFERENCES regulacao_unidades(code) ON DELETE RESTRICT,
+  created_at TEXT NOT NULL DEFAULT(datetime('now')),
+  PRIMARY KEY(equipe_id,unidade_code)
+);
+CREATE INDEX IF NOT EXISTS idx_reg_equipe_unidades_unit ON regulacao_equipe_unidades(unidade_code,equipe_id);
+CREATE TABLE IF NOT EXISTS regulacao_migration_state (key TEXT PRIMARY KEY,value TEXT,updated_at TEXT NOT NULL DEFAULT(datetime('now')));
+
+INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.26.0',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.26.0',updated_at=datetime('now');

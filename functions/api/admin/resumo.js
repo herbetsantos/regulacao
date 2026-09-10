@@ -10,7 +10,8 @@ export async function onRequestGet({request,env}){
   if(error)return error;
 
   const required=[
-    'regulacao_local_users',
+    'regulacao_principals',
+    'regulacao_superusers',
     'regulacao_profissionais',
     'regulacao_profissional_vinculos',
     'regulacao_principal_acessos',
@@ -19,7 +20,7 @@ export async function onRequestGet({request,env}){
   for(const t of required)if(!await exists(env.DB_REGULACAO,t))missing.push(t);
   if(missing.length){
     return json({
-      error:'A estrutura administrativa 2.25.0 ainda não foi aplicada ao regulacao-vagas-db.',
+      error:'A estrutura administrativa 2.26.0 ainda não foi aplicada ao regulacao-vagas-db.',
       missing_tables:missing,
     },409);
   }
@@ -28,7 +29,7 @@ export async function onRequestGet({request,env}){
   const q=async(sql)=>Number((await env.DB_REGULACAO.prepare(sql).first())?.n||0);
 
   const [locals,prof,semVinc,semHoras,espSemProf,principal]=await Promise.all([
-    q('SELECT COUNT(*) n FROM regulacao_local_users WHERE active=1'),
+    q('SELECT COUNT(*) n FROM regulacao_principals WHERE active=1'),
     q('SELECT COUNT(*) n FROM regulacao_profissionais WHERE ativo=1'),
     q(`SELECT COUNT(*) n FROM regulacao_profissionais p
        WHERE p.ativo=1
@@ -54,13 +55,13 @@ export async function onRequestGet({request,env}){
   ]);
 
   const [unitRow,teamRow]=await Promise.all([
-    env.DB.prepare('SELECT COUNT(*) n FROM unidades WHERE ativo=1').first(),
-    env.DB.prepare('SELECT COUNT(*) n FROM regulacao_equipes WHERE ativo=1').first(),
+    env.DB_REGULACAO.prepare('SELECT COUNT(*) n FROM regulacao_unidades WHERE ativo=1').first(),
+    env.DB_REGULACAO.prepare('SELECT COUNT(*) n FROM regulacao_equipes WHERE ativo=1').first(),
   ]);
 
   return json({
     resumo:{
-      usuarios_externos:locals,
+      usuarios_identificados:locals,
       usuarios_com_acesso:principal,
       profissionais:prof,
       unidades:Number(unitRow?.n||0),
