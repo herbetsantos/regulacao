@@ -1,4 +1,4 @@
-# Instalação, migração e homologação — eMulti / Regulação 2.26.3
+# Instalação, migração e homologação — eMulti / Regulação 2.26.4
 
 ## 1. Arquitetura de autenticação
 
@@ -27,7 +27,7 @@ Aplique somente:
 npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/028_restaurar_acesso_interno.sql
 ```
 
-Depois publique a aplicação 2.26.3.
+Depois publique a aplicação 2.26.4.
 
 A migration 028 é aditiva: preserva credenciais internas antigas que ainda existam, registra esses usuários em `regulacao_principals`, mantém seus temas e atualiza o marcador do schema.
 
@@ -40,7 +40,7 @@ npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/027_desmem
 npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/028_restaurar_acesso_interno.sql
 ```
 
-Em seguida publique a 2.26.3. Não repita migrations que já tenham sido executadas no ambiente.
+Em seguida publique a 2.26.4. Não repita migrations que já tenham sido executadas no ambiente.
 
 ## 5. Importação do catálogo antigo do Portal
 
@@ -81,4 +81,8 @@ A versão esperada do schema é `2.26.3` e o `quick_check` deve retornar `ok`.
 
 ## 8. Ordem de publicação recomendada
 
-Em ambiente já existente, aplique a migration 028 **antes** de publicar a 2.26.3. O login integrado possui tolerância temporária quando a tabela local ainda não existe, mas o acesso interno só fica disponível após a migration.
+Em ambiente já existente, aplique a migration 028 **antes** de publicar a 2.26.4. O login integrado possui tolerância temporária quando a tabela local ainda não existe, mas o acesso interno só fica disponível após a migration.
+
+## Atualização 2.26.4
+
+A 2.26.4 corrige apenas o handoff do Apoio APS Cajamar para destinos com fragmento (`#`). Não há migration nova; o schema permanece o mesmo da 2.26.3.

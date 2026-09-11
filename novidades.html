@@ -8,9 +8,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Novidades da Versão | eMulti Regulação</title>
   <link rel="icon" href="/assets/favicon.png">
-  <link rel="stylesheet" href="/css/theme.css?v=2.26.3">
-  <link rel="stylesheet" href="/css/style.css?v=2.26.3">
-  <script src="/js/theme.js?v=2.26.3"></script>
+  <link rel="stylesheet" href="/css/theme.css?v=2.26.4">
+  <link rel="stylesheet" href="/css/style.css?v=2.26.4">
+  <script src="/js/theme.js?v=2.26.4"></script>
 </head>
 <body>
   <div id="app-topbar"></div>
@@ -21,6 +21,16 @@
           <div><div class="eyebrow">Atualizações</div><h1 style="margin-bottom:6px">Novidades da Versão</h1><p class="muted" style="margin:0">Acompanhe as melhorias e mudanças do eMulti Regulação.</p></div>
           <span class="badge" id="currentVersion">Versão atual</span>
         </div>
+      </section>
+      <section class="panel-section" style="margin-top:16px">
+        <h2>Versão 2.26.4</h2>
+        <p class="muted">Correção do login integrado com o Apoio APS Cajamar</p>
+        <ul>
+          <li>Corrigido o handoff quando o destino contém fragmento de URL, como <strong>admin#unidades</strong>.</li>
+          <li>O destino pós-login agora é transportado de forma segura e restaurado somente depois que a sessão da Regulação é criada.</li>
+          <li>Mantidos o acesso interno próprio e o acesso integrado pelo Apoio APS Cajamar.</li>
+          <li>Sem alteração de banco ou nova migration.</li>
+        </ul>
       </section>
       <section class="panel-section" style="margin-top:16px">
         <h2>Versão 2.26.3</h2>
@@ -118,10 +128,11 @@
       </section>
     </div>
   </main>
-  <script src="/js/regulacao.js?v=2.26.3"></script>
-  <script src="/js/app-chrome.js?v=2.26.3"></script>
+  <script src="/js/regulacao.js?v=2.26.4"></script>
+  <script src="/js/app-chrome.js?v=2.26.4"></script>
   <script>
     const releases = [
+      ['2.26.4','Handoff do Apoio APS corrigido','Login integrado preserva corretamente destinos com abas e fragmentos de URL.'],
       ['2.26.3','Acesso híbrido restaurado','Credencial interna e login integrado pelo Apoio APS Cajamar, com tela de acesso alinhada à identidade institucional.'],
       ['2.26.2','Correção do build','Corrigido o empacotamento das Pages Functions de pacientes e integração e-SUS.'],
       ['2.17.4','Novidades da Versão','Histórico de alterações centralizado em uma página do sistema e em um único documento.'],
@@ -148,7 +159,7 @@
       ['2.6','Responsabilidades','Introdução das responsabilidades Cadastrante, Regulador, Executor e Administrador.']
     ];
     document.addEventListener('DOMContentLoaded',()=>{
-      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.26.3');
+      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.26.4');
       const h=document.getElementById('history');
       h.innerHTML=releases.map(r=>`<article style="padding:16px 0;border-bottom:1px solid var(--border,#e3e7ee)"><div style="display:flex;gap:10px;align-items:center"><strong>v${r[0]}</strong><span>${r[1]}</span></div><p class="muted" style="margin:6px 0 0">${r[2]}</p></article>`).join('');
     });

@@ -9,7 +9,7 @@
   <title>Acessar — eMulti Regulação</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=2.26.3">
+  <link rel="stylesheet" href="/css/style.css?v=2.26.4">
   <style>
     html,body{min-height:100%;}
     body{min-height:100vh;margin:0;display:grid;place-items:center;padding:28px;background:linear-gradient(145deg,#f7f9fd 0%,#eef2f8 100%);}
@@ -54,14 +54,14 @@
   <main class="login-shell" aria-labelledby="loginTitle">
     <section class="login-identity" aria-label="Identidade eMulti Regulação">
       <div class="login-logo">
-        <img src="/assets/imagotipo.png?v=2.26.3" alt="Prefeitura de Cajamar">
+        <img src="/assets/imagotipo.png?v=2.26.4" alt="Prefeitura de Cajamar">
         <div class="login-logo__text"><strong>eMulti | Regulação</strong><span>Secretaria Municipal de Saúde</span></div>
       </div>
       <div class="login-identity__copy">
         <h2>Gestão da Regulação eMulti</h2>
         <p>Acesso seguro para organização de encaminhamentos, equipes, agenda e atendimentos administrativos.</p>
       </div>
-      <div class="login-version">Versão 2.26.3</div>
+      <div class="login-version">Versão 2.26.4</div>
     </section>
 
     <section class="login-main">
@@ -103,14 +103,25 @@
   <script>
     const PORTAL_URL='https://apoioapscajamar.pages.dev';
     const params=new URLSearchParams(location.search);
-    const requestedNext=params.get('next')||'/painel.html';
-    const next=requestedNext.startsWith('/')?requestedNext:'/painel.html';
+    function safeLocalNext(raw){
+      if(!raw)return '/painel.html';
+      try{
+        if(raw.startsWith('/')&&!raw.startsWith('//'))return raw;
+        const u=new URL(raw,location.origin);
+        if(u.origin===location.origin)return `${u.pathname}${u.search}${u.hash}`;
+      }catch{}
+      return '/painel.html';
+    }
+    const next=safeLocalNext(params.get('next'));
     const localForm=document.getElementById('localForm');
     const localSubmit=document.getElementById('localSubmit');
     const loginMessage=document.getElementById('loginMessage');
     const portalBtn=document.getElementById('portalBtn');
     const password=document.getElementById('password');
     const passwordToggle=document.getElementById('passwordToggle');
+    if(params.get('erro')==='handoff'){
+      loginMessage.textContent='Não foi possível concluir o acesso pelo Apoio APS Cajamar. Tente novamente.';
+    }
 
     passwordToggle.addEventListener('click',()=>{
       const show=password.type==='password';
@@ -143,8 +154,9 @@
     portalBtn.addEventListener('click',()=>{
       portalBtn.disabled=true;
       portalBtn.querySelector('span').textContent='Redirecionando…';
-ok      const target=new URL(next,location.origin).toString();
-      location.href=`${PORTAL_URL}/login.html?next=${encodeURIComponent(target)}`;
+      const bridge=new URL('/',location.origin);
+      bridge.searchParams.set('emulti_next',next);
+      location.href=`${PORTAL_URL}/login.html?next=${encodeURIComponent(bridge.toString())}`;
     });
   </script>
 </body>

@@ -2,6 +2,13 @@
 
 Este documento substitui os antigos arquivos separados de `RELEASE`, `AVALIACAO`, `NOVIDADES`, `PATCH` e relatórios intermediários.
 
+## 2.26.4 — Correção do handoff com Apoio APS Cajamar
+
+- Corrigido o retorno do login integrado quando o destino da eMulti contém fragmento de URL, como `admin#unidades`.
+- O destino pós-login agora é transportado em parâmetro próprio (`emulti_next`) e restaurado após o consumo do handoff.
+- Mantidos os dois meios de acesso: credencial interna da Regulação e autenticação integrada do Apoio APS Cajamar.
+- Nenhuma alteração de banco de dados.
+
 ## 2.26.3 — Acesso híbrido restaurado
 
 - Restaurado o acesso interno próprio da Regulação por usuário e senha.

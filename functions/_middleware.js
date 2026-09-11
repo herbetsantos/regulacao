@@ -1,4 +1,4 @@
-// Guarda de acesso — eMulti / Regulação 2.26.3
+// Guarda de acesso — eMulti / Regulação 2.26.4
 // A autenticação pode ser interna ou integrada ao Apoio APS Cajamar.
 // Em ambos os casos, a sessão e a autorização operacional do módulo ficam no regulacao-vagas-db.
 
@@ -12,10 +12,28 @@ export async function onRequest({ request, env, next }) {
 
   const handoffToken = url.searchParams.get('handoff');
   if (handoffToken) {
+    const requestedNext = url.searchParams.get('emulti_next');
+    const safeHandoffNext = (raw) => {
+      if (!raw) return null;
+      try {
+        if (raw.startsWith('/') && !raw.startsWith('//')) return new URL(raw, url.origin).toString();
+        const candidate = new URL(raw);
+        if (candidate.origin === url.origin) return candidate.toString();
+      } catch {}
+      return null;
+    };
+    const handoffNext = safeHandoffNext(requestedNext);
     const identity = await consumeHandoffToken(env, handoffToken);
-    if (!identity) return Response.redirect(localUrl(`/login?next=${encodeURIComponent(pagePath || '/')}`),302);
+    if (!identity) {
+      const retryNext = handoffNext ? new URL(handoffNext).pathname + new URL(handoffNext).search + new URL(handoffNext).hash : (pagePath || '/');
+      return Response.redirect(localUrl(`/login?erro=handoff&next=${encodeURIComponent(retryNext)}`),302);
+    }
     const sessionToken = await createSession(env, identity);
+    if (handoffNext) {
+      return new Response(null,{status:302,headers:{Location:handoffNext,'Set-Cookie':sessionCookieHeader(sessionToken)}});
+    }
     url.searchParams.delete('handoff');
+    url.searchParams.delete('emulti_next');
     return new Response(null,{status:302,headers:{Location:url.toString(),'Set-Cookie':sessionCookieHeader(sessionToken)}});
   }
 

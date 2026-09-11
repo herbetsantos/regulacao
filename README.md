@@ -1,6 +1,6 @@
 # eMulti / Regulação — Cajamar Saúde
 
-**Versão da aplicação:** 2.26.3  
+**Versão da aplicação:** 2.26.4  
 **Schema da Regulação:** 2.26.3
 
 Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**; evolução, conduta e demais registros clínicos não são gravados neste ambiente.
