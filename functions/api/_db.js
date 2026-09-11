@@ -2,6 +2,17 @@
 import { PACIENTE_ENDERECO_COLUMNS, getPacienteEnderecoColumnStatus } from './_address.js';
 
 function messageOf(err){return String(err?.message||err||'')}
+export function friendlyRegulacaoError(err){
+  const mensagem=messageOf(err);
+  const lower=mensagem.toLowerCase();
+  if(lower.includes('no such table')||lower.includes('no such column')){
+    return{error:'O banco da Regulação está desatualizado. Aplique as migrações pendentes antes de continuar.',codigo:'REGULACAO_SCHEMA_DESATUALIZADO'};
+  }
+  if(lower.includes('db_regulacao')||lower.includes('binding')){
+    return{error:'O banco da Regulação não está disponível ou o binding DB_REGULACAO não está configurado.',codigo:'REGULACAO_DB_INDISPONIVEL'};
+  }
+  return{error:'Não foi possível acessar os dados da Regulação.',codigo:'REGULACAO_DB_ERRO'};
+}
 export function isMissingColumn(err,column='tipo'){const msg=messageOf(err).toLowerCase();return msg.includes('no such column')&&msg.includes(String(column).toLowerCase())}
 export function isMissingTable(err,table){const msg=messageOf(err).toLowerCase();return msg.includes('no such table')&&(!table||msg.includes(String(table).toLowerCase()))}
 export async function hasUnidadesTipoColumn(env){try{const{results}=await env.DB_REGULACAO.prepare("PRAGMA table_info('regulacao_unidades')").all();return(results||[]).some(c=>c.name==='tipo')}catch{return false}}

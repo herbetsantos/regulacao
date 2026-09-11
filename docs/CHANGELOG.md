@@ -2,6 +2,22 @@
 
 Este documento substitui os antigos arquivos separados de `RELEASE`, `AVALIACAO`, `NOVIDADES`, `PATCH` e relatórios intermediários.
 
+## 2.26.2 — Correção do build das Pages Functions
+
+- Corrigido o export ausente `friendlyRegulacaoError` em `functions/api/_db.js`.
+- Corrigido o build das rotas `api/pacientes/index.js`, `api/pacientes/[cpf].js` e `api/integracoes/esus/paciente.js`.
+- Mantido o login exclusivo pelo Portal APS e o imagotipo restaurado na 2.26.1.
+- Sem alteração no banco: o schema permanece 2.26.0 e nenhuma migration nova é necessária.
+
+## 2.26.1 — Correção da autenticação visual
+
+- Tela de login alinhada ao modelo de autenticação exclusiva pelo Portal APS.
+- Removidos campos de usuário/senha e qualquer ação de credencial própria da interface.
+- Endpoints legados de credencial local permanecem bloqueados apenas para compatibilidade, sem permitir autenticação própria.
+- Imagotipo institucional restaurado na tela de login, sobre fundo azul para preservar o contraste da versão branca.
+- Cache-busting dos assets atualizado para 2.26.1.
+- Sem alteração no banco: o schema permanece 2.26.0 e nenhuma migration nova é necessária.
+
 ## 2.26.0 — Regulação independente do Portal APS
 
 - Portal APS passa a fornecer apenas login/handoff de identidade.

@@ -1,4 +1,4 @@
-# Instalação, migração e homologação — eMulti / Regulação 2.26.0
+# Instalação, migração e homologação — eMulti / Regulação 2.26.2
 
 ## 1. Antes de qualquer atualização
 
@@ -8,7 +8,7 @@ Faça backup de:
 - `regulacao-vagas-db`;
 - commit atualmente publicado no GitHub.
 
-Não apague tabelas antigas do Portal durante a homologação da 2.26.0.
+Não apague tabelas antigas do Portal durante a homologação da linha 2.26.x.
 
 ## 2. Instalação nova
 
@@ -29,7 +29,19 @@ O binding `DB` é necessário apenas para autenticação/handoff e para a import
 
 A instalação nova não cria login próprio do eMulti nem tabelas de evolução/acompanhamento clínico.
 
-## 3. Atualização para 2.26.0
+## 3. Atualização de banco para a linha 2.26.x
+
+
+### Atualização 2.26.1 → 2.26.2
+
+Não há alteração de banco. **Não execute nenhuma migration adicional.** O schema continua em `2.26.0`. A atualização corrige um export ausente em `functions/api/_db.js` que impedia o Cloudflare Pages de empacotar três rotas de pacientes.
+
+
+### Atualização 2.26.0 → 2.26.1
+
+Não há alteração de banco. **Não execute nenhuma migration adicional.** O schema continua em `2.26.0`. Basta publicar o código 2.26.1.
+
+A tela de login passa a exibir somente o acesso pelo Portal APS e o imagotipo institucional é restaurado com contraste adequado.
 
 ### Se a base já está na 2.25.3
 
@@ -74,7 +86,7 @@ As migrations 019 e 020 só são necessárias para bancos que ainda não possuem
 
 Após a atualização do banco:
 
-1. publique o código 2.26.0 no repositório GitHub;
+1. publique o código 2.26.2 no repositório GitHub;
 2. aguarde o Cloudflare Pages utilizar o novo commit;
 3. confirme no log que o hash publicado corresponde ao commit novo;
 4. verifique se não há erro de resolução de imports nas Pages Functions.
@@ -150,4 +162,4 @@ A exclusão só é liberada após a pré-validação encontrar zero dependência
 
 ## 9. Depois da homologação
 
-As rotas operacionais da 2.26.0 já não dependem das tabelas administrativas do Portal. Mesmo assim, mantenha as tabelas legadas do `portal-saude-db` intactas durante esta versão. Uma limpeza física futura deve ocorrer apenas após validação em produção e backup confirmado.
+As rotas operacionais da linha 2.26.x já não dependem das tabelas administrativas do Portal. Mesmo assim, mantenha as tabelas legadas do `portal-saude-db` intactas durante esta versão. Uma limpeza física futura deve ocorrer apenas após validação em produção e backup confirmado.

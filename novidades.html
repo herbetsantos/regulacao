@@ -8,9 +8,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Novidades da Versão | eMulti Regulação</title>
   <link rel="icon" href="/assets/favicon.png">
-  <link rel="stylesheet" href="/css/theme.css?v=2.26.0">
-  <link rel="stylesheet" href="/css/style.css?v=2.26.0">
-  <script src="/js/theme.js?v=2.26.0"></script>
+  <link rel="stylesheet" href="/css/theme.css?v=2.26.2">
+  <link rel="stylesheet" href="/css/style.css?v=2.26.2">
+  <script src="/js/theme.js?v=2.26.2"></script>
 </head>
 <body>
   <div id="app-topbar"></div>
@@ -21,6 +21,26 @@
           <div><div class="eyebrow">Atualizações</div><h1 style="margin-bottom:6px">Novidades da Versão</h1><p class="muted" style="margin:0">Acompanhe as melhorias e mudanças do eMulti Regulação.</p></div>
           <span class="badge" id="currentVersion">Versão atual</span>
         </div>
+      </section>
+      <section class="panel-section" style="margin-top:16px">
+        <h2>Versão 2.26.2</h2>
+        <p class="muted">Correção do build das Pages Functions</p>
+        <ul>
+          <li>Corrigido um export ausente no módulo compartilhado do banco da Regulação.</li>
+          <li>Restabelecido o empacotamento das rotas de pacientes e da integração e-SUS.</li>
+          <li>Sem alteração de banco ou nova migration.</li>
+        </ul>
+      </section>
+      <section class="panel-section" style="margin-top:16px">
+        <h2>Versão 2.26.1</h2>
+        <p class="muted">Login institucional simplificado</p>
+        <ul>
+          <li>Removidos da tela os campos de usuário e senha próprios da Regulação.</li>
+          <li>O acesso passa a apresentar somente o botão de autenticação pelo Portal APS.</li>
+          <li>Imagotipo institucional restaurado com contraste adequado na tela de acesso.</li>
+          <li>Endpoints legados de credencial própria permanecem bloqueados apenas para compatibilidade e não permitem autenticação local.</li>
+          <li>Sem alteração de schema ou nova migration.</li>
+        </ul>
       </section>
       <section class="panel-section" style="margin-top:16px">
         <h2>Versão 2.26.0</h2>
@@ -86,10 +106,11 @@
       </section>
     </div>
   </main>
-  <script src="/js/regulacao.js?v=2.26.0"></script>
-  <script src="/js/app-chrome.js?v=2.26.0"></script>
+  <script src="/js/regulacao.js?v=2.26.2"></script>
+  <script src="/js/app-chrome.js?v=2.26.2"></script>
   <script>
     const releases = [
+      ['2.26.2','Correção do build','Corrigido o empacotamento das Pages Functions de pacientes e integração e-SUS.'],
       ['2.17.4','Novidades da Versão','Histórico de alterações centralizado em uma página do sistema e em um único documento.'],
       ['2.17.3','Acesso por vínculo','O vínculo com equipe eMulti ativa ou unidade autorizada passou a conceder acesso ao módulo, preservando as responsabilidades operacionais.'],
       ['2.17.2','Profissionais eMulti','Pré-cadastro da relação de profissionais e escalas, sem criação automática de credenciais de usuário.'],
@@ -114,7 +135,7 @@
       ['2.6','Responsabilidades','Introdução das responsabilidades Cadastrante, Regulador, Executor e Administrador.']
     ];
     document.addEventListener('DOMContentLoaded',()=>{
-      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.26.0');
+      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.26.2');
       const h=document.getElementById('history');
       h.innerHTML=releases.map(r=>`<article style="padding:16px 0;border-bottom:1px solid var(--border,#e3e7ee)"><div style="display:flex;gap:10px;align-items:center"><strong>v${r[0]}</strong><span>${r[1]}</span></div><p class="muted" style="margin:6px 0 0">${r[2]}</p></article>`).join('');
     });

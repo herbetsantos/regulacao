@@ -1,13 +1,13 @@
 # eMulti / Regulação — Cajamar Saúde
 
-**Versão da aplicação:** 2.26.0  
+**Versão da aplicação:** 2.26.2  
 **Schema da Regulação:** 2.26.0
 
 Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**: evolução, conduta, procedimentos e demais registros clínicos não são gravados neste ambiente.
 
 ## Arquitetura atual
 
-A partir da 2.26.0, o Portal APS é utilizado somente para autenticação/handoff de identidade. Toda a operação e autorização da Regulação fica no `regulacao-vagas-db`.
+A partir da 2.26.0, o Portal APS é utilizado somente para autenticação/handoff de identidade. Na 2.26.1, a interface de acesso foi alinhada definitivamente a essa arquitetura, sem formulário de credencial própria. A 2.26.2 corrige o empacotamento das Pages Functions sem alterar o banco. Toda a operação e autorização da Regulação fica no `regulacao-vagas-db`.
 
 ```text
 Portal APS / portal-saude-db
@@ -32,7 +32,7 @@ DB            → portal-saude-db      # login/handoff + importação única da 
 DB_REGULACAO  → regulacao-vagas-db   # operação normal da Regulação
 ```
 
-Não existe credencial própria da Regulação. A senha permanece gerenciada pelo Portal APS.
+Não existe credencial própria da Regulação. A tela de acesso oferece somente **Acessar pelo Portal APS**, e a senha permanece gerenciada pelo Portal APS.
 
 ## Perfis e responsabilidades
 
