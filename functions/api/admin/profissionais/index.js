@@ -42,7 +42,7 @@ export async function onRequestGet({request,env}){
 
   const principalIds=[...new Set(profRows.map(p=>p.principal_id).filter(Boolean))];
   const principalAccounts=principalIds.length?await selectIn(env.DB_REGULACAO,'SELECT principal_id,name,username FROM regulacao_principals WHERE principal_id IN (__IDS__) AND active=1',principalIds):[];
-  const accountMap=new Map(principalAccounts.map(u=>[u.principal_id,{name:u.name,username:u.username,source:'portal'}]));
+  const accountMap=new Map(principalAccounts.map(u=>[u.principal_id,{name:u.name,username:u.username,source:String(u.principal_id||'').startsWith('local:')?'local':'portal'}]));
 
   const profissionais=profRows.map(p=>{const vinculos=linksMap.get(p.id)||[];const equipe_ids=profTeamMap.get(p.id)||[...(p.equipe_id?[Number(p.equipe_id)]:[])];return{...p,equipe_ids,equipe_id:equipe_ids[0]??p.equipe_id??null,conta:accountMap.get(p.principal_id)||null,vinculos,carga_horaria_total:vinculos.filter(v=>v.ativo).reduce((a,v)=>a+Number(v.carga_horaria_semanal||0),0)}});
 
@@ -55,7 +55,7 @@ export async function onRequestGet({request,env}){
       env.DB_REGULACAO.prepare('SELECT principal_id,name,username FROM regulacao_principals WHERE active=1 ORDER BY name').all(),
     ]);
     unidades=units.results||[];equipes=teams.results||[];especialidades=specs.results||[];
-    contas=(principals.results||[]).map(u=>({principal_id:u.principal_id,name:u.name,username:u.username,source:'portal'}));
+    contas=(principals.results||[]).map(u=>({principal_id:u.principal_id,name:u.name,username:u.username,source:String(u.principal_id||'').startsWith('local:')?'local':'portal'}));
   }
   return json({profissionais,pagination:{page:safePage,page_size:pageSize,total,pages},unidades,equipes,especialidades,contas,refs_included:includeRefs});
 }

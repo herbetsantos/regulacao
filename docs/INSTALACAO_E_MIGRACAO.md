@@ -1,165 +1,84 @@
-# Instalação, migração e homologação — eMulti / Regulação 2.26.2
+# Instalação, migração e homologação — eMulti / Regulação 2.26.3
 
-## 1. Antes de qualquer atualização
+## 1. Arquitetura de autenticação
 
-Faça backup de:
+A Regulação possui duas formas de acesso:
 
-- `portal-saude-db`;
-- `regulacao-vagas-db`;
-- commit atualmente publicado no GitHub.
+- **credencial interna**, mantida exclusivamente no `regulacao-vagas-db`;
+- **Apoio APS Cajamar**, como autenticação integrada por handoff.
 
-Não apague tabelas antigas do Portal durante a homologação da linha 2.26.x.
+O `portal-saude-db` não controla equipes, profissionais, permissões ou demais regras operacionais da Regulação.
 
 ## 2. Instalação nova
 
-Para um ambiente novo, crie o `regulacao-vagas-db` usando:
+1. configure os bindings `DB` e `DB_REGULACAO` no `wrangler.toml`;
+2. aplique `database/schema.sql` em `regulacao-vagas-db`;
+3. publique o projeto no Cloudflare Pages;
+4. entre com um usuário autorizado;
+5. configure unidades, equipes, responsabilidades e profissionais na Administração.
+
+O schema novo já inclui as tabelas de credenciais internas e registra a versão `2.26.3`.
+
+## 3. Atualização de uma base 2.26.0/2.26.1/2.26.2
+
+Aplique somente:
 
 ```bash
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/schema.sql
+npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/028_restaurar_acesso_interno.sql
 ```
 
-Configure os bindings:
+Depois publique a aplicação 2.26.3.
 
-```text
-DB            → portal-saude-db
-DB_REGULACAO  → regulacao-vagas-db
-```
+A migration 028 é aditiva: preserva credenciais internas antigas que ainda existam, registra esses usuários em `regulacao_principals`, mantém seus temas e atualiza o marcador do schema.
 
-O binding `DB` é necessário apenas para autenticação/handoff e para a importação única de transição. A operação cotidiana utiliza `DB_REGULACAO`.
+## 4. Atualização a partir da 2.25.3
 
-A instalação nova não cria login próprio do eMulti nem tabelas de evolução/acompanhamento clínico.
-
-## 3. Atualização de banco para a linha 2.26.x
-
-
-### Atualização 2.26.1 → 2.26.2
-
-Não há alteração de banco. **Não execute nenhuma migration adicional.** O schema continua em `2.26.0`. A atualização corrige um export ausente em `functions/api/_db.js` que impedia o Cloudflare Pages de empacotar três rotas de pacientes.
-
-
-### Atualização 2.26.0 → 2.26.1
-
-Não há alteração de banco. **Não execute nenhuma migration adicional.** O schema continua em `2.26.0`. Basta publicar o código 2.26.1.
-
-A tela de login passa a exibir somente o acesso pelo Portal APS e o imagotipo institucional é restaurado com contraste adequado.
-
-### Se a base já está na 2.25.3
-
-Execute somente:
+Se a migration 026 já foi aplicada, execute em ordem:
 
 ```bash
 npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/027_desmembramento_portal.sql
+npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/028_restaurar_acesso_interno.sql
 ```
 
-Depois valide:
+Em seguida publique a 2.26.3. Não repita migrations que já tenham sido executadas no ambiente.
 
-```bash
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/VALIDAR_2_26_0.sql
+## 5. Importação do catálogo antigo do Portal
+
+A importação operacional criada na 2.26 continua sendo uma ação de transição e deve ser executada uma única vez quando necessária. Ela copia unidades/equipes legadas preservando IDs e códigos. Depois da importação, a operação cotidiana utiliza o `regulacao-vagas-db`.
+
+Não apague tabelas do `portal-saude-db` durante a homologação. O sistema simplesmente deixa de depender delas para operação da Regulação.
+
+## 6. Acesso interno
+
+Na Administração é possível criar uma credencial interna para um usuário ou diretamente para um profissional sem login. A senha inicial é temporária e deve possuir pelo menos 10 caracteres. No primeiro acesso, o usuário é direcionado para **Minha conta** e precisa definir uma nova senha antes de usar as demais funções.
+
+Usuários autenticados pelo Apoio APS Cajamar não alteram sua senha dentro da Regulação; a senha continua sendo gerenciada pelo Portal.
+
+## 7. Homologação mínima
+
+Após a publicação, confira:
+
+1. login com uma credencial interna;
+2. troca obrigatória de senha no primeiro acesso;
+3. login integrado pelo Apoio APS Cajamar;
+4. abertura do painel com ambos os tipos de usuário;
+5. responsabilidades, unidades e equipes do usuário;
+6. criação de conta interna pela Administração;
+7. vínculo de um profissional a mais de uma equipe;
+8. criação e consulta de guia;
+9. fila, etiquetas, agenda e grupos;
+10. **Administração → Correções** com bloqueio de exclusão quando houver dependências.
+
+No D1, confirme também:
+
+```sql
+SELECT version FROM emulti_schema_version WHERE id=1;
+PRAGMA quick_check;
+PRAGMA foreign_key_check;
 ```
 
-### Se a base está na 2.25.0, 2.25.1 ou 2.25.2
+A versão esperada do schema é `2.26.3` e o `quick_check` deve retornar `ok`.
 
-Garanta primeiro o modelo de múltiplas equipes:
+## 8. Ordem de publicação recomendada
 
-```bash
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/026_multiplas_equipes_profissional.sql
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/027_desmembramento_portal.sql
-```
-
-### Se a base ainda está na linha 2.20.x
-
-Aplique, conforme o estado real do banco, a sequência necessária:
-
-```text
-025_consolidacao_2_25_0.sql
-026_multiplas_equipes_profissional.sql
-027_desmembramento_portal.sql
-```
-
-As migrations 019 e 020 só são necessárias para bancos que ainda não possuem as estruturas introduzidas nessas versões. **Nunca repita uma migration com `ALTER TABLE` já aplicada.**
-
-### Importante
-
-`database/update.sql` não é um script de migração. Ele existe apenas como marcador seguro de compatibilidade. Use sempre as migrations numeradas.
-
-## 4. Publicação
-
-Após a atualização do banco:
-
-1. publique o código 2.26.2 no repositório GitHub;
-2. aguarde o Cloudflare Pages utilizar o novo commit;
-3. confirme no log que o hash publicado corresponde ao commit novo;
-4. verifique se não há erro de resolução de imports nas Pages Functions.
-
-## 5. Primeiro acesso e bootstrap
-
-Entre no eMulti pelo Portal APS com o atual Super Administrador.
-
-Se `regulacao_superusers` ainda estiver vazia, o primeiro handoff de um usuário `super_admin` do Portal cria o primeiro Superusuário local. Esse papel do Portal serve apenas para o bootstrap; depois, os privilégios são controlados pela própria Regulação.
-
-## 6. Importação única do catálogo legado
-
-Abra:
-
-**Administração → Configurações → Importar catálogo legado do Portal**
-
-A importação copia, quando disponíveis:
-
-- identidades de usuários para referência local;
-- unidades;
-- equipes preservando IDs;
-- vínculos equipe × unidade;
-- responsabilidades e escopos legados.
-
-Nada é apagado do Portal. A conclusão fica registrada no `regulacao-vagas-db` e uma segunda execução acidental é bloqueada.
-
-Se o Portal não possuir as tabelas antigas esperadas, a rotina reconstrói os IDs/códigos já usados no banco da Regulação e cria nomes provisórios para revisão administrativa.
-
-## 7. Checklist de homologação
-
-Antes de liberar para uso, valide:
-
-- login/handoff pelo Portal;
-- Superusuário local;
-- usuários e responsabilidades;
-- unidades próprias da Regulação;
-- equipes e seus IDs;
-- profissional pertencendo a uma e a múltiplas equipes;
-- criação e regulação de guia;
-- fila e filtros;
-- etiquetas;
-- agenda individual;
-- grupos, encontros e capacidade;
-- escalas e conflitos de horário;
-- resultado administrativo de atendimento;
-- ausência de gravação de evolução clínica;
-- Administração e seu desempenho;
-- Correções administrativas.
-
-Para Correções, teste pelo menos:
-
-1. exclusão de uma equipe vazia criada por engano;
-2. bloqueio da exclusão de uma equipe que já possua vínculo/histórico;
-3. confirmação exigindo digitação exata do nome.
-
-## 8. Correções administrativas
-
-A área é exclusiva do Superusuário e suporta:
-
-- equipe;
-- especialidade;
-- unidade;
-- etiqueta.
-
-Fluxo da API:
-
-```text
-GET /api/admin/correcoes?tipo=<tipo>&ref=<id-ou-codigo>
-DELETE /api/admin/correcoes
-```
-
-A exclusão só é liberada após a pré-validação encontrar zero dependências. Caso exista histórico, use correção ou inativação em vez de apagar.
-
-## 9. Depois da homologação
-
-As rotas operacionais da linha 2.26.x já não dependem das tabelas administrativas do Portal. Mesmo assim, mantenha as tabelas legadas do `portal-saude-db` intactas durante esta versão. Uma limpeza física futura deve ocorrer apenas após validação em produção e backup confirmado.
+Em ambiente já existente, aplique a migration 028 **antes** de publicar a 2.26.3. O login integrado possui tolerância temporária quando a tabela local ainda não existe, mas o acesso interno só fica disponível após a migration.

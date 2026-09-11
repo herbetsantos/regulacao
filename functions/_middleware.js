@@ -1,5 +1,6 @@
-// Guarda de acesso — eMulti / Regulação 2.26.0
-// Portal APS autentica; a sessão do módulo é própria do regulacao-vagas-db.
+// Guarda de acesso — eMulti / Regulação 2.26.3
+// A autenticação pode ser interna ou integrada ao Apoio APS Cajamar.
+// Em ambos os casos, a sessão e a autorização operacional do módulo ficam no regulacao-vagas-db.
 
 import { getAuthUser, consumeHandoffToken, createSession, sessionCookieHeader } from './api/_utils.js';
 import { getRegulacaoAccessProfile } from './api/_permissions.js';
@@ -18,13 +19,24 @@ export async function onRequest({ request, env, next }) {
     return new Response(null,{status:302,headers:{Location:url.toString(),'Set-Cookie':sessionCookieHeader(sessionToken)}});
   }
 
-  if (url.pathname.startsWith('/api/')) return next();
+  if (url.pathname.startsWith('/api/')) {
+    const apiUser = await getAuthUser(request, env);
+    const passwordAllowed = new Set(['/api/me','/api/change-password','/api/logout-local','/api/theme']);
+    if (apiUser?.source === 'local' && apiUser.mustChangePassword && !passwordAllowed.has(url.pathname)) {
+      return new Response(JSON.stringify({error:'Troque a senha temporária antes de continuar.',codigo:'TROCA_SENHA_OBRIGATORIA'}),{status:428,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
+    }
+    return next();
+  }
   if (pagePath === '/login' || url.pathname.startsWith('/assets/') || url.pathname.startsWith('/css/') || url.pathname.startsWith('/js/')) return next();
 
   const user = await getAuthUser(request, env);
   if (!user) {
     const nextPath = `${pagePath || '/'}${url.search}`;
     return Response.redirect(localUrl(`/login?next=${encodeURIComponent(nextPath)}`),302);
+  }
+  if (user.source === 'local' && user.mustChangePassword && pagePath !== '/minha-conta') {
+    const nextPath = `${pagePath || '/'}${url.search}`;
+    return Response.redirect(localUrl(`/minha-conta?trocar_senha=1&next=${encodeURIComponent(nextPath)}`),302);
   }
 
   try {

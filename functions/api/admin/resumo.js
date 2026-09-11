@@ -20,7 +20,7 @@ export async function onRequestGet({request,env}){
   for(const t of required)if(!await exists(env.DB_REGULACAO,t))missing.push(t);
   if(missing.length){
     return json({
-      error:'A estrutura administrativa 2.26.0 ainda não foi aplicada ao regulacao-vagas-db.',
+      error:'A estrutura administrativa 2.26.3 ainda não foi aplicada ao regulacao-vagas-db.',
       missing_tables:missing,
     },409);
   }

@@ -1,6 +1,6 @@
-// Profissionais assistenciais da Regulação — 2.26.0.
-// Profissional é entidade própria. Conta é apenas uma identidade Portal já
-// conhecida no regulacao-vagas-db; nenhuma tabela operacional do Portal é usada.
+// Profissionais assistenciais da Regulação — 2.26.3.
+// Profissional é entidade própria. A conta vinculada pode ser interna ou integrada ao Apoio APS Cajamar.
+// Nenhuma tabela operacional do Portal é usada.
 
 export async function ensureProfissionalSchema(env) {
   // As estruturas são versionadas no regulacao-vagas-db. Mantido por compatibilidade.
@@ -8,12 +8,22 @@ export async function ensureProfissionalSchema(env) {
 }
 
 async function numericActorForPrincipal(env,pid){
-  const m=String(pid||'').match(/^portal:(\d+)$/);return m?Number(m[1]):null;
+  const raw=String(pid||'');
+  const portal=raw.match(/^portal:(\d+)$/);
+  if(portal)return Number(portal[1])||null;
+  const local=raw.match(/^local:(.+)$/);
+  if(!local)return null;
+  const row=await env.DB_REGULACAO.prepare('SELECT legacy_numeric_id FROM regulacao_local_users WHERE id=? AND active=1').bind(local[1]).first();
+  return row?.legacy_numeric_id==null?null:Number(row.legacy_numeric_id);
 }
 async function accountForNumericActor(env,actorId){
-  const n=Number(actorId);if(!Number.isFinite(n)||n<=0)return null;
-  const u=await env.DB_REGULACAO.prepare('SELECT principal_id,portal_user_id,name,username FROM regulacao_principals WHERE portal_user_id=? AND active=1').bind(n).first();
-  return u?{principal_id:u.principal_id,id:n,name:u.name,username:u.username}:null;
+  const n=Number(actorId);if(!Number.isFinite(n))return null;
+  if(n>=0){
+    const u=await env.DB_REGULACAO.prepare('SELECT principal_id,portal_user_id,name,username FROM regulacao_principals WHERE portal_user_id=? AND active=1').bind(n).first();
+    return u?{principal_id:u.principal_id,id:n,name:u.name,username:u.username}:null;
+  }
+  const u=await env.DB_REGULACAO.prepare('SELECT id,legacy_numeric_id,name,username FROM regulacao_local_users WHERE legacy_numeric_id=? AND active=1').bind(n).first();
+  return u?{principal_id:`local:${u.id}`,id:n,name:u.name,username:u.username}:null;
 }
 
 export async function getEquipeProfissionais(env,equipeId){
@@ -74,8 +84,8 @@ export async function getProfissionalAssistencial(env, profissionalId) {
 }
 
 export async function getProfissionalAssistencialPorPrincipal(env, user) {
-  const pid = user?.source === 'local' ? `local:${user.id}` : `portal:${user?.id}`;
-  if (!user?.id) return null;
+  const pid = user?.principalId || (user?.source === 'local' && user?.localUserId ? `local:${user.localUserId}` : (user?.id != null ? `portal:${user.id}` : null));
+  if (!pid) return null;
   try {
     return await env.DB_REGULACAO.prepare(`
       SELECT id,nome,registro_profissional,principal_id,equipe_id,ativo

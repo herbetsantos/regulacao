@@ -8,9 +8,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Novidades da Versão | eMulti Regulação</title>
   <link rel="icon" href="/assets/favicon.png">
-  <link rel="stylesheet" href="/css/theme.css?v=2.26.2">
-  <link rel="stylesheet" href="/css/style.css?v=2.26.2">
-  <script src="/js/theme.js?v=2.26.2"></script>
+  <link rel="stylesheet" href="/css/theme.css?v=2.26.3">
+  <link rel="stylesheet" href="/css/style.css?v=2.26.3">
+  <script src="/js/theme.js?v=2.26.3"></script>
 </head>
 <body>
   <div id="app-topbar"></div>
@@ -21,6 +21,18 @@
           <div><div class="eyebrow">Atualizações</div><h1 style="margin-bottom:6px">Novidades da Versão</h1><p class="muted" style="margin:0">Acompanhe as melhorias e mudanças do eMulti Regulação.</p></div>
           <span class="badge" id="currentVersion">Versão atual</span>
         </div>
+      </section>
+      <section class="panel-section" style="margin-top:16px">
+        <h2>Versão 2.26.3</h2>
+        <p class="muted">Acesso híbrido restaurado e identidade visual alinhada</p>
+        <ul>
+          <li>Restaurado o acesso interno próprio da Regulação por usuário e senha.</li>
+          <li>Mantido o acesso integrado pelo <strong>Apoio APS Cajamar</strong> como segunda opção de autenticação.</li>
+          <li>A tela de login foi redesenhada com a linguagem visual institucional compartilhada com o Portal APS, mantendo o imagotipo oficial.</li>
+          <li>Credenciais internas, sessões, permissões e dados operacionais permanecem no <strong>regulacao-vagas-db</strong>.</li>
+          <li>Contas internas novas ou com senha redefinida exigem troca de senha no primeiro acesso.</li>
+          <li>Nova migration <strong>028_restaurar_acesso_interno.sql</strong>.</li>
+        </ul>
       </section>
       <section class="panel-section" style="margin-top:16px">
         <h2>Versão 2.26.2</h2>
@@ -36,9 +48,9 @@
         <p class="muted">Login institucional simplificado</p>
         <ul>
           <li>Removidos da tela os campos de usuário e senha próprios da Regulação.</li>
-          <li>O acesso passa a apresentar somente o botão de autenticação pelo Portal APS.</li>
+          <li>Esta revisão havia deixado somente o botão de autenticação pelo Portal APS; essa decisão foi revertida na 2.26.3 para restaurar o acesso híbrido.</li>
           <li>Imagotipo institucional restaurado com contraste adequado na tela de acesso.</li>
-          <li>Endpoints legados de credencial própria permanecem bloqueados apenas para compatibilidade e não permitem autenticação local.</li>
+          <li>Os endpoints de credencial própria ficaram temporariamente bloqueados nesta revisão e foram reativados na 2.26.3.</li>
           <li>Sem alteração de schema ou nova migration.</li>
         </ul>
       </section>
@@ -54,7 +66,7 @@
           <li>Nova área <strong>Correções administrativas</strong>: o Superusuário pode excluir equipes, especialidades, unidades e etiquetas inseridas por engano somente quando a pré-validação encontra zero vínculos e zero histórico.</li>
           <li>A importação do catálogo legado é marcada como concluída e uma segunda execução acidental é bloqueada.</li>
           <li>Instalações novas não criam tabelas de evolução/acompanhamento clínico; bases antigas preservam o legado sem expô-lo pelas APIs.</li>
-          <li>Credenciais locais do eMulti foram aposentadas: senha e autenticação permanecem exclusivamente no Portal APS.</li>
+          <li>Nesta revisão as credenciais locais haviam sido aposentadas; a 2.26.3 corrigiu essa interpretação e restaurou o acesso interno sem desfazer o desmembramento operacional.</li>
         </ul>
       </section>
       <section class="panel-section" style="margin-top:16px">
@@ -106,10 +118,11 @@
       </section>
     </div>
   </main>
-  <script src="/js/regulacao.js?v=2.26.2"></script>
-  <script src="/js/app-chrome.js?v=2.26.2"></script>
+  <script src="/js/regulacao.js?v=2.26.3"></script>
+  <script src="/js/app-chrome.js?v=2.26.3"></script>
   <script>
     const releases = [
+      ['2.26.3','Acesso híbrido restaurado','Credencial interna e login integrado pelo Apoio APS Cajamar, com tela de acesso alinhada à identidade institucional.'],
       ['2.26.2','Correção do build','Corrigido o empacotamento das Pages Functions de pacientes e integração e-SUS.'],
       ['2.17.4','Novidades da Versão','Histórico de alterações centralizado em uma página do sistema e em um único documento.'],
       ['2.17.3','Acesso por vínculo','O vínculo com equipe eMulti ativa ou unidade autorizada passou a conceder acesso ao módulo, preservando as responsabilidades operacionais.'],
@@ -135,7 +148,7 @@
       ['2.6','Responsabilidades','Introdução das responsabilidades Cadastrante, Regulador, Executor e Administrador.']
     ];
     document.addEventListener('DOMContentLoaded',()=>{
-      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.26.2');
+      const v=document.getElementById('currentVersion'); if(v) v.textContent='Versão '+(window.EMULTI_VERSION||'2.26.3');
       const h=document.getElementById('history');
       h.innerHTML=releases.map(r=>`<article style="padding:16px 0;border-bottom:1px solid var(--border,#e3e7ee)"><div style="display:flex;gap:10px;align-items:center"><strong>v${r[0]}</strong><span>${r[1]}</span></div><p class="muted" style="margin:6px 0 0">${r[2]}</p></article>`).join('');
     });

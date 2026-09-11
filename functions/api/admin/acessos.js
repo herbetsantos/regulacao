@@ -1,5 +1,6 @@
 import { json,logAudit } from '../_utils.js';
 import { requireAdminAccess } from '../_shared.js';
+import { parsePrincipalId } from '../_hybrid.js';
 
 const MAX_IN_PARAMS=80;
 async function selectIn(db,sqlTemplate,ids){const out=[];for(let i=0;i<ids.length;i+=MAX_IN_PARAMS){const part=ids.slice(i,i+MAX_IN_PARAMS);const sql=sqlTemplate.replace('__IDS__',part.map(()=>'?').join(','));const{results}=await db.prepare(sql).bind(...part).all();out.push(...(results||[]))}return out}
@@ -9,7 +10,7 @@ export async function onRequestGet({request,env}){
   const {error}=await requireAdminAccess(request,env);if(error)return error;
   const url=new URL(request.url),q=String(url.searchParams.get('q')||'').trim().toLowerCase(),funcao=String(url.searchParams.get('funcao')||''),unidade=String(url.searchParams.get('unidade')||''),includeRefs=url.searchParams.get('include_refs')!=='0';
   const requested=Number(url.searchParams.get('page_size')||20),pageSize=[10,20,50,100].includes(requested)?requested:20,page=Math.max(1,Number(url.searchParams.get('page')||1));
-  let sql='SELECT principal_id,portal_user_id,username,name,portal_role,active FROM regulacao_principals WHERE active=1',binds=[];
+  let sql='SELECT principal_id,portal_user_id,username,name,portal_role,active FROM regulacao_principals WHERE 1=1',binds=[];
   if(q){sql+=' AND (lower(name) LIKE ? OR lower(COALESCE(username,\'\')) LIKE ?)';const like=`%${q}%`;binds.push(like,like)}sql+=' ORDER BY name';
   const {results:accounts}=await env.DB_REGULACAO.prepare(sql).bind(...binds).all();const pids=(accounts||[]).map(x=>x.principal_id);
   let accessRows=[],unitRows=[],teamRows=[],superRows=[];
@@ -22,17 +23,17 @@ export async function onRequestGet({request,env}){
   const accessMap=new Map(accessRows.map(x=>[x.principal_id,x])),superSet=new Set(superRows.map(x=>x.principal_id)),teamMap=new Map(),unitsMap=new Map();
   for(const x of teamRows){if(!teamMap.has(x.principal_id))teamMap.set(x.principal_id,[]);teamMap.get(x.principal_id).push(Number(x.equipe_id))}
   for(const x of unitRows){if(!unitsMap.has(x.principal_id))unitsMap.set(x.principal_id,[]);unitsMap.get(x.principal_id).push({unidade_code:x.unidade_code,pode_emitir:x.pode_emitir,pode_executar:x.pode_executar})}
-  let list=(accounts||[]).map(base=>{const a=accessMap.get(base.principal_id),teams=teamMap.get(base.principal_id)||[];return{source:'portal',source_id:String(base.portal_user_id||''),principal_id:base.principal_id,username:base.username,name:base.name,portal_role:base.portal_role,active:!!base.active,superuser:superSet.has(base.principal_id),cadastrante:!!a?.cadastrante,regulador:!!a?.regulador,organizador:!!a?.organizador,executor:!!a?.executor,gestor:!!a?.gestor,administrador:!!a?.administrador,access_active:a?!!a.active:true,unidades:unitsMap.get(base.principal_id)||[],equipe_ids:teams,equipe_id:teams[0]??null}});
+  let list=(accounts||[]).map(base=>{const a=accessMap.get(base.principal_id),teams=teamMap.get(base.principal_id)||[],parsed=parsePrincipalId(base.principal_id),source=parsed?.source||'portal';return{source,source_id:source==='local'?String(parsed?.id||''):String(base.portal_user_id||parsed?.id||''),principal_id:base.principal_id,username:base.username,name:base.name,portal_role:base.portal_role,active:!!base.active,superuser:superSet.has(base.principal_id),cadastrante:!!a?.cadastrante,regulador:!!a?.regulador,organizador:!!a?.organizador,executor:!!a?.executor,gestor:!!a?.gestor,administrador:!!a?.administrador,access_active:a?!!a.active:true,unidades:unitsMap.get(base.principal_id)||[],equipe_ids:teams,equipe_id:teams[0]??null}});
   if(funcao)list=list.filter(x=>funcao==='sem_funcao'?!(x.superuser||x.cadastrante||x.regulador||x.organizador||x.executor||x.gestor||x.administrador):!!x[funcao]);if(unidade)list=list.filter(x=>x.unidades.some(u=>u.unidade_code===unidade));
   const total=list.length,pages=total?Math.ceil(total/pageSize):0,safePage=pages?Math.min(page,pages):1,start=(safePage-1)*pageSize,acessos=list.slice(start,start+pageSize);
   let unidades=[],equipes=[];if(includeRefs){const[u,t]=await Promise.all([env.DB_REGULACAO.prepare('SELECT code,nome,tipo FROM regulacao_unidades WHERE ativo=1 ORDER BY nome').all(),env.DB_REGULACAO.prepare('SELECT id,nome FROM regulacao_equipes WHERE ativo=1 ORDER BY nome').all()]);unidades=u.results||[];equipes=t.results||[]}
-  return json({acessos,pagination:{page:safePage,page_size:pageSize,total,pages},unidades,equipes,refs_included:includeRefs,identity_source:'Portal APS (somente autenticação)'});
+  return json({acessos,pagination:{page:safePage,page_size:pageSize,total,pages},unidades,equipes,refs_included:includeRefs,identity_sources:['local','portal']});
 }
 
 export async function onRequestPost({request,env}){
   const {user,error}=await requireAdminAccess(request,env);if(error)return error;let b;try{b=await request.json()}catch{return json({error:'JSON inválido.'},400)}
-  const pid=String(b.principal_id||''),target=await principalDetails(env,pid);if(!target)return json({error:'Usuário ainda não conhecido pela Regulação. Peça para ele acessar o eMulti pelo Portal uma vez ou execute a importação inicial.'},404);
-  const actor=user.principalId||`portal:${user.id}`;
+  const pid=String(b.principal_id||''),target=await principalDetails(env,pid);if(!target)return json({error:'Usuário não encontrado na Regulação.'},404);
+  const actor=user.principalId||null;
   const [atual,superAtualRow]=await Promise.all([
     env.DB_REGULACAO.prepare('SELECT administrador FROM regulacao_principal_acessos WHERE principal_id=?').bind(pid).first(),
     env.DB_REGULACAO.prepare('SELECT principal_id FROM regulacao_superusers WHERE principal_id=?').bind(pid).first(),
@@ -59,5 +60,15 @@ export async function onRequestPost({request,env}){
     else await env.DB_REGULACAO.prepare('DELETE FROM regulacao_superusers WHERE principal_id=?').bind(pid).run();
   }
 
-  await logAudit(env,user,'update','regulacao_principal_acessos',pid,{...roles,superuser:superDesejado,equipe_ids:equipeIds,unidades:b.unidades});return json({ok:true});
+  const parsed=parsePrincipalId(pid);
+  if(parsed?.source==='local'&&b.user_active!==undefined){
+    const active=b.user_active?1:0;
+    await env.DB_REGULACAO.batch([
+      env.DB_REGULACAO.prepare("UPDATE regulacao_local_users SET active=?,updated_at=datetime('now') WHERE id=?").bind(active,parsed.id),
+      env.DB_REGULACAO.prepare("UPDATE regulacao_principals SET active=?,last_seen_at=datetime('now') WHERE principal_id=?").bind(active,pid),
+    ]);
+    if(!active)await env.DB_REGULACAO.prepare('DELETE FROM regulacao_auth_sessions WHERE principal_id=?').bind(pid).run();
+  }
+
+  await logAudit(env,user,'update','regulacao_principal_acessos',pid,{...roles,superuser:superDesejado,equipe_ids:equipeIds,unidades:b.unidades,user_active:b.user_active});return json({ok:true});
 }

@@ -1,4 +1,4 @@
-// Catálogo e diagnóstico do banco próprio da Regulação — 2.26.0.
+// Catálogo e diagnóstico do banco próprio da Regulação — 2.26.3.
 import { PACIENTE_ENDERECO_COLUMNS, getPacienteEnderecoColumnStatus } from './_address.js';
 
 function messageOf(err){return String(err?.message||err||'')}
@@ -19,7 +19,7 @@ export async function hasUnidadesTipoColumn(env){try{const{results}=await env.DB
 export async function listUnidadesAtivasComTipo(env){const{results}=await env.DB_REGULACAO.prepare('SELECT code,nome,tipo FROM regulacao_unidades WHERE ativo=1 ORDER BY nome').all();return{unidades:results||[],tipoFonte:'regulacao-vagas-db'}}
 export async function getUnidadeAtivaComTipo(env,code){const unidade=await env.DB_REGULACAO.prepare('SELECT code,nome,tipo FROM regulacao_unidades WHERE code=? AND ativo=1').bind(code).first();return{unidade:unidade||null,tipoFonte:'regulacao-vagas-db'}}
 
-const REGULACAO_TABLES=['especialidades','pacientes','guias','guia_atribuicoes','notificacoes','notificacao_lidas','agenda_escalas','agenda_grupos','agenda_grupo_encontros','agenda_grupo_pacientes','agenda_individuais','regulacao_etiquetas','guia_etiquetas','regulacao_execucoes_administrativas','regulacao_profissional_equipes','regulacao_principals','regulacao_superusers','regulacao_auth_sessions','regulacao_unidades','regulacao_equipes','regulacao_equipe_unidades','emulti_schema_version'];
+const REGULACAO_TABLES=['especialidades','pacientes','guias','guia_atribuicoes','notificacoes','notificacao_lidas','agenda_escalas','agenda_grupos','agenda_grupo_encontros','agenda_grupo_pacientes','agenda_individuais','regulacao_etiquetas','guia_etiquetas','regulacao_execucoes_administrativas','regulacao_profissional_equipes','regulacao_principals','regulacao_superusers','regulacao_auth_sessions','regulacao_local_users','regulacao_login_attempts','regulacao_unidades','regulacao_equipes','regulacao_equipe_unidades','emulti_schema_version'];
 
 export async function getRegulacaoSchemaStatus(env){
   if(!env.DB_REGULACAO)return{bindingOk:false,schemaOk:false,tabelasExistentes:[],tabelasFaltantes:[...REGULACAO_TABLES],colunasPacienteEnderecoFaltantes:[...PACIENTE_ENDERECO_COLUMNS],colunasPacienteIntegracaoFaltantes:['cns'],colunasFluxoV210Faltantes:['guias.codigo_guia'],colunasAgendaFaltantes:['especialidades.duracao_padrao_min'],erro:'Binding DB_REGULACAO não configurado.'};

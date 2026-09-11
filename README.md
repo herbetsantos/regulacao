@@ -1,20 +1,26 @@
 # eMulti / Regulação — Cajamar Saúde
 
-**Versão da aplicação:** 2.26.2  
-**Schema da Regulação:** 2.26.0
+**Versão da aplicação:** 2.26.3  
+**Schema da Regulação:** 2.26.3
 
-Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**: evolução, conduta, procedimentos e demais registros clínicos não são gravados neste ambiente.
+Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**; evolução, conduta e demais registros clínicos não são gravados neste ambiente.
 
 ## Arquitetura atual
 
-A partir da 2.26.0, o Portal APS é utilizado somente para autenticação/handoff de identidade. Na 2.26.1, a interface de acesso foi alinhada definitivamente a essa arquitetura, sem formulário de credencial própria. A 2.26.2 corrige o empacotamento das Pages Functions sem alterar o banco. Toda a operação e autorização da Regulação fica no `regulacao-vagas-db`.
+A Regulação é operacionalmente independente do Apoio APS Cajamar. Existem duas formas de autenticação:
+
+1. **Acesso interno da Regulação** — usuário e senha mantidos no `regulacao-vagas-db`.
+2. **Acesso integrado pelo Apoio APS Cajamar** — o Portal autentica o usuário e entrega sua identidade por handoff.
+
+Depois da autenticação, equipes, unidades, profissionais, responsabilidades, permissões, guias, agenda, grupos, etiquetas, preferências e auditoria são administrados pela própria Regulação.
 
 ```text
-Portal APS / portal-saude-db
-└─ login + handoff de identidade
+Apoio APS Cajamar / portal-saude-db
+└─ login integrado + handoff de identidade
 
 Regulação / regulacao-vagas-db
-├─ sessão do módulo
+├─ credenciais internas
+├─ sessões do módulo
 ├─ superusuários e responsabilidades
 ├─ unidades e equipes
 ├─ profissionais e vínculos
@@ -28,15 +34,13 @@ Regulação / regulacao-vagas-db
 Bindings Cloudflare:
 
 ```text
-DB            → portal-saude-db      # login/handoff + importação única da transição
-DB_REGULACAO  → regulacao-vagas-db   # operação normal da Regulação
+DB            → portal-saude-db      # login integrado/handoff + importação única da transição
+DB_REGULACAO  → regulacao-vagas-db   # operação da Regulação + acesso interno
 ```
 
-Não existe credencial própria da Regulação. A tela de acesso oferece somente **Acessar pelo Portal APS**, e a senha permanece gerenciada pelo Portal APS.
+## Acesso e governança
 
-## Perfis e responsabilidades
-
-As responsabilidades são locais à Regulação e podem ser combinadas:
+As duas formas de login entram no mesmo modelo de autorização da Regulação. As responsabilidades podem ser combinadas:
 
 - **Cadastrante** — pacientes e guias nas unidades autorizadas;
 - **Regulador** — análise, lista de espera, negativa e transferência;
@@ -44,60 +48,38 @@ As responsabilidades são locais à Regulação e podem ser combinadas:
 - **Executor** — resultado administrativo do atendimento, sem evolução clínica;
 - **Gestor** — profissionais, vínculos, especialidades, equipes e escalas;
 - **Administrador** — gestão ampliada do módulo;
-- **Superusuário** — nível máximo local, responsável também por correções administrativas seguras.
+- **Superusuário** — nível máximo local, incluindo correções administrativas seguras.
 
-No primeiro acesso após a migração 027, se ainda não existir Superusuário local, o primeiro usuário autenticado pelo Portal com papel `super_admin` é usado apenas para o bootstrap. Depois disso, as permissões são administradas exclusivamente no eMulti/Regulação.
+Contas internas novas ou com senha redefinida recebem senha temporária e são obrigadas a alterá-la no primeiro acesso. A senha de usuários autenticados pelo Apoio APS Cajamar continua sendo administrada no Portal.
+
+No bootstrap da arquitetura 2.26, se ainda não existir Superusuário local, o primeiro `super_admin` autenticado pelo Apoio APS Cajamar pode inicializar essa função. Depois disso, o papel do Portal não concede nem revoga privilégios da Regulação.
 
 ## Catálogo operacional próprio
 
-A Regulação mantém localmente:
-
-- `regulacao_unidades`;
-- `regulacao_equipes`;
-- profissionais e múltiplos vínculos de equipe;
-- permissões e escopos;
-- agenda, grupos, etiquetas e auditoria.
-
-Os IDs de equipes e códigos de unidades são preservados na migração para evitar quebra de guias, agendas, grupos e vínculos existentes.
+A Regulação mantém localmente `regulacao_unidades`, `regulacao_equipes`, profissionais, múltiplos vínculos de equipe, permissões, agenda, grupos, etiquetas e auditoria. IDs de equipes e códigos de unidades são preservados na migração para não quebrar referências existentes.
 
 ## Correções administrativas
 
-A área **Administração → Correções**, exclusiva do Superusuário, permite excluir fisicamente cadastros inseridos por engano apenas quando não existe vínculo nem histórico.
-
-Tipos suportados:
-
-- equipe;
-- especialidade;
-- unidade;
-- etiqueta.
-
-A API faz uma pré-validação de dependências e exige a digitação exata do nome do registro. Se houver qualquer utilização, a exclusão é bloqueada e o cadastro deve ser corrigido ou inativado.
+A área **Administração → Correções**, exclusiva do Superusuário, permite excluir fisicamente equipe, especialidade, unidade ou etiqueta inserida por engano somente quando não houver vínculo nem histórico. A API valida dependências e exige confirmação pelo nome do registro; quando houver uso, a exclusão é bloqueada e o cadastro deve ser corrigido ou inativado.
 
 ## Banco e migrations
 
-Para instalação nova, use:
+Para instalação nova, use `database/schema.sql`.
+
+Para bases existentes, aplique apenas as migrations ainda pendentes, em ordem. Na linha atual, as mais recentes são:
 
 ```text
-database/schema.sql
-```
-
-Principais migrations históricas ainda necessárias para atualização de bases antigas:
-
-```text
-019_admin_profissionais_acesso_hibrido.sql
-020_organizacao_agenda.sql
 025_consolidacao_2_25_0.sql
 026_multiplas_equipes_profissional.sql
 027_desmembramento_portal.sql
+028_restaurar_acesso_interno.sql
 ```
 
-`database/update.sql` é apenas um marcador de compatibilidade. **Não use esse arquivo como migration.**
+A migration `028_restaurar_acesso_interno.sql` restaura as credenciais internas dentro do banco próprio da Regulação e atualiza o marcador do schema para 2.26.3. `database/update.sql` é apenas um marcador de compatibilidade e **não deve ser usado como migration**.
 
 ## Documentação
 
-A documentação foi consolidada para evitar dezenas de arquivos de release, avaliação e patch:
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — histórico consolidado;
+- [`docs/INSTALACAO_E_MIGRACAO.md`](docs/INSTALACAO_E_MIGRACAO.md) — instalação, atualização e homologação.
 
-- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — histórico consolidado das versões;
-- [`docs/INSTALACAO_E_MIGRACAO.md`](docs/INSTALACAO_E_MIGRACAO.md) — instalação nova, atualização, homologação e recuperação.
-
-A página `novidades.html` continua sendo a apresentação das mudanças para o usuário dentro do sistema e não depende de arquivos Markdown.
+A página `novidades.html` apresenta as mudanças dentro do sistema.

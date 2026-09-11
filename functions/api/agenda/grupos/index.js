@@ -165,7 +165,7 @@ export async function onRequestPost({ request, env }) {
         grupoId, profissionalId,
         index === 0 ? 'Responsável de referência' : 'Equipe do grupo',
         index === 0 ? 1 : 0,
-        String(user.principal_id || user.id)
+        String(user.principalId || user.id)
       )
     );
   });

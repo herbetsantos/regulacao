@@ -2,14 +2,27 @@
 
 Este documento substitui os antigos arquivos separados de `RELEASE`, `AVALIACAO`, `NOVIDADES`, `PATCH` e relatórios intermediários.
 
+## 2.26.3 — Acesso híbrido restaurado
+
+- Restaurado o acesso interno próprio da Regulação por usuário e senha.
+- Mantido o acesso integrado pelo Apoio APS Cajamar como opção adicional, sem reintroduzir dependência operacional do Portal.
+- Tela de login redesenhada com a linguagem visual institucional compartilhada com o Portal APS e imagotipo oficial preservado.
+- Credenciais internas passam a usar as sessões unificadas da Regulação (`emulti_session`).
+- Criação e administração de contas internas restauradas na Administração.
+- Profissionais sem login podem receber uma credencial interna e vínculo automático.
+- Troca obrigatória de senha no primeiro acesso e após redefinição administrativa.
+- Nova migration `028_restaurar_acesso_interno.sql`; schema passa a 2.26.3.
+- Corrigido o uso de `principal_id` em registros administrativos para aceitar corretamente usuários internos e integrados.
+- A 2.26.1 havia interpretado incorretamente o desmembramento como remoção do login interno; a 2.26.3 corrige essa decisão sem desfazer a separação de bancos.
+
 ## 2.26.2 — Correção do build das Pages Functions
 
 - Corrigido o export ausente `friendlyRegulacaoError` em `functions/api/_db.js`.
 - Corrigido o build das rotas `api/pacientes/index.js`, `api/pacientes/[cpf].js` e `api/integracoes/esus/paciente.js`.
-- Mantido o login exclusivo pelo Portal APS e o imagotipo restaurado na 2.26.1.
+- Mantida a correção de build; a política temporária de login exclusivo da 2.26.1 foi revertida na 2.26.3.
 - Sem alteração no banco: o schema permanece 2.26.0 e nenhuma migration nova é necessária.
 
-## 2.26.1 — Correção da autenticação visual
+## 2.26.1 — Login institucional simplificado (revertido na 2.26.3)
 
 - Tela de login alinhada ao modelo de autenticação exclusiva pelo Portal APS.
 - Removidos campos de usuário/senha e qualquer ação de credencial própria da interface.
@@ -29,7 +42,7 @@ Este documento substitui os antigos arquivos separados de `RELEASE`, `AVALIACAO`
 - Nova área **Administração → Correções**, exclusiva do Superusuário.
 - Exclusão física segura de equipe, especialidade, unidade ou etiqueta somente quando não houver vínculos ou histórico.
 - Importação de transição protegida contra execução duplicada.
-- Instalações novas deixam de criar estruturas de credencial local e de evolução/acompanhamento clínico.
+- Nesta revisão, instalações novas deixaram de criar credencial local; essa parte foi revertida na 2.26.3. Estruturas clínicas continuam fora de novas instalações.
 - Bases antigas preservam legado clínico apenas para compatibilidade, sem exposição nas APIs de operação.
 - Corrigidos carregadores ausentes da Administração e imports relativos das Pages Functions.
 
@@ -109,4 +122,4 @@ Este documento substitui os antigos arquivos separados de `RELEASE`, `AVALIACAO`
 
 - Linha inicial de otimizações de desempenho.
 - Estruturas de profissionais e acesso que serviram de base para as evoluções posteriores.
-- O modelo de credencial local criado nessa fase foi aposentado na 2.26.0; o Portal APS voltou a ser a única origem de autenticação.
+- O modelo de credencial local criado nessa fase foi temporariamente retirado na 2.26.0/2.26.1 e restaurado na 2.26.3 dentro do banco próprio da Regulação.

@@ -24,7 +24,7 @@ export async function onRequestPost({request,env}){
   try{
     const r=await env.DB_REGULACAO.prepare(`INSERT INTO regulacao_etiquetas(nome,sort_order,ativo,created_by_principal)
       VALUES(?,COALESCE(?,(SELECT COALESCE(MAX(sort_order),0)+10 FROM regulacao_etiquetas)),1,?)`)
-      .bind(nome,ordem,String(user.source||'portal')+':'+String(user.id)).run();
+      .bind(nome,ordem,user.principalId||null).run();
     await logAudit(env,user,'create','regulacao_etiqueta',r.meta.last_row_id,{nome,sort_order:ordem});
     return json({id:r.meta.last_row_id,nome},201);
   }catch{return json({error:'Já existe uma etiqueta com esse nome.'},409)}

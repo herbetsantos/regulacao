@@ -1,9 +1,9 @@
 // Estrutura visual do módulo eMulti / Regulação de Vagas.
-// O login continua pertencendo ao Portal Saúde Cajamar; este projeto recebe
-// uma sessão por handoff e lê o mesmo banco de usuários/equipes.
+// O acesso pode ser interno ou integrado ao Apoio APS Cajamar.
+// A autorização e os dados operacionais permanecem no banco próprio da Regulação.
 
 const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
-const APP_VERSION = '2.26.2';
+const APP_VERSION = '2.26.3';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {
@@ -102,7 +102,7 @@ function renderChrome() {
             <span class="account-button__chevron">⌄</span>
           </button>
           <div class="account-menu" id="accountMenu" hidden>
-            <a href="/minha-conta.html">${appIconSvg('key')}<span>Conta do Portal APS</span></a>
+            <a href="/minha-conta.html">${appIconSvg('key')}<span>Minha conta</span></a>
             <a href="/novidades.html">${appIconSvg('book')}<span>Novidades da Versão</span></a>
             <a href="/assistente-rotinas.html">${appIconSvg('book')}<span>Assistente de Rotinas</span></a>
             <a href="/termos-de-uso.html">${appIconSvg('document')}<span>Termos de Uso e Privacidade</span></a>
@@ -190,7 +190,7 @@ function renderUser(user) {
   const nameEl = document.getElementById('accountName');
   const teamEl = document.getElementById('accountTeam');
   const access = user.regulacao || {};
-  const tickets=document.getElementById('ticketsAccountLink'); if(tickets) tickets.hidden=user.role!=='super_admin';
+  const tickets=document.getElementById('ticketsAccountLink'); if(tickets) tickets.hidden=!user.isSuperAdmin;
   if (nameEl) nameEl.textContent = user.name || user.username || 'Usuário';
   if (teamEl) {
     if (user.equipe?.nome) teamEl.textContent = user.equipe.nome;
@@ -311,9 +311,7 @@ function setupLogout() {
   const btn = document.getElementById('logoutBtn');
   if (!btn) return;
   btn.addEventListener('click', async () => {
-    // A sessão deste domínio é host-only; limpar o Portal também encerra a
-    // sessão principal. Se a chamada cross-origin falhar, o usuário volta ao
-    // login e o módulo deixa de reutilizar a sessão atual no próximo handoff.
+    // Encerra a sessão própria da Regulação, independentemente da origem do login.
     try {
       await fetch('/api/logout-local', { method: 'POST', credentials: 'same-origin' });
     } catch { /* continua para o portal */ }

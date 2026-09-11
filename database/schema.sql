@@ -379,7 +379,7 @@ CREATE INDEX IF NOT EXISTS idx_exec_admin_guia ON regulacao_execucoes_administra
 INSERT OR IGNORE INTO regulacao_etiquetas(nome,sort_order) VALUES ('Prioridade',10),('Retorno',20),('Contato pendente',30),('Documentação pendente',40),('Atenção compartilhada',50);
 
 
--- eMulti / Regulação 2.26.0 — catálogo operacional próprio e autenticação por handoff do Portal.
+-- eMulti / Regulação 2.26.3 — catálogo operacional próprio e autenticação híbrida.
 CREATE TABLE IF NOT EXISTS regulacao_principals (
   principal_id TEXT PRIMARY KEY,
   portal_user_id INTEGER,
@@ -392,6 +392,31 @@ CREATE TABLE IF NOT EXISTS regulacao_principals (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_reg_principal_portal_user ON regulacao_principals(portal_user_id) WHERE portal_user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_reg_principals_name ON regulacao_principals(active,name);
+CREATE TABLE IF NOT EXISTS regulacao_local_users (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL COLLATE NOCASE UNIQUE,
+  name TEXT NOT NULL,
+  legacy_numeric_id INTEGER NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  password_salt TEXT NOT NULL,
+  password_iterations INTEGER NOT NULL DEFAULT 210000,
+  active INTEGER NOT NULL DEFAULT 1 CHECK(active IN(0,1)),
+  must_change_password INTEGER NOT NULL DEFAULT 1 CHECK(must_change_password IN(0,1)),
+  theme TEXT NOT NULL DEFAULT 'light' CHECK(theme IN('auto','light','dark','contrast')),
+  created_by_principal TEXT,
+  created_at TEXT NOT NULL DEFAULT(datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT(datetime('now')),
+  last_login_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reg_local_users_active ON regulacao_local_users(active,username);
+CREATE TABLE IF NOT EXISTS regulacao_login_attempts (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL COLLATE NOCASE,
+  ip TEXT,
+  success INTEGER NOT NULL DEFAULT 0 CHECK(success IN(0,1)),
+  created_at TEXT NOT NULL DEFAULT(datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_reg_login_attempts_user_time ON regulacao_login_attempts(username,created_at);
 CREATE TABLE IF NOT EXISTS regulacao_superusers (
   principal_id TEXT PRIMARY KEY REFERENCES regulacao_principals(principal_id) ON DELETE CASCADE,
   granted_by_principal TEXT,
@@ -438,4 +463,4 @@ CREATE TABLE IF NOT EXISTS regulacao_equipe_unidades (
 CREATE INDEX IF NOT EXISTS idx_reg_equipe_unidades_unit ON regulacao_equipe_unidades(unidade_code,equipe_id);
 CREATE TABLE IF NOT EXISTS regulacao_migration_state (key TEXT PRIMARY KEY,value TEXT,updated_at TEXT NOT NULL DEFAULT(datetime('now')));
 
-INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.26.0',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.26.0',updated_at=datetime('now');
+INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.26.3',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.26.3',updated_at=datetime('now');

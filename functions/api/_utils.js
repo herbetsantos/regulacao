@@ -1,6 +1,6 @@
-// Utilidades centrais — eMulti / Regulação 2.26.0
-// Portal APS é usado apenas para validar o handoff/login inicial.
-// Sessão do módulo, preferências e auditoria ficam no regulacao-vagas-db.
+// Utilidades centrais — eMulti / Regulação 2.26.3
+// O Apoio APS Cajamar fornece uma opção de autenticação integrada.
+// A Regulação também pode autenticar credenciais internas próprias, mantidas no regulacao-vagas-db.
 
 export function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
@@ -51,6 +51,21 @@ export async function upsertPortalPrincipal(env, portalUser) {
   return pid;
 }
 
+
+export async function upsertLocalPrincipal(env, localUser) {
+  const pid = `local:${localUser.id}`;
+  await env.DB_REGULACAO.prepare(`
+    INSERT INTO regulacao_principals(principal_id,portal_user_id,username,name,portal_role,active,first_seen_at,last_seen_at)
+    VALUES(?,NULL,?,?,NULL,?,datetime('now'),datetime('now'))
+    ON CONFLICT(principal_id) DO UPDATE SET
+      username=excluded.username,
+      name=excluded.name,
+      active=excluded.active,
+      last_seen_at=datetime('now')
+  `).bind(pid, localUser.username || null, localUser.name || localUser.username || 'Usuário interno', localUser.active ? 1 : 0).run();
+  return pid;
+}
+
 export async function consumeHandoffToken(env, token) {
   if (!token) return null;
   // ÚNICO ponto operacional em que o banco do Portal é consultado além da autenticação.
@@ -91,29 +106,60 @@ export function clearSessionCookieHeader() {
 export async function getAuthUser(request, env) {
   const token = getCookie(request, 'emulti_session');
   if (!token) return null;
-  const row = await env.DB_REGULACAO.prepare(`
-    SELECT s.expires_at,p.principal_id,p.portal_user_id,p.username,p.name,p.portal_role,p.active,
-           CASE WHEN su.principal_id IS NULL THEN 0 ELSE 1 END AS is_superuser
-    FROM regulacao_auth_sessions s
-    JOIN regulacao_principals p ON p.principal_id=s.principal_id
-    LEFT JOIN regulacao_superusers su ON su.principal_id=p.principal_id
-    WHERE s.token=?
-  `).bind(token).first();
+  let row;
+  try {
+    row = await env.DB_REGULACAO.prepare(`
+      SELECT s.expires_at,p.principal_id,p.portal_user_id,p.username,p.name,p.portal_role,p.active,
+             CASE WHEN su.principal_id IS NULL THEN 0 ELSE 1 END AS is_superuser,
+             lu.id AS local_user_id,lu.legacy_numeric_id,lu.active AS local_active,
+             lu.must_change_password
+      FROM regulacao_auth_sessions s
+      JOIN regulacao_principals p ON p.principal_id=s.principal_id
+      LEFT JOIN regulacao_superusers su ON su.principal_id=p.principal_id
+      LEFT JOIN regulacao_local_users lu ON p.principal_id=('local:' || lu.id)
+      WHERE s.token=?
+    `).bind(token).first();
+  } catch (err) {
+    if (!String(err?.message || '').toLowerCase().includes('regulacao_local_users')) throw err;
+    row = await env.DB_REGULACAO.prepare(`
+      SELECT s.expires_at,p.principal_id,p.portal_user_id,p.username,p.name,p.portal_role,p.active,
+             CASE WHEN su.principal_id IS NULL THEN 0 ELSE 1 END AS is_superuser,
+             NULL AS local_user_id,NULL AS legacy_numeric_id,NULL AS local_active,
+             0 AS must_change_password
+      FROM regulacao_auth_sessions s
+      JOIN regulacao_principals p ON p.principal_id=s.principal_id
+      LEFT JOIN regulacao_superusers su ON su.principal_id=p.principal_id
+      WHERE s.token=?
+    `).bind(token).first();
+  }
   if (!row || !row.active) return null;
+  const source = String(row.principal_id || '').startsWith('local:') ? 'local' : 'portal';
+  if (source === 'local' && !row.local_active) return null;
   if (new Date(row.expires_at).getTime() < Date.now()) {
     await env.DB_REGULACAO.prepare('DELETE FROM regulacao_auth_sessions WHERE token=?').bind(token).run();
     return null;
   }
-  // Atualização best effort; não bloqueia a requisição.
   env.DB_REGULACAO.prepare("UPDATE regulacao_auth_sessions SET last_seen_at=datetime('now') WHERE token=?").bind(token).run().catch(()=>{});
+  if (source === 'local') {
+    return {
+      id:Number(row.legacy_numeric_id),
+      localUserId:String(row.local_user_id),
+      principalId:row.principal_id,
+      source:'local',
+      username:row.username,
+      name:row.name,
+      role:'internal',
+      isSuperAdmin:!!row.is_superuser,
+      active:true,
+      mustChangePassword:!!row.must_change_password,
+    };
+  }
   return {
     id:Number(row.portal_user_id),
     principalId:row.principal_id,
     source:'portal',
     username:row.username,
     name:row.name,
-    // role é apenas um snapshot informativo da identidade do Portal.
-    // A autorização da Regulação usa exclusivamente tabelas locais.
     role:row.portal_role,
     isSuperAdmin:!!row.is_superuser,
     active:true,
@@ -127,7 +173,7 @@ export async function logAudit(env, actor, action, entityType, entityId, details
     await env.DB_REGULACAO.prepare(`
       INSERT INTO regulacao_local_audit(id,actor_principal_id,actor_username,action,entity_type,entity_id,details)
       VALUES(?,?,?,?,?,?,?)
-    `).bind(crypto.randomUUID(), actor?.principalId || (actor?.id ? `portal:${actor.id}` : null), actor?.username || null, action, entityType, String(entityId ?? ''), detailsStr).run();
+    `).bind(crypto.randomUUID(), actor?.principalId || (actor?.source === 'local' && actor?.localUserId ? `local:${actor.localUserId}` : (actor?.id != null ? `portal:${actor.id}` : null)), actor?.username || null, action, entityType, String(entityId ?? ''), detailsStr).run();
   } catch { /* auditoria é best effort */ }
 }
 
