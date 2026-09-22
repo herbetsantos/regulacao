@@ -2,6 +2,16 @@
 
 Este documento substitui os antigos arquivos separados de `RELEASE`, `AVALIACAO`, `NOVIDADES`, `PATCH` e relatórios intermediários.
 
+## 2.27.0 — Migração para Cloudflare Workers
+
+- Implantação migrada de Cloudflare Pages para **Cloudflare Worker + Static Assets**.
+- Pages Functions existentes passam a ser compiladas para um único Worker com `wrangler pages functions build`.
+- Middleware de autenticação preservado antes da entrega de assets com `assets.run_worker_first = true`.
+- Build de assets separado para publicar somente HTML, CSS, JavaScript e recursos públicos.
+- Bindings `DB` e `DB_REGULACAO` preservados sem alteração funcional.
+- Sem migration de banco; schema permanece em `2.26.3`.
+- Scripts de build, preview e deploy adicionados ao `package.json`.
+
 ## 2.26.4 — Correção do handoff com Apoio APS Cajamar
 
 - Corrigido o retorno do login integrado quando o destino da eMulti contém fragmento de URL, como `admin#unidades`.
