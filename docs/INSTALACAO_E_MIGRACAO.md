@@ -122,3 +122,43 @@ dist/
 ```
 
 A presença de `database/`, `docs/` ou `functions/` dentro de `dist/client` deve ser tratada como erro de build.
+
+
+## 11. Ambiente de homologação 2.27.0
+
+O ambiente `homologacao` usa um Worker separado (`emulti-homologacao`) e um D1 próprio para a Regulação:
+
+```text
+DB            → portal-saude-db
+DB_REGULACAO  → regulacao-vagas-db-homolog
+```
+
+O banco de produção `regulacao-vagas-db` não é alterado pelos comandos abaixo.
+
+### Inicializar o D1 de homologação
+
+Execute uma única vez:
+
+```bash
+npm run db:init:homologacao
+```
+
+Depois valide:
+
+```bash
+npm run db:check:homologacao
+```
+
+A versão esperada é `2.26.3`, `PRAGMA quick_check` deve retornar `ok` e `PRAGMA foreign_key_check` não deve retornar violações.
+
+### Publicar o Worker de homologação
+
+```bash
+npm run deploy:homologacao
+```
+
+O deploy usa `wrangler deploy --env homologacao` e não modifica o Worker de produção.
+
+### Atenção
+
+Não execute `npm run db:init:homologacao` contra o ambiente padrão. O comando já contém `--env homologacao` para reduzir o risco de inicialização acidental do D1 de produção.
