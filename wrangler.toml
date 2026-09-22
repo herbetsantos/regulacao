@@ -26,3 +26,18 @@ database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
 binding = "DB_REGULACAO"
 database_name = "regulacao-vagas-db"
 database_id = "1a40262a-3005-4b06-9fb7-2f04ebda9246"
+
+# Ambiente isolado de homologação.
+# D1 bindings não são herdados entre ambientes; por isso ambos são declarados aqui.
+[env.homologacao]
+name = "emulti-homologacao"
+
+[[env.homologacao.d1_databases]]
+binding = "DB"
+database_name = "portal-saude-db"
+database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
+
+[[env.homologacao.d1_databases]]
+binding = "DB_REGULACAO"
+database_name = "regulacao-vagas-db-homolog"
+database_id = "75c5bcdf-81be-46b9-ae86-85d3a3f65a14"
