@@ -8,7 +8,11 @@
     "build:functions": "wrangler pages functions build --outdir=./dist/worker/",
     "build": "npm run build:assets && npm run build:functions",
     "deploy": "npm run build && wrangler deploy",
-    "preview": "npm run build && wrangler dev"
+    "preview": "npm run build && wrangler dev",
+    "db:init:homologacao": "wrangler d1 execute DB_REGULACAO --env homologacao --remote --file=./database/schema.sql",
+    "db:check:homologacao": "wrangler d1 execute DB_REGULACAO --env homologacao --remote --command=\"SELECT version FROM emulti_schema_version WHERE id=1; PRAGMA quick_check; PRAGMA foreign_key_check;\"",
+    "deploy:homologacao": "npm run build && wrangler deploy --env homologacao",
+    "preview:homologacao": "npm run build && wrangler dev --env homologacao"
   },
   "devDependencies": {
     "wrangler": "^4.134.0"
