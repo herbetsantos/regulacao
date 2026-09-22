@@ -1,0 +1,39 @@
+name: Validate eMulti Worker
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - chore/2.27-worker-migration
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Worker and static assets
+        run: npm run build
+
+      - name: Validate build output
+        shell: bash
+        run: |
+          test -f dist/worker/index.js
+          test -f dist/client/index.html
+          test -d dist/client/assets
+          test -d dist/client/css
+          test -d dist/client/js
+          test ! -e dist/client/database
+          test ! -e dist/client/docs
+          test ! -e dist/client/functions
