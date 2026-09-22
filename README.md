@@ -1,11 +1,13 @@
 # eMulti / Regulação — Cajamar Saúde
 
-**Versão da aplicação:** 2.26.4  
+**Versão da aplicação:** 2.27.0  
 **Schema da Regulação:** 2.26.3
 
 Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**; evolução, conduta e demais registros clínicos não são gravados neste ambiente.
 
 ## Arquitetura atual
+
+A aplicação é publicada como **Cloudflare Worker + Static Assets**. As rotas existentes em `functions/` são compiladas em um único Worker durante o build; os HTMLs, CSS, JavaScript e demais recursos públicos são copiados para `dist/client`.
 
 A Regulação é operacionalmente independente do Apoio APS Cajamar. Existem duas formas de autenticação:
 
@@ -61,6 +63,23 @@ A Regulação mantém localmente `regulacao_unidades`, `regulacao_equipes`, prof
 ## Correções administrativas
 
 A área **Administração → Correções**, exclusiva do Superusuário, permite excluir fisicamente equipe, especialidade, unidade ou etiqueta inserida por engano somente quando não houver vínculo nem histórico. A API valida dependências e exige confirmação pelo nome do registro; quando houver uso, a exclusão é bloqueada e o cadastro deve ser corrigido ou inativado.
+
+## Build e implantação
+
+Com Wrangler instalado pelas dependências do projeto:
+
+```bash
+npm install
+npm run build
+npm run deploy
+```
+
+O build executa duas etapas:
+
+1. prepara apenas os assets públicos em `dist/client`;
+2. compila `functions/` para `dist/worker/index.js`.
+
+A configuração `assets.run_worker_first = true` preserva a guarda de autenticação antes da entrega das páginas.
 
 ## Banco e migrations
 
