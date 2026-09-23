@@ -1,4 +1,4 @@
-# Instalação, migração e homologação — eMulti / Regulação 2.26.4
+# Instalação, migração e homologação — eMulti / Regulação 2.27.0
 
 ## 1. Arquitetura de autenticação
 
@@ -9,67 +9,94 @@ A Regulação possui duas formas de acesso:
 
 O `portal-saude-db` não controla equipes, profissionais, permissões ou demais regras operacionais da Regulação.
 
-## 2. Instalação nova
+## 2. Arquitetura de publicação
 
-1. configure os bindings `DB` e `DB_REGULACAO` no `wrangler.toml`;
-2. aplique `database/schema.sql` em `regulacao-vagas-db`;
-3. publique o projeto no Cloudflare Pages;
-4. entre com um usuário autorizado;
-5. configure unidades, equipes, responsabilidades e profissionais na Administração.
+A partir da 2.27.0, o eMulti é publicado como **Cloudflare Worker + Static Assets**.
 
-O schema novo já inclui as tabelas de credenciais internas e registra a versão `2.26.3`.
+- `functions/` continua sendo a fonte das rotas de API e middleware;
+- `wrangler pages functions build` compila essas rotas para `dist/worker/index.js`;
+- `scripts/build-assets.mjs` copia somente HTML, `assets/`, `css/`, `js/` e arquivos públicos auxiliares para `dist/client`;
+- `assets.run_worker_first = true` garante que o middleware de autenticação execute antes dos arquivos estáticos;
+- `database/`, `docs/` e o código-fonte de `functions/` não são publicados como assets.
 
-## 3. Atualização de uma base 2.26.0/2.26.1/2.26.2
+Os bindings permanecem:
 
-Aplique somente:
-
-```bash
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/028_restaurar_acesso_interno.sql
+```text
+DB            → portal-saude-db
+DB_REGULACAO  → regulacao-vagas-db
 ```
 
-Depois publique a aplicação 2.26.4.
+## 3. Instalação nova
 
-A migration 028 é aditiva: preserva credenciais internas antigas que ainda existam, registra esses usuários em `regulacao_principals`, mantém seus temas e atualiza o marcador do schema.
+1. instale as dependências com `npm install`;
+2. confira os bindings `DB` e `DB_REGULACAO` no `wrangler.toml`;
+3. aplique `database/schema.sql` em `regulacao-vagas-db`;
+4. execute `npm run build`;
+5. publique com `npm run deploy`;
+6. entre com um usuário autorizado;
+7. configure unidades, equipes, responsabilidades e profissionais na Administração.
 
-## 4. Atualização a partir da 2.25.3
+O schema continua na versão `2.26.3`. A 2.27.0 não exige migration de banco.
+
+## 4. Atualização de uma base já em 2.26.3
+
+Não execute nova migration. Atualize o código e publique a 2.27.0:
+
+```bash
+npm install
+npm run build
+npm run deploy
+```
+
+## 5. Atualização de uma base 2.26.0/2.26.1/2.26.2
+
+Aplique primeiro:
+
+```bash
+wrangler d1 execute regulacao-vagas-db --remote --file=./database/028_restaurar_acesso_interno.sql
+```
+
+Depois execute o build e a publicação da 2.27.0.
+
+## 6. Atualização a partir da 2.25.3
 
 Se a migration 026 já foi aplicada, execute em ordem:
 
 ```bash
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/027_desmembramento_portal.sql
-npx wrangler d1 execute regulacao-vagas-db --remote --file=./database/028_restaurar_acesso_interno.sql
+wrangler d1 execute regulacao-vagas-db --remote --file=./database/027_desmembramento_portal.sql
+wrangler d1 execute regulacao-vagas-db --remote --file=./database/028_restaurar_acesso_interno.sql
 ```
 
-Em seguida publique a 2.26.4. Não repita migrations que já tenham sido executadas no ambiente.
+Não repita migrations já executadas.
 
-## 5. Importação do catálogo antigo do Portal
+## 7. Importação do catálogo antigo do Portal
 
-A importação operacional criada na 2.26 continua sendo uma ação de transição e deve ser executada uma única vez quando necessária. Ela copia unidades/equipes legadas preservando IDs e códigos. Depois da importação, a operação cotidiana utiliza o `regulacao-vagas-db`.
+A importação criada na 2.26 é uma ação de transição e deve ser executada uma única vez quando necessária. Ela copia unidades/equipes legadas preservando IDs e códigos. Depois disso, a operação cotidiana utiliza o `regulacao-vagas-db`.
 
-Não apague tabelas do `portal-saude-db` durante a homologação. O sistema simplesmente deixa de depender delas para operação da Regulação.
+Não apague tabelas do `portal-saude-db` durante a homologação.
 
-## 6. Acesso interno
+## 8. Acesso interno
 
 Na Administração é possível criar uma credencial interna para um usuário ou diretamente para um profissional sem login. A senha inicial é temporária e deve possuir pelo menos 10 caracteres. No primeiro acesso, o usuário é direcionado para **Minha conta** e precisa definir uma nova senha antes de usar as demais funções.
 
-Usuários autenticados pelo Apoio APS Cajamar não alteram sua senha dentro da Regulação; a senha continua sendo gerenciada pelo Portal.
+Usuários autenticados pelo Apoio APS Cajamar continuam gerenciando sua senha no Portal.
 
-## 7. Homologação mínima
+## 9. Homologação mínima
 
 Após a publicação, confira:
 
-1. login com uma credencial interna;
-2. troca obrigatória de senha no primeiro acesso;
+1. login com credencial interna;
+2. troca obrigatória de senha;
 3. login integrado pelo Apoio APS Cajamar;
-4. abertura do painel com ambos os tipos de usuário;
+4. abertura de páginas protegidas sem exposição direta por asset;
 5. responsabilidades, unidades e equipes do usuário;
 6. criação de conta interna pela Administração;
-7. vínculo de um profissional a mais de uma equipe;
+7. profissional vinculado a múltiplas equipes;
 8. criação e consulta de guia;
-9. fila, etiquetas, agenda e grupos;
+9. fila, etiquetas, agenda, grupos e atendimentos individuais;
 10. **Administração → Correções** com bloqueio de exclusão quando houver dependências.
 
-No D1, confirme também:
+No D1:
 
 ```sql
 SELECT version FROM emulti_schema_version WHERE id=1;
@@ -77,12 +104,90 @@ PRAGMA quick_check;
 PRAGMA foreign_key_check;
 ```
 
-A versão esperada do schema é `2.26.3` e o `quick_check` deve retornar `ok`.
+A versão esperada do schema continua sendo `2.26.3`; `quick_check` deve retornar `ok`.
 
-## 8. Ordem de publicação recomendada
+## 10. Validação do build
 
-Em ambiente já existente, aplique a migration 028 **antes** de publicar a 2.26.4. O login integrado possui tolerância temporária quando a tabela local ainda não existe, mas o acesso interno só fica disponível após a migration.
+Antes do deploy, `npm run build` deve criar:
 
-## Atualização 2.26.4
+```text
+dist/
+├─ client/
+│  ├─ *.html
+│  ├─ assets/
+│  ├─ css/
+│  └─ js/
+└─ worker/
+   └─ index.js
+```
 
-A 2.26.4 corrige apenas o handoff do Apoio APS Cajamar para destinos com fragmento (`#`). Não há migration nova; o schema permanece o mesmo da 2.26.3.
+A presença de `database/`, `docs/` ou `functions/` dentro de `dist/client` deve ser tratada como erro de build.
+
+
+## 11. Ambiente de homologação 2.27.0
+
+O ambiente `homologacao` usa um Worker separado (`emulti-homologacao`) e um D1 próprio para a Regulação:
+
+```text
+DB            → portal-saude-db
+DB_REGULACAO  → regulacao-vagas-db-homolog
+```
+
+O banco de produção `regulacao-vagas-db` não é alterado pelos comandos abaixo.
+
+### Inicializar o D1 de homologação
+
+Execute uma única vez:
+
+```bash
+npm run db:init:homologacao
+```
+
+Depois valide:
+
+```bash
+npm run db:check:homologacao
+```
+
+A versão esperada é `2.26.3`, `PRAGMA quick_check` deve retornar `ok` e `PRAGMA foreign_key_check` não deve retornar violações.
+
+### Publicar o Worker de homologação
+
+```bash
+npm run deploy:homologacao
+```
+
+O deploy usa `wrangler deploy --env homologacao` e não modifica o Worker de produção.
+
+### Atenção
+
+Não execute `npm run db:init:homologacao` contra o ambiente padrão. O comando já contém `--env homologacao` para reduzir o risco de inicialização acidental do D1 de produção.
+
+
+## 9. Publicação 2.27.0 — Worker + Static Assets
+
+A 2.27.0 substitui a implantação em Pages por **Cloudflare Worker + Static Assets**, sem alteração no schema do D1.
+
+O `wrangler.toml` aponta o Worker compilado para:
+
+```text
+dist/worker/index.js
+```
+
+e os arquivos públicos para:
+
+```text
+dist/client
+```
+
+O middleware continua executando antes dos assets por meio de `assets.run_worker_first = true`, necessário porque o eMulti protege páginas com autenticação. Os bindings `DB` e `DB_REGULACAO` permanecem os mesmos.
+
+Para publicar:
+
+```bash
+npm install
+npm run build
+wrangler deploy
+```
+
+Não é necessário executar migration para atualizar da 2.26.4 para a 2.27.0; o schema esperado continua sendo `2.26.3`.

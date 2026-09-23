@@ -6,11 +6,11 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="/js/theme.js?v=2.26.4"></script>
+<script src="/js/theme.js?v=2.27.0"></script>
 <title>Guia de Encaminhamento — Regulação de Vagas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=2.26.4">
+<link rel="stylesheet" href="/css/style.css?v=2.27.0">
 <style>
   .reg-grid-2 { display:grid; grid-template-columns:1.3fr 1fr; gap:24px; align-items:start; }
   @media (max-width:900px) { .reg-grid-2 { grid-template-columns:1fr; } }
@@ -75,31 +75,76 @@
   .workflow-block__title { color:var(--primary-dark); font-size:15px; font-weight:700; margin-bottom:10px; }
   .workflow-row { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; }
   .workflow-field { width:min(360px,100%); margin-bottom:0; }
-  .workflow-action { display:flex; gap:10px; align-items:center; min-height:42px; padding-bottom:1px; }
+  .workflow-action { display:flex; gap:10px; align-items:center; min-height:42px; }
+  .workflow-action .btn,
+  .tag-actions .btn,
+  .transfer-editor__action .btn,
+  .guide-print-btn {
+    min-height:42px;
+    padding:10px 16px;
+    font-size:13px;
+    line-height:1.2;
+    white-space:nowrap;
+  }
+  .detail-card .panel-section__head--actions {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+  }
+  .guide-print-btn {
+    flex:0 0 auto;
+  }
+  .transfer-editor { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:end; }
+  .transfer-editor__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .transfer-editor__action { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-height:42px; }
   .post-regulation { display:none; margin-top:18px; padding:14px 16px; border:1px solid #cfe1f6; background:#f5f9ff; border-radius:10px; }
   .post-regulation.is-visible { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
   .post-regulation__text strong { display:block; color:var(--primary-dark); margin-bottom:3px; }
   .post-regulation__text span { color:var(--muted); font-size:13px; }
   .post-regulation__actions { display:flex; gap:8px; flex-wrap:wrap; }
 
-  .transfer-reason {
-    width:100%;
-    min-height:92px;
-    resize:vertical;
-    box-sizing:border-box;
-    padding:12px 14px;
-    border:1px solid var(--line, #dce3ed);
-    border-radius:10px;
-    background:var(--surface, #fff);
-    color:var(--text, #122052);
-    font-family:inherit;
-    font-size:13px;
-    line-height:1.45;
-    outline:none;
+  .print-dialog {
+    width:min(560px,calc(100vw - 28px));
+    border:0;
+    border-radius:14px;
+    padding:0;
+    background:var(--surface,#fff);
+    color:var(--text,#122052);
+    box-shadow:0 24px 70px rgba(18,32,82,.28);
   }
-  .transfer-reason:focus {
-    border-color:var(--primary, #203b90);
-    box-shadow:0 0 0 3px color-mix(in srgb, var(--primary, #203b90) 12%, transparent);
+  .print-dialog::backdrop { background:rgba(7,18,48,.52); }
+  .print-dialog__head { padding:20px 22px 14px; border-bottom:1px solid #e3e8f0; }
+  .print-dialog__head h2 { margin:0 0 6px; color:var(--primary-dark,#0e2a73); font-size:20px; }
+  .print-dialog__head p { margin:0; color:var(--muted,#667085); font-size:13px; line-height:1.45; }
+  .print-dialog__body { padding:18px 22px; }
+  .print-option {
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:12px 0;
+    border-bottom:1px solid #edf0f5;
+  }
+  .print-option:last-child { border-bottom:0; }
+  .print-option input { margin-top:3px; }
+  .print-option strong { display:block; margin-bottom:3px; }
+  .print-option span { display:block; color:var(--muted,#667085); font-size:12px; line-height:1.4; }
+  .print-dialog__actions { display:flex; justify-content:flex-end; gap:9px; padding:14px 22px 20px; }
+  .tag-editor-row {
+    display:flex;
+    gap:8px;
+    align-items:flex-end;
+    flex-wrap:wrap;
+  }
+  .tag-editor-row .field {
+    margin-bottom:0;
+    min-width:220px;
+  }
+  .tag-actions {
+    display:flex;
+    gap:8px;
+    align-items:center;
+    min-height:42px;
   }
   .organization-note {
     margin-top:12px;
@@ -117,9 +162,15 @@
     .reg-info-grid li.full, .reg-info-grid li.wide { grid-column:auto; }
     .guide-hero { flex-direction:column; }
     .guide-hero__meta { justify-content:flex-start; }
+    .transfer-editor { grid-template-columns:1fr; }
+    .transfer-editor__fields { grid-template-columns:1fr; }
+    .transfer-editor__action { justify-content:flex-start; }
+    .detail-card .panel-section__head--actions { align-items:flex-start; flex-direction:column; }
+    .guide-print-btn { width:100%; }
+    .tag-actions { width:100%; }
   }
 </style>
-<link rel="stylesheet" href="/css/theme.css?v=2.26.4">
+<link rel="stylesheet" href="/css/theme.css?v=2.27.0">
 </head>
 <body>
 
@@ -159,8 +210,11 @@
     </section>
 
     <section class="panel-section is-active detail-card" aria-labelledby="andamentoTitle">
-      <div class="panel-section__head">
+      <div class="panel-section__head panel-section__head--actions">
         <div class="panel-section__title" id="andamentoTitle">3. Andamento da guia</div>
+        <button class="btn btn--outline guide-print-btn" type="button" id="btnImprimirGuia" title="Gerar Espelho do Acompanhamento para impressão ou PDF">
+          Espelho do Acompanhamento
+        </button>
       </div>
 
       <ul class="reg-info-list reg-info-grid" id="andamentoInfo"></ul>
@@ -179,7 +233,7 @@
             </select>
           </div>
           <div class="workflow-action">
-            <button class="btn btn--outline btn--sm" type="submit">Salvar situação</button>
+            <button class="btn btn--outline" type="submit">Salvar situação</button>
             <span class="form-msg" id="situacaoMsg"></span>
           </div>
         </div>
@@ -190,22 +244,22 @@
         <div class="panel-section__desc" id="equipeAtualDesc"></div>
         <button class="btn btn--outline btn--sm" type="button" id="btnMostrarTransferir">Definir / alterar responsabilidade</button>
         <div id="transferirForm" style="display:none; margin-top:14px">
-          <div class="reg-grid-2" style="gap:14px">
-            <div class="field">
-              <label for="tEquipe">Equipe responsável</label>
-              <select id="tEquipe"><option value="">Selecione</option></select>
+          <div class="transfer-editor">
+            <div class="transfer-editor__fields">
+              <div class="field">
+                <label for="tEquipe">Equipe responsável</label>
+                <select id="tEquipe"><option value="">Selecione</option></select>
+              </div>
+              <div class="field">
+                <label for="tUnidade">Unidade executante *</label>
+                <select id="tUnidade" required><option value="">Selecione a equipe primeiro</option></select>
+              </div>
             </div>
-            <div class="field">
-              <label for="tUnidade">Unidade executante *</label>
-              <select id="tUnidade" required><option value="">Selecione a equipe primeiro</option></select>
+            <div class="transfer-editor__action">
+              <button class="btn btn--accent" type="button" id="btnConfirmarTransferir">Transferir unidade</button>
+              <span class="form-msg" id="transferirMsg"></span>
             </div>
           </div>
-          <div class="field">
-            <label for="tMotivo">Motivo da transferência</label>
-            <textarea id="tMotivo" class="transfer-reason" rows="3" placeholder="Ex.: paciente mudou de endereço"></textarea>
-          </div>
-          <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Confirmar transferência</button>
-          <span class="form-msg" id="transferirMsg"></span>
         </div>
       </div>
 
@@ -213,10 +267,12 @@
         <div class="workflow-block__title">Classificação administrativa</div>
         <div class="panel-section__desc">Use etiquetas para organizar a fila e facilitar filtros administrativos. Não registre evolução, conduta ou procedimentos neste ambiente.</div>
         <div id="guideTags" style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 10px"></div>
-        <div id="tagEditor" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+        <div id="tagEditor" class="tag-editor-row">
           <div class="field"><label for="tagSelect">Adicionar etiqueta</label><select id="tagSelect"><option value="">Selecione</option></select></div>
-          <button class="btn btn--outline btn--sm" type="button" id="btnAddTag">Adicionar</button>
-          <a class="btn btn--outline btn--sm" id="manageTagsLink" href="/admin.html#etiquetas" style="display:none">Gerenciar etiquetas</a>
+          <div class="tag-actions">
+            <button class="btn btn--outline" type="button" id="btnAddTag">Adicionar</button>
+            <a class="btn btn--outline" id="manageTagsLink" href="/admin.html#etiquetas" style="display:none">Gerenciar etiquetas</a>
+          </div>
         </div>
         <div class="notice-box" style="margin-top:16px"><strong>Registro clínico:</strong> o eMulti/Regulação é um ambiente gerencial. Evolução, conduta, procedimentos e demais informações de prontuário devem ser registrados exclusivamente no PEC e-SUS.</div>
       </div>
@@ -235,8 +291,33 @@
   </div>
 </main>
 
-<script src="/js/app-chrome.js?v=2.26.4"></script>
-<script src="/js/regulacao.js?v=2.26.4"></script>
+<dialog class="print-dialog" id="printDialog" aria-labelledby="printDialogTitle">
+  <div class="print-dialog__head">
+    <h2 id="printDialogTitle">Espelho do Acompanhamento</h2>
+    <p>Escolha as informações que devem constar no espelho timbrado. O acompanhamento impresso é exclusivamente administrativo.</p>
+  </div>
+  <div class="print-dialog__body">
+    <label class="print-option">
+      <input type="checkbox" id="printPaciente" checked>
+      <span><strong>Dados do paciente</strong><span>Identificação, contatos, unidade de referência e endereço.</span></span>
+    </label>
+    <label class="print-option">
+      <input type="checkbox" id="printGuia" checked>
+      <span><strong>Dados da guia</strong><span>Encaminhamento, especialidade, motivo, situação, equipe e unidade executante.</span></span>
+    </label>
+    <label class="print-option">
+      <input type="checkbox" id="printAcompanhamento">
+      <span><strong>Dados do acompanhamento</strong><span>Agenda, grupos, encontros, transferências e desfechos administrativos. Sem evolução ou conduta clínica.</span></span>
+    </label>
+  </div>
+  <div class="print-dialog__actions">
+    <button class="btn btn--outline btn--sm" type="button" id="btnCancelarImpressao">Cancelar</button>
+    <button class="btn btn--accent btn--sm" type="button" id="btnGerarImpressao">Gerar impressão / PDF</button>
+  </div>
+</dialog>
+
+<script src="/js/app-chrome.js?v=2.27.0"></script>
+<script src="/js/regulacao.js?v=2.27.0"></script>
 <script>
 (async () => {
   const user = await initPortalChrome();
@@ -307,6 +388,7 @@
   tEquipeSel.addEventListener('change', () => preencherSelectUnidadesDaEquipe(tUnidadeSel, tEquipeSel.value));
 
   let guiaAtual = null;
+  let detalheAtual = null;
   async function carregarEtiquetas(){
     const [all,selected]=await Promise.all([apiFetch('/api/etiquetas'),apiFetch(`/api/guias/${guiaId}/etiquetas`)]);
     const todas=all.ok?(all.data.etiquetas||[]):[],ativas=selected.ok?(selected.data.etiquetas||[]):[];
@@ -315,7 +397,7 @@
     if(box)box.innerHTML=ativas.length?ativas.map(t=>`<span class="mini-badge">${escapeHtml(t.nome)}${(access.regulador||access.organizador||access.gestor||access.administrador)?` <button type="button" data-tag-remove="${t.id}" style="border:0;background:transparent;cursor:pointer">×</button>`:''}</span>`).join(''):'<span class="muted">Sem etiquetas.</span>';
     if(sel)sel.innerHTML='<option value="">Selecione</option>'+todas.filter(t=>!activeSet.has(Number(t.id))).map(t=>`<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
     box?.querySelectorAll('[data-tag-remove]').forEach(b=>b.onclick=async()=>{await apiFetch(`/api/guias/${guiaId}/etiquetas?etiqueta_id=${b.dataset.tagRemove}`,{method:'DELETE'});carregarEtiquetas();});
-    const editor=document.getElementById('tagEditor'); if(editor)editor.style.display=(access.regulador||access.organizador||access.gestor||access.administrador)?'flex':'none'; const manage=document.getElementById('manageTagsLink'); if(manage)manage.style.display=(access.gestor||access.administrador)?'inline-flex':'none';
+    const editor=document.getElementById('tagEditor'); if(editor)editor.style.display=(access.regulador||access.organizador||access.gestor||access.administrador)?'':'none'; const manage=document.getElementById('manageTagsLink'); if(manage)manage.style.display=(access.gestor||access.administrador)?'inline-flex':'none';
   }
   document.getElementById('btnAddTag')?.addEventListener('click',async()=>{const id=Number(document.getElementById('tagSelect')?.value);if(!id)return;const r=await apiFetch(`/api/guias/${guiaId}/etiquetas`,{method:'POST',body:JSON.stringify({etiqueta_id:id})});if(!r.ok)alert(r.data?.error||'Não foi possível adicionar a etiqueta.');else carregarEtiquetas();});
 
@@ -338,6 +420,7 @@
     if (!ok) { document.getElementById('pageTitle').textContent = 'Guia não encontrada'; return; }
 
     guiaAtual = data.guia;
+    detalheAtual = data;
     carregarEtiquetas();
     document.getElementById('pageTitle').textContent = 'Detalhes da guia';
     document.getElementById('guideHero').style.display = '';
@@ -441,13 +524,273 @@
       body: JSON.stringify({
         equipe_id: Number(equipeId),
         unidade_executante_code: unidade,
-        motivo_transferencia: document.getElementById('tMotivo').value.trim(),
       }),
     });
     if (!ok) { msg.textContent = data?.error || 'Erro ao transferir.'; msg.style.color = '#c0392b'; return; }
     msg.textContent = 'Guia transferida — a nova equipe foi notificada.'; msg.style.color = '#2e7d32';
     await mostrarPosRegulacao();
     carregar();
+  });
+
+  const printDialog = document.getElementById('printDialog');
+  const printStatus = (value) => ({
+    aguardando_autorizacao:'Aguardando autorização',
+    lista_espera:'Em lista de espera',
+    em_atendimento:'Em atendimento',
+    concluido:'Concluído',
+    negado:'Negado',
+    agendado:'Agendado',
+    realizado:'Realizado',
+    falta:'Falta',
+    cancelado:'Cancelado',
+    ativo:'Ativo',
+    abandono:'Abandono',
+    removido:'Removido',
+    programado:'Programado',
+  }[value] || value || '—');
+  const printHtml = (value) => escapeHtml(value === null || value === undefined || value === '' ? '—' : String(value));
+  const printTable = (headers, rows) => {
+    if (!rows.length) return '<p class="empty">Nenhum registro administrativo encontrado.</p>';
+    return `<table><thead><tr>${headers.map(h=>`<th>${printHtml(h)}</th>`).join('')}</tr></thead><tbody>${
+      rows.map(row=>`<tr>${row.map(v=>`<td>${printHtml(v)}</td>`).join('')}</tr>`).join('')
+    }</tbody></table>`;
+  };
+
+  function enderecoParaImpressao(g) {
+    return [
+      g.paciente_logradouro,
+      g.paciente_numero ? `nº ${g.paciente_numero}` : '',
+      g.paciente_complemento,
+      g.paciente_bairro,
+      [g.paciente_municipio,g.paciente_uf].filter(Boolean).join('/'),
+      g.paciente_cep ? `CEP ${g.paciente_cep}` : '',
+    ].filter(Boolean).join(' · ') || g.paciente_endereco || '—';
+  }
+
+  async function gerarImpressaoGuia() {
+    if (!guiaAtual || !detalheAtual) return;
+    const incluirPaciente = document.getElementById('printPaciente').checked;
+    const incluirGuia = document.getElementById('printGuia').checked;
+    const incluirAcompanhamento = document.getElementById('printAcompanhamento').checked;
+    if (!incluirPaciente && !incluirGuia && !incluirAcompanhamento) {
+      alert('Selecione pelo menos um bloco para impressão.');
+      return;
+    }
+
+    const janela = window.open('', '_blank');
+    if (!janela) {
+      alert('O navegador bloqueou a janela de impressão. Permita pop-ups para este sistema e tente novamente.');
+      return;
+    }
+    janela.document.write('<!doctype html><html><head><title>Preparando impressão…</title></head><body style="font-family:Arial,sans-serif;padding:32px">Preparando documento…</body></html>');
+    janela.document.close();
+
+    let extra = { etiquetas:[], acompanhamento:{ individuais:[], grupos:[], encontros:[], execucoes:[], transferencias:[] } };
+    if (incluirAcompanhamento) {
+      const r = await apiFetch(`/api/guias/${guiaId}/impressao`);
+      if (!r.ok) {
+        janela.close();
+        alert(r.data?.error || 'Não foi possível carregar o acompanhamento para impressão.');
+        return;
+      }
+      extra = r.data;
+    }
+
+    const g = guiaAtual;
+    const d = detalheAtual;
+    const codigo = formatGuideCode(g);
+    const geradoEm = new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date());
+    const emitidoPor = user?.name || user?.nome || user?.username || 'Usuário autenticado';
+
+    const section = (title, body) => `<section class="doc-section"><h2>${printHtml(title)}</h2>${body}</section>`;
+    const field = (label, value, cls='') => `<div class="doc-field ${cls}"><span>${printHtml(label)}</span><strong>${printHtml(value)}</strong></div>`;
+
+    const paciente = incluirPaciente ? section('Dados do paciente', `
+      <div class="doc-grid">
+        ${field('Nome',g.paciente_nome,'span-2')}
+        ${field('CPF',maskCPF(g.cpf))}
+        ${field('CNS',g.paciente_cns || '—')}
+        ${field('Data de nascimento',formatDateBR(g.paciente_data_nascimento))}
+        ${field('Sexo',g.paciente_sexo==='F'?'Feminino':g.paciente_sexo==='M'?'Masculino':g.paciente_sexo || '—')}
+        ${field('Telefones',[g.paciente_tel1,g.paciente_tel2,g.paciente_tel3].filter(Boolean).map(maskPhone).join(' · ') || '—','span-2')}
+        ${field('Unidade de referência',nomeUnidade(g.paciente_unidade_referencia_code),'span-2')}
+        ${field('Endereço',enderecoParaImpressao(g),'span-4')}
+      </div>
+    `) : '';
+
+    const guia = incluirGuia ? section('Dados do encaminhamento', `
+      <div class="doc-grid">
+        ${field('Número da guia',codigo)}
+        ${field('Data da solicitação',formatDateTimeBR(g.created_at))}
+        ${field('Especialidade',g.especialidade_nome)}
+        ${field('CID-10',g.cid10 || '—')}
+        ${field('Unidade solicitante',nomeUnidade(g.unidade_solicitante_code),'span-2')}
+        ${field('Profissional solicitante',g.medico_solicitante,'span-2')}
+        ${field('Motivo do encaminhamento',g.motivo,'span-4')}
+        ${field('Situação atual',printStatus(g.situacao))}
+        ${field('Equipe responsável',d.equipeAtual?.nome || '—')}
+        ${field('Unidade executante',nomeUnidade(g.unidade_executante_code))}
+        ${field('Organização atual',d.grupoAtual ? `Grupo: ${d.grupoAtual.nome}` : d.profissionalAtual ? `Individual: ${d.profissionalAtual.name || 'Profissional'}` : 'Ainda não organizada')}
+      </div>
+    `) : '';
+
+    let acompanhamento = '';
+    if (incluirAcompanhamento) {
+      const a = extra.acompanhamento || {};
+      const etiquetas = (extra.etiquetas || []).map(x=>x.nome).join(' · ') || 'Sem etiquetas';
+
+      const individuais = printTable(
+        ['Data','Horário','Profissional','Unidade','Situação'],
+        (a.individuais || []).map(x=>[
+          formatDateBR(x.data_atendimento),
+          x.hora_inicio || '—',
+          x.profissional_nome || '—',
+          x.unidade_nome || '—',
+          printStatus(x.situacao),
+        ])
+      );
+      const grupos = printTable(
+        ['Grupo','Entrada','Saída','Profissionais','Situação'],
+        (a.grupos || []).map(x=>[
+          x.grupo_nome || '—',
+          formatDateTimeBR(x.entrada_em),
+          x.saida_em ? formatDateTimeBR(x.saida_em) : '—',
+          x.profissionais || '—',
+          printStatus(x.status),
+        ])
+      );
+      const encontros = printTable(
+        ['Grupo','Data','Horário','Duração','Situação'],
+        (a.encontros || []).map(x=>[
+          x.grupo_nome || '—',
+          formatDateBR(x.data_encontro),
+          x.hora_inicio || '—',
+          x.duracao_minutos ? `${x.duracao_minutos} min` : '—',
+          printStatus(x.situacao),
+        ])
+      );
+      const execucoes = printTable(
+        ['Data','Tipo','Resultado','Observação administrativa'],
+        (a.execucoes || []).map(x=>[
+          formatDateTimeBR(x.registrado_em),
+          x.tipo === 'grupo' ? 'Grupo' : 'Individual',
+          printStatus(x.resultado),
+          x.observacao_administrativa || '—',
+        ])
+      );
+      const transferencias = (a.transferencias || []).length
+        ? `<ul class="timeline">${a.transferencias.map(x=>`<li><strong>${printHtml(formatDateTimeBR(x.created_at))}</strong><span>${printHtml(x.mensagem)}</span></li>`).join('')}</ul>`
+        : '<p class="empty">Nenhuma transferência registrada.</p>';
+
+      acompanhamento = section('Acompanhamento administrativo', `
+        <div class="doc-grid compact">
+          ${field('Situação atual',printStatus(g.situacao))}
+          ${field('Equipe responsável',d.equipeAtual?.nome || '—')}
+          ${field('Unidade executante',nomeUnidade(g.unidade_executante_code))}
+          ${field('Etiquetas',etiquetas)}
+        </div>
+        <h3>Atendimentos individuais</h3>${individuais}
+        <h3>Vínculos com grupos</h3>${grupos}
+        <h3>Encontros de grupo</h3>${encontros}
+        <h3>Desfechos administrativos</h3>${execucoes}
+        <h3>Transferências</h3>${transferencias}
+      `);
+    }
+
+    const documento = `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Espelho do Acompanhamento - Guia ${printHtml(codigo)} - eMulti Regulação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  @page { size:A4; margin:12mm 12mm 16mm; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Montserrat',Arial,Helvetica,sans-serif; color:#17233f; font-size:10.5pt; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .letterhead { display:grid; grid-template-columns:78px 1fr auto; gap:14px; align-items:center; padding-bottom:12px; border-bottom:3px solid #173b7a; }
+  .letterhead img { max-width:76px; max-height:58px; object-fit:contain; }
+  .letterhead .org { font-size:9pt; color:#4b5b75; line-height:1.35; }
+  .letterhead .org strong { display:block; color:#173b7a; font-size:13pt; margin:2px 0; }
+  .letterhead .guide { text-align:right; }
+  .letterhead .guide span { display:block; color:#667085; font-size:8pt; text-transform:uppercase; letter-spacing:.06em; }
+  .letterhead .guide strong { display:block; margin-top:3px; color:#173b7a; font-size:15pt; }
+  .doc-title { text-align:center; margin:15px 0 13px; }
+  .doc-title h1 { margin:0; color:#173b7a; font-size:15pt; text-transform:uppercase; letter-spacing:.035em; }
+  .doc-title p { margin:4px 0 0; color:#667085; font-size:8.5pt; }
+  .doc-section { margin-top:12px; break-inside:auto; }
+  .doc-section > h2 { margin:0 0 7px; padding:6px 9px; color:#173b7a; background:#eef4fb; border-left:4px solid #173b7a; font-size:10.5pt; text-transform:uppercase; letter-spacing:.03em; }
+  .doc-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-top:1px solid #ccd5e2; border-left:1px solid #ccd5e2; }
+  .doc-grid.compact { margin-bottom:10px; }
+  .doc-field { min-height:48px; padding:6px 8px; border-right:1px solid #ccd5e2; border-bottom:1px solid #ccd5e2; }
+  .doc-field.span-2 { grid-column:span 2; }
+  .doc-field.span-4 { grid-column:1 / -1; }
+  .doc-field span { display:block; margin-bottom:3px; color:#667085; font-size:7.5pt; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+  .doc-field strong { display:block; font-size:9.2pt; line-height:1.35; font-weight:600; overflow-wrap:anywhere; }
+  h3 { margin:11px 0 5px; color:#273b5e; font-size:9pt; }
+  table { width:100%; border-collapse:collapse; font-size:8pt; }
+  th { padding:5px 6px; background:#f3f6fa; color:#46556f; text-align:left; border:1px solid #d5dce7; }
+  td { padding:5px 6px; vertical-align:top; border:1px solid #d5dce7; line-height:1.3; }
+  .empty { margin:4px 0 8px; color:#667085; font-size:8.5pt; font-style:italic; }
+  .timeline { list-style:none; margin:4px 0 8px; padding:0; border-left:2px solid #cdd8e8; }
+  .timeline li { margin:0 0 7px 8px; padding-left:8px; }
+  .timeline strong { display:block; font-size:7.8pt; color:#173b7a; }
+  .timeline span { display:block; margin-top:2px; font-size:8.2pt; line-height:1.35; }
+  .clinical-note { margin-top:14px; padding:8px 10px; background:#f6f8fb; border:1px solid #d7dee9; color:#4b5b75; font-size:7.8pt; line-height:1.4; }
+  .signatures { display:grid; grid-template-columns:1fr 1fr; gap:32px; margin-top:24px; page-break-inside:avoid; }
+  .signature { padding-top:20px; border-top:1px solid #69758a; text-align:center; font-size:8pt; color:#4b5b75; }
+  footer { margin-top:14px; padding-top:8px; border-top:1px solid #cfd7e3; display:flex; justify-content:space-between; gap:18px; color:#69758a; font-size:7pt; }
+  @media print { .no-print { display:none !important; } }
+</style>
+</head>
+<body>
+  <header class="letterhead">
+    <img src="/assets/imagotipo.png" alt="eMulti">
+    <div class="org">
+      Prefeitura de Cajamar · Secretaria Municipal de Saúde
+      <strong>eMulti | Regulação de Vagas</strong>
+      Atenção Primária à Saúde
+    </div>
+    <div class="guide"><span>Espelho do acompanhamento</span><strong>${printHtml(codigo)}</strong></div>
+  </header>
+  <div class="doc-title">
+    <h1>Espelho do Acompanhamento</h1>
+    <p>Documento administrativo emitido pelo sistema eMulti | Regulação</p>
+  </div>
+  ${paciente}
+  ${guia}
+  ${acompanhamento}
+  <div class="clinical-note"><strong>Importante:</strong> este documento apresenta informações administrativas de encaminhamento e acompanhamento. Evolução, conduta, procedimentos e demais registros clínicos pertencem ao prontuário eletrônico do cidadão no PEC e-SUS.</div>
+  <div class="signatures">
+    <div class="signature">Profissional / Unidade solicitante</div>
+    <div class="signature">Regulação / eMulti</div>
+  </div>
+  <footer>
+    <span>Emitido por ${printHtml(emitidoPor)} em ${printHtml(geradoEm)}</span>
+    <span>Guia ${printHtml(codigo)}</span>
+  </footer>
+</body>
+</html>`;
+
+    janela.document.open();
+    janela.document.write(documento);
+    janela.document.close();
+    const imagens = [...janela.document.images];
+    await Promise.all(imagens.map(img => img.complete ? Promise.resolve() : new Promise(resolve => {
+      img.onload = resolve;
+      img.onerror = resolve;
+    })));
+    try { await janela.document.fonts?.ready; } catch {}
+    janela.focus();
+    janela.print();
+  }
+
+  document.getElementById('btnImprimirGuia').addEventListener('click',()=>printDialog.showModal());
+  document.getElementById('btnCancelarImpressao').addEventListener('click',()=>printDialog.close());
+  document.getElementById('btnGerarImpressao').addEventListener('click',()=>{
+    printDialog.close();
+    gerarImpressaoGuia();
   });
 
   carregar();

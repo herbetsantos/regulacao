@@ -1,8 +1,18 @@
 name = "emulti"
 compatibility_date = "2024-09-23"
-pages_build_output_dir = "."
+main = "./dist/worker/index.js"
+workers_dev = true
+preview_urls = true
 
-# Banco do Portal APS usado SOMENTE para autenticação/handoff e para a importação
+# O Worker executa antes dos assets para preservar a guarda de autenticação
+# implementada em functions/_middleware.js. O binding ASSETS é usado pelo
+# Worker compilado a partir das antigas Pages Functions como fallback estático.
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+run_worker_first = true
+
+# Banco do Apoio APS usado SOMENTE para autenticação/handoff e para a importação
 # única de migração 2.26.0. Nenhuma regra operacional da Regulação lê ou grava
 # unidades, equipes, permissões ou profissionais neste banco durante o uso normal.
 [[d1_databases]]
@@ -12,10 +22,22 @@ database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
 
 # Banco PRÓPRIO da eMulti/Regulação: identidade local do módulo, permissões,
 # unidades, equipes, profissionais, pacientes, guias, agenda, etiquetas e auditoria.
-# Criado com:
-#   wrangler d1 create regulacao-vagas-db
-# Troque o database_id abaixo pelo id retornado.
 [[d1_databases]]
 binding = "DB_REGULACAO"
 database_name = "regulacao-vagas-db"
 database_id = "1a40262a-3005-4b06-9fb7-2f04ebda9246"
+
+# Ambiente isolado de homologação.
+# D1 bindings não são herdados entre ambientes; por isso ambos são declarados aqui.
+[env.homologacao]
+name = "emulti-homologacao"
+
+[[env.homologacao.d1_databases]]
+binding = "DB"
+database_name = "portal-saude-db"
+database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
+
+[[env.homologacao.d1_databases]]
+binding = "DB_REGULACAO"
+database_name = "regulacao-vagas-db-homolog"
+database_id = "75c5bcdf-81be-46b9-ae86-85d3a3f65a14"
