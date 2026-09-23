@@ -39,6 +39,38 @@ export async function getRegulacaoScope(env,user,access=null){
 export async function getUserEquipeIds(env,user){const pid=user.principalId||`portal:${user.id}`;const {results}=await env.DB_REGULACAO.prepare('SELECT equipe_id FROM regulacao_principal_equipes WHERE principal_id=? ORDER BY equipe_id').bind(pid).all();return(results||[]).map(r=>Number(r.equipe_id)).filter(Boolean)}
 export async function isEquipeMember(env,user,equipeId,access=null){access=access||await getRegulacaoAccessProfile(env,user);if(access.administrador)return true;const ids=await getUserEquipeIds(env,user);return ids.some(id=>Number(id)===Number(equipeId))}
 export async function getEquipeInfo(env,equipeId){const equipe=await env.DB_REGULACAO.prepare('SELECT id,nome FROM regulacao_equipes WHERE id=? AND ativo=1').bind(equipeId).first();if(!equipe)return null;const {results}=await env.DB_REGULACAO.prepare(`SELECT u.code,u.nome FROM regulacao_equipe_unidades eu JOIN regulacao_unidades u ON u.code=eu.unidade_code AND u.ativo=1 WHERE eu.equipe_id=? ORDER BY u.nome`).bind(equipeId).all();return{id:equipe.id,nome:equipe.nome,unidades:results||[]}}
+export async function getAtribuicaoReferenciaPaciente(env,cpf){
+  const paciente=await env.DB_REGULACAO.prepare(`
+    SELECT p.cpf,p.unidade_referencia_code,
+           u.code AS unidade_ativa_code,u.nome AS unidade_nome
+    FROM pacientes p
+    LEFT JOIN regulacao_unidades u
+      ON u.code=p.unidade_referencia_code AND u.ativo=1
+    WHERE p.cpf=?
+  `).bind(cpf).first();
+  if(!paciente)return null;
+
+  const unidadeCode=paciente.unidade_ativa_code||null;
+  let equipes=[];
+  if(unidadeCode){
+    const {results}=await env.DB_REGULACAO.prepare(`
+      SELECT e.id,e.nome
+      FROM regulacao_equipe_unidades eu
+      JOIN regulacao_equipes e ON e.id=eu.equipe_id AND e.ativo=1
+      WHERE eu.unidade_code=?
+      ORDER BY e.nome
+    `).bind(unidadeCode).all();
+    equipes=results||[];
+  }
+
+  return{
+    cpf:paciente.cpf,
+    unidadeReferencia:unidadeCode?{code:unidadeCode,nome:paciente.unidade_nome||unidadeCode}:null,
+    unidadeReferenciaCodeOriginal:paciente.unidade_referencia_code||null,
+    equipes,
+  };
+}
+
 export async function inserirNotificacao(env,{equipeId,guiaId,tipo,mensagem,createdBy}){await env.DB_REGULACAO.prepare('INSERT INTO notificacoes(equipe_id,guia_id,tipo,mensagem,created_by) VALUES(?,?,?,?,?)').bind(equipeId,guiaId??null,tipo,mensagem,createdBy??null).run()}
 export function inClause(codes){if(!codes.length)return{clause:'(NULL)',binds:[]};return{clause:`(${codes.map(()=>'?').join(',')})`,binds:codes}}
 export function isValidCPF(cpf){return typeof cpf==='string'&&/^\d{11}$/.test(cpf)}
