@@ -76,31 +76,15 @@
   .workflow-row { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; }
   .workflow-field { width:min(360px,100%); margin-bottom:0; }
   .workflow-action { display:flex; gap:10px; align-items:center; min-height:42px; padding-bottom:1px; }
+  .transfer-editor { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:end; }
+  .transfer-editor__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .transfer-editor__action { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-height:42px; padding-bottom:1px; }
   .post-regulation { display:none; margin-top:18px; padding:14px 16px; border:1px solid #cfe1f6; background:#f5f9ff; border-radius:10px; }
   .post-regulation.is-visible { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
   .post-regulation__text strong { display:block; color:var(--primary-dark); margin-bottom:3px; }
   .post-regulation__text span { color:var(--muted); font-size:13px; }
   .post-regulation__actions { display:flex; gap:8px; flex-wrap:wrap; }
 
-  .transfer-reason {
-    width:100%;
-    min-height:92px;
-    resize:vertical;
-    box-sizing:border-box;
-    padding:12px 14px;
-    border:1px solid var(--line, #dce3ed);
-    border-radius:10px;
-    background:var(--surface, #fff);
-    color:var(--text, #122052);
-    font-family:inherit;
-    font-size:13px;
-    line-height:1.45;
-    outline:none;
-  }
-  .transfer-reason:focus {
-    border-color:var(--primary, #203b90);
-    box-shadow:0 0 0 3px color-mix(in srgb, var(--primary, #203b90) 12%, transparent);
-  }
   .organization-note {
     margin-top:12px;
     padding:12px 14px;
@@ -117,6 +101,9 @@
     .reg-info-grid li.full, .reg-info-grid li.wide { grid-column:auto; }
     .guide-hero { flex-direction:column; }
     .guide-hero__meta { justify-content:flex-start; }
+    .transfer-editor { grid-template-columns:1fr; }
+    .transfer-editor__fields { grid-template-columns:1fr; }
+    .transfer-editor__action { justify-content:flex-start; }
   }
 </style>
 <link rel="stylesheet" href="/css/theme.css?v=2.27.0">
@@ -190,22 +177,22 @@
         <div class="panel-section__desc" id="equipeAtualDesc"></div>
         <button class="btn btn--outline btn--sm" type="button" id="btnMostrarTransferir">Definir / alterar responsabilidade</button>
         <div id="transferirForm" style="display:none; margin-top:14px">
-          <div class="reg-grid-2" style="gap:14px">
-            <div class="field">
-              <label for="tEquipe">Equipe responsável</label>
-              <select id="tEquipe"><option value="">Selecione</option></select>
+          <div class="transfer-editor">
+            <div class="transfer-editor__fields">
+              <div class="field">
+                <label for="tEquipe">Equipe responsável</label>
+                <select id="tEquipe"><option value="">Selecione</option></select>
+              </div>
+              <div class="field">
+                <label for="tUnidade">Unidade executante *</label>
+                <select id="tUnidade" required><option value="">Selecione a equipe primeiro</option></select>
+              </div>
             </div>
-            <div class="field">
-              <label for="tUnidade">Unidade executante *</label>
-              <select id="tUnidade" required><option value="">Selecione a equipe primeiro</option></select>
+            <div class="transfer-editor__action">
+              <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Transferir unidade</button>
+              <span class="form-msg" id="transferirMsg"></span>
             </div>
           </div>
-          <div class="field">
-            <label for="tMotivo">Motivo da transferência</label>
-            <textarea id="tMotivo" class="transfer-reason" rows="3" placeholder="Ex.: paciente mudou de endereço"></textarea>
-          </div>
-          <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Confirmar transferência</button>
-          <span class="form-msg" id="transferirMsg"></span>
         </div>
       </div>
 
@@ -441,7 +428,6 @@
       body: JSON.stringify({
         equipe_id: Number(equipeId),
         unidade_executante_code: unidade,
-        motivo_transferencia: document.getElementById('tMotivo').value.trim(),
       }),
     });
     if (!ok) { msg.textContent = data?.error || 'Erro ao transferir.'; msg.style.color = '#c0392b'; return; }
