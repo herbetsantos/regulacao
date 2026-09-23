@@ -201,14 +201,11 @@
       </form>
 
       <div class="workflow-block" id="transferirSection" style="display:none">
-        <div class="workflow-block__title">Equipe responsável</div>
+        <div class="workflow-block__title">Responsabilidade da guia</div>
         <div class="transfer-summary">
           <div class="panel-section__desc" id="equipeAtualDesc"></div>
-          <div class="transfer-actions">
-            <button class="btn btn--outline btn--sm" type="button" id="btnMostrarTransferir">Definir / alterar responsabilidade</button>
-          </div>
         </div>
-        <div id="transferirForm" style="display:none; margin-top:14px">
+        <div id="transferirForm" style="margin-top:14px">
           <div class="reg-grid-2" style="gap:14px">
             <div class="field">
               <label for="tEquipe">Equipe responsável</label>
@@ -220,11 +217,11 @@
             </div>
           </div>
           <div class="field">
-            <label for="tMotivo">Motivo da transferência</label>
-            <textarea id="tMotivo" class="transfer-reason" rows="3" placeholder="Ex.: paciente mudou de endereço"></textarea>
+            <label for="tMotivo">Observação da alteração</label>
+            <textarea id="tMotivo" class="transfer-reason" rows="3" placeholder="Opcional. Ex.: atualização da unidade de referência"></textarea>
           </div>
           <div class="transfer-actions">
-            <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Confirmar transferência</button>
+            <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Salvar responsabilidade</button>
             <span class="form-msg" id="transferirMsg"></span>
           </div>
         </div>
@@ -445,12 +442,7 @@
     carregar();
   });
 
-  // --- transferência ---
-  document.getElementById('btnMostrarTransferir').addEventListener('click', () => {
-    if (!podeRegular) return;
-    const form = document.getElementById('transferirForm');
-    form.style.display = form.style.display === 'none' ? '' : 'none';
-  });
+  // --- responsabilidade da guia ---
   document.getElementById('btnConfirmarTransferir').addEventListener('click', async () => {
     if (!podeRegular) return;
     const msg = document.getElementById('transferirMsg');
@@ -462,11 +454,11 @@
       body: JSON.stringify({
         equipe_id: Number(equipeId),
         unidade_executante_code: unidade,
-        motivo_transferencia: document.getElementById('tMotivo').value.trim(),
+        observacao_responsabilidade: document.getElementById('tMotivo').value.trim(),
       }),
     });
-    if (!ok) { msg.textContent = data?.error || 'Erro ao transferir.'; msg.style.color = '#c0392b'; return; }
-    msg.textContent = 'Guia transferida — a nova equipe foi notificada.'; msg.style.color = '#2e7d32';
+    if (!ok) { msg.textContent = data?.error || 'Erro ao salvar a responsabilidade.'; msg.style.color = '#c0392b'; return; }
+    msg.textContent = 'Responsabilidade atualizada.'; msg.style.color = '#2e7d32';
     await mostrarPosRegulacao();
     carregar();
   });
