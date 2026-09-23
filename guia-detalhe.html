@@ -251,8 +251,8 @@
 
 <dialog class="print-dialog" id="printDialog" aria-labelledby="printDialogTitle">
   <div class="print-dialog__head">
-    <h2 id="printDialogTitle">Imprimir guia de encaminhamento</h2>
-    <p>Escolha as informações que devem constar no documento timbrado. O acompanhamento impresso é exclusivamente administrativo.</p>
+    <h2 id="printDialogTitle">Espelho do Acompanhamento</h2>
+    <p>Escolha as informações que devem constar no espelho timbrado. O acompanhamento impresso é exclusivamente administrativo.</p>
   </div>
   <div class="print-dialog__body">
     <label class="print-option">
@@ -659,11 +659,14 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<title>Guia ${printHtml(codigo)} - eMulti Regulação</title>
+<title>Espelho do Acompanhamento - Guia ${printHtml(codigo)} - eMulti Regulação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   @page { size:A4; margin:12mm 12mm 16mm; }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:Arial,Helvetica,sans-serif; color:#17233f; font-size:10.5pt; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { margin:0; font-family:'Montserrat',Arial,Helvetica,sans-serif; color:#17233f; font-size:10.5pt; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   .letterhead { display:grid; grid-template-columns:78px 1fr auto; gap:14px; align-items:center; padding-bottom:12px; border-bottom:3px solid #173b7a; }
   .letterhead img { max-width:76px; max-height:58px; object-fit:contain; }
   .letterhead .org { font-size:9pt; color:#4b5b75; line-height:1.35; }
@@ -707,10 +710,10 @@
       <strong>eMulti | Regulação de Vagas</strong>
       Atenção Primária à Saúde
     </div>
-    <div class="guide"><span>Guia de encaminhamento</span><strong>${printHtml(codigo)}</strong></div>
+    <div class="guide"><span>Espelho do acompanhamento</span><strong>${printHtml(codigo)}</strong></div>
   </header>
   <div class="doc-title">
-    <h1>Guia de Encaminhamento</h1>
+    <h1>Espelho do Acompanhamento</h1>
     <p>Documento administrativo emitido pelo sistema eMulti | Regulação</p>
   </div>
   ${paciente}
@@ -736,6 +739,7 @@
       img.onload = resolve;
       img.onerror = resolve;
     })));
+    try { await janela.document.fonts?.ready; } catch {}
     janela.focus();
     janela.print();
   }
