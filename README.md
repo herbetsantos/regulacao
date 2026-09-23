@@ -81,6 +81,24 @@ O build executa duas etapas:
 
 A configuração `assets.run_worker_first = true` preserva a guarda de autenticação antes da entrega das páginas.
 
+## Build e publicação
+
+O build usa a estratégia oficial de migração de Pages Functions para Workers:
+
+```bash
+npm install
+npm run build
+wrangler deploy
+```
+
+`npm run build` copia apenas HTML, CSS, JavaScript, assets e regras de cabeçalho para `dist/client`, e compila `functions/` em `dist/worker/index.js`. As pastas `database/`, `docs/` e o código-fonte das Functions não são publicadas como assets.
+
+Para desenvolvimento local:
+
+```bash
+npm run preview
+```
+
 ## Banco e migrations
 
 Para instalação nova, use `database/schema.sql`.
