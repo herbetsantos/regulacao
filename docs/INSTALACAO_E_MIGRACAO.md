@@ -162,3 +162,32 @@ O deploy usa `wrangler deploy --env homologacao` e não modifica o Worker de pro
 ### Atenção
 
 Não execute `npm run db:init:homologacao` contra o ambiente padrão. O comando já contém `--env homologacao` para reduzir o risco de inicialização acidental do D1 de produção.
+
+
+## 9. Publicação 2.27.0 — Worker + Static Assets
+
+A 2.27.0 substitui a implantação em Pages por **Cloudflare Worker + Static Assets**, sem alteração no schema do D1.
+
+O `wrangler.toml` aponta o Worker compilado para:
+
+```text
+dist/worker/index.js
+```
+
+e os arquivos públicos para:
+
+```text
+dist/client
+```
+
+O middleware continua executando antes dos assets por meio de `assets.run_worker_first = true`, necessário porque o eMulti protege páginas com autenticação. Os bindings `DB` e `DB_REGULACAO` permanecem os mesmos.
+
+Para publicar:
+
+```bash
+npm install
+npm run build
+wrangler deploy
+```
+
+Não é necessário executar migration para atualizar da 2.26.4 para a 2.27.0; o schema esperado continua sendo `2.26.3`.
