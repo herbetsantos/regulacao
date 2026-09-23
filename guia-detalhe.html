@@ -76,6 +76,21 @@
   .workflow-row { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; }
   .workflow-field { width:min(360px,100%); margin-bottom:0; }
   .workflow-action { display:flex; gap:10px; align-items:center; min-height:42px; padding-bottom:1px; }
+  .transfer-summary {
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:10px;
+  }
+  .transfer-summary .panel-section__desc {
+    margin:0;
+  }
+  .transfer-actions {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
   .post-regulation { display:none; margin-top:18px; padding:14px 16px; border:1px solid #cfe1f6; background:#f5f9ff; border-radius:10px; }
   .post-regulation.is-visible { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
   .post-regulation__text strong { display:block; color:var(--primary-dark); margin-bottom:3px; }
@@ -187,8 +202,12 @@
 
       <div class="workflow-block" id="transferirSection" style="display:none">
         <div class="workflow-block__title">Equipe responsável</div>
-        <div class="panel-section__desc" id="equipeAtualDesc"></div>
-        <button class="btn btn--outline btn--sm" type="button" id="btnMostrarTransferir">Definir / alterar responsabilidade</button>
+        <div class="transfer-summary">
+          <div class="panel-section__desc" id="equipeAtualDesc"></div>
+          <div class="transfer-actions">
+            <button class="btn btn--outline btn--sm" type="button" id="btnMostrarTransferir">Definir / alterar responsabilidade</button>
+          </div>
+        </div>
         <div id="transferirForm" style="display:none; margin-top:14px">
           <div class="reg-grid-2" style="gap:14px">
             <div class="field">
@@ -204,8 +223,10 @@
             <label for="tMotivo">Motivo da transferência</label>
             <textarea id="tMotivo" class="transfer-reason" rows="3" placeholder="Ex.: paciente mudou de endereço"></textarea>
           </div>
-          <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Confirmar transferência</button>
-          <span class="form-msg" id="transferirMsg"></span>
+          <div class="transfer-actions">
+            <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Confirmar transferência</button>
+            <span class="form-msg" id="transferirMsg"></span>
+          </div>
         </div>
       </div>
 
