@@ -6,7 +6,7 @@
 import { json, logAudit } from '../_utils.js';
 import {
   requireRegulacaoAccess, requireRegulacaoCapability, getRegulacaoScope, inClause, onlyDigits,
-  findGuiasAtivasMesmaEspecialidade, situacaoLabel,
+  findGuiasAtivasMesmaEspecialidade, situacaoLabel, getAtribuicaoReferenciaPaciente,
 } from '../_shared.js';
 
 const SITUACOES_VALIDAS = ['aguardando_autorizacao', 'lista_espera', 'em_atendimento', 'concluido', 'negado'];
@@ -139,6 +139,7 @@ export async function onRequestPost({ request, env }) {
   const motivo = (body.motivo || '').trim();
   const cid10 = (body.cid10 || '').trim() || null;
   const confirmarMesmoAssim = !!body.confirmar_mesmo_assim;
+  const equipeResponsavelInformada = Number(body.equipe_responsavel_id || 0) || null;
 
   if (!cpf) return json({ error: 'CPF do paciente é obrigatório.' }, 400);
   if (!unidade_solicitante_code) return json({ error: 'Unidade solicitante é obrigatória.' }, 400);
@@ -146,8 +147,33 @@ export async function onRequestPost({ request, env }) {
   if (!especialidade_id) return json({ error: 'Especialidade é obrigatória.' }, 400);
   if (!motivo) return json({ error: 'Motivo do encaminhamento é obrigatório.' }, 400);
 
-  const paciente = await env.DB_REGULACAO.prepare('SELECT cpf FROM pacientes WHERE cpf = ?').bind(cpf).first();
-  if (!paciente) return json({ error: 'Paciente não encontrado. Cadastre o paciente antes de criar a guia.' }, 404);
+  const atribuicao = await getAtribuicaoReferenciaPaciente(env, cpf);
+  if (!atribuicao) return json({ error: 'Paciente não encontrado. Cadastre o paciente antes de criar a guia.' }, 404);
+
+  const unidadeExecutanteCode = atribuicao.unidadeReferencia?.code || null;
+  const equipesDestino = atribuicao.equipes || [];
+  let equipeResponsavelId = null;
+
+  if (equipesDestino.length === 1) {
+    equipeResponsavelId = Number(equipesDestino[0].id);
+  } else if (equipesDestino.length > 1) {
+    if (!equipeResponsavelInformada) {
+      return json({
+        error: 'A unidade de referência do paciente é atendida por mais de uma equipe. Selecione a equipe responsável.',
+        codigo: 'EQUIPE_REFERENCIA_AMBIGUA',
+        unidade_referencia: atribuicao.unidadeReferencia,
+        equipes: equipesDestino,
+      }, 409);
+    }
+    const escolhida = equipesDestino.find((e) => Number(e.id) === equipeResponsavelInformada);
+    if (!escolhida) {
+      return json({
+        error: 'A equipe escolhida não atende a unidade de referência deste paciente.',
+        codigo: 'EQUIPE_REFERENCIA_INVALIDA',
+      }, 400);
+    }
+    equipeResponsavelId = Number(escolhida.id);
+  }
 
   const scope = await getRegulacaoScope(env, user, access);
   if (!scope.isAdmin && !scope.emissoras.includes(unidade_solicitante_code)) {
@@ -174,9 +200,14 @@ export async function onRequestPost({ request, env }) {
   }
 
   const result = await env.DB_REGULACAO.prepare(
-    `INSERT INTO guias (cpf, unidade_solicitante_code, medico_solicitante, especialidade_id, motivo, cid10, created_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).bind(cpf, unidade_solicitante_code, medico_solicitante, especialidade_id, motivo, cid10, user.id).run();
+    `INSERT INTO guias (
+       cpf, unidade_solicitante_code, medico_solicitante, especialidade_id,
+       motivo, cid10, equipe_id, unidade_executante_code, created_by
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    cpf, unidade_solicitante_code, medico_solicitante, especialidade_id,
+    motivo, cid10, equipeResponsavelId, unidadeExecutanteCode, user.id
+  ).run();
 
   const guiaId = result.meta.last_row_id;
   // O ano do identificador vem do próprio created_at gravado no banco.
@@ -188,8 +219,26 @@ export async function onRequestPost({ request, env }) {
       WHERE id = ?
     `).bind(guiaId).run();
   } catch { /* base anterior ao reparo: o id continua válido */ }
-  await logAudit(env, user, 'create', 'guia', guiaId, { cpf, especialidade_id });
+  await logAudit(env, user, 'create', 'guia', guiaId, {
+    cpf,
+    especialidade_id,
+    atribuicao_automatica: {
+      unidade_executante_code: unidadeExecutanteCode,
+      equipe_id: equipeResponsavelId,
+      origem: 'unidade_referencia_paciente',
+    },
+  });
 
   const guia = await env.DB_REGULACAO.prepare('SELECT * FROM guias WHERE id = ?').bind(guiaId).first();
-  return json({ guia }, 201);
+  return json({
+    guia,
+    atribuicao: {
+      unidade_referencia: atribuicao.unidadeReferencia,
+      equipe: equipeResponsavelId
+        ? equipesDestino.find((e) => Number(e.id) === Number(equipeResponsavelId)) || null
+        : null,
+      automatica: equipesDestino.length === 1,
+      sem_equipe_configurada: !!unidadeExecutanteCode && equipesDestino.length === 0,
+    },
+  }, 201);
 }
