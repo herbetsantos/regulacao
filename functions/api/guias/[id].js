@@ -1,5 +1,5 @@
 // GET   /api/guias/:id  -> detalhe da guia
-// PATCH /api/guias/:id  -> decisão regulatória e triagem/transferência de equipe
+// PATCH /api/guias/:id  -> decisão regulatória e definição/alteração da responsabilidade
 //
 // 2.20.0:
 // - Regulador: Lista de espera ou Negado + equipe/unidade;
@@ -129,7 +129,7 @@ export async function onRequestPatch({ request, env, params }) {
   const alteraFluxo = body.equipe_id !== undefined || body.unidade_executante_code !== undefined;
   if (alteraFluxo && !access.regulador && !access.administrador) {
     return json({
-      error: 'Apenas Reguladores podem triar, transferir ou definir a unidade executante.',
+      error: 'Apenas Reguladores podem definir ou alterar a equipe responsável e a unidade executante.',
       codigo: 'SEM_PERMISSAO_REGULADOR'
     }, 403);
   }
@@ -177,7 +177,7 @@ export async function onRequestPatch({ request, env, params }) {
 
     if (novaEquipeId !== equipeAtualId) {
       if (novaEquipeId === null) {
-        return json({ error: 'Não é possível remover a equipe; transfira para outra equipe.' }, 400);
+        return json({ error: 'Não é possível remover a equipe responsável. Selecione outra equipe.' }, 400);
       }
 
       const equipeDestino = await getEquipeInfo(env, novaEquipeId);
@@ -187,7 +187,7 @@ export async function onRequestPatch({ request, env, params }) {
       if (ehTransferencia) {
         const podeTransferir = await isEquipeMember(env, user, equipeAtualId, access);
         if (!podeTransferir) {
-          return json({ error: 'Só a equipe atual da guia, ou Administrador, pode transferi-la.' }, 403);
+          return json({ error: 'Só a equipe atualmente responsável pela guia, ou Administrador, pode alterar essa responsabilidade.' }, 403);
         }
       } else {
         const podeAssumir = await isEquipeMember(env, user, novaEquipeId, access);
@@ -209,12 +209,12 @@ export async function onRequestPatch({ request, env, params }) {
 
       if (ehTransferencia) {
         const equipeOrigem = await getEquipeInfo(env, equipeAtualId);
-        const motivo = String(body.motivo_transferencia || '').trim();
+        const motivo = String(body.observacao_responsabilidade || body.motivo_transferencia || '').trim();
         notificacaoParaEquipeId = novaEquipeId;
         notificacaoMensagem =
-          `Guia ${guia.codigo_guia || '#' + id} (${guia.paciente_nome}) foi transferida ` +
+          `A responsabilidade da guia ${guia.codigo_guia || '#' + id} (${guia.paciente_nome}) foi alterada ` +
           `da equipe ${equipeOrigem?.nome || '#' + equipeAtualId} para a sua equipe.` +
-          (motivo ? ` Motivo: ${motivo}` : '');
+          (motivo ? ` Observação: ${motivo}` : '');
       }
     } else if (body.unidade_executante_code !== undefined) {
       const code = String(body.unidade_executante_code || '').trim();
