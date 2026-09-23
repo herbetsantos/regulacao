@@ -1,0 +1,16 @@
+{
+  "name": "emulti-regulacao",
+  "version": "2.27.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:assets": "node scripts/build-assets.mjs",
+    "build:functions": "wrangler pages functions build --outdir=./dist/worker/",
+    "build": "npm run build:assets && npm run build:functions",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.134.0"
+  }
+}
