@@ -75,10 +75,29 @@
   .workflow-block__title { color:var(--primary-dark); font-size:15px; font-weight:700; margin-bottom:10px; }
   .workflow-row { display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; }
   .workflow-field { width:min(360px,100%); margin-bottom:0; }
-  .workflow-action { display:flex; gap:10px; align-items:center; min-height:42px; padding-bottom:1px; }
+  .workflow-action { display:flex; gap:10px; align-items:center; min-height:42px; }
+  .workflow-action .btn,
+  .tag-actions .btn,
+  .transfer-editor__action .btn,
+  .guide-print-btn {
+    min-height:42px;
+    padding:10px 16px;
+    font-size:13px;
+    line-height:1.2;
+    white-space:nowrap;
+  }
+  .detail-card .panel-section__head--actions {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+  }
+  .guide-print-btn {
+    flex:0 0 auto;
+  }
   .transfer-editor { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:end; }
   .transfer-editor__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
-  .transfer-editor__action { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-height:42px; padding-bottom:1px; }
+  .transfer-editor__action { display:flex; align-items:center; justify-content:flex-end; gap:10px; min-height:42px; }
   .post-regulation { display:none; margin-top:18px; padding:14px 16px; border:1px solid #cfe1f6; background:#f5f9ff; border-radius:10px; }
   .post-regulation.is-visible { display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
   .post-regulation__text strong { display:block; color:var(--primary-dark); margin-bottom:3px; }
@@ -111,6 +130,22 @@
   .print-option strong { display:block; margin-bottom:3px; }
   .print-option span { display:block; color:var(--muted,#667085); font-size:12px; line-height:1.4; }
   .print-dialog__actions { display:flex; justify-content:flex-end; gap:9px; padding:14px 22px 20px; }
+  .tag-editor-row {
+    display:flex;
+    gap:8px;
+    align-items:flex-end;
+    flex-wrap:wrap;
+  }
+  .tag-editor-row .field {
+    margin-bottom:0;
+    min-width:220px;
+  }
+  .tag-actions {
+    display:flex;
+    gap:8px;
+    align-items:center;
+    min-height:42px;
+  }
   .organization-note {
     margin-top:12px;
     padding:12px 14px;
@@ -130,6 +165,9 @@
     .transfer-editor { grid-template-columns:1fr; }
     .transfer-editor__fields { grid-template-columns:1fr; }
     .transfer-editor__action { justify-content:flex-start; }
+    .detail-card .panel-section__head--actions { align-items:flex-start; flex-direction:column; }
+    .guide-print-btn { width:100%; }
+    .tag-actions { width:100%; }
   }
 </style>
 <link rel="stylesheet" href="/css/theme.css?v=2.27.0">
@@ -151,7 +189,6 @@
       <div class="guide-hero__patient" id="guideHeroPatient">—</div>
     </div>
     <div class="guide-hero__meta">
-      <button class="btn btn--outline btn--sm" type="button" id="btnImprimirGuia">Imprimir / PDF</button>
       <span class="guide-meta-pill" id="guideHeroSpecialty">—</span>
       <span id="guideHeroStatus"></span>
     </div>
@@ -173,8 +210,11 @@
     </section>
 
     <section class="panel-section is-active detail-card" aria-labelledby="andamentoTitle">
-      <div class="panel-section__head">
+      <div class="panel-section__head panel-section__head--actions">
         <div class="panel-section__title" id="andamentoTitle">3. Andamento da guia</div>
+        <button class="btn btn--outline guide-print-btn" type="button" id="btnImprimirGuia" title="Gerar Espelho do Acompanhamento para impressão ou PDF">
+          Espelho do Acompanhamento
+        </button>
       </div>
 
       <ul class="reg-info-list reg-info-grid" id="andamentoInfo"></ul>
@@ -193,7 +233,7 @@
             </select>
           </div>
           <div class="workflow-action">
-            <button class="btn btn--outline btn--sm" type="submit">Salvar situação</button>
+            <button class="btn btn--outline" type="submit">Salvar situação</button>
             <span class="form-msg" id="situacaoMsg"></span>
           </div>
         </div>
@@ -216,7 +256,7 @@
               </div>
             </div>
             <div class="transfer-editor__action">
-              <button class="btn btn--accent btn--sm" type="button" id="btnConfirmarTransferir">Transferir unidade</button>
+              <button class="btn btn--accent" type="button" id="btnConfirmarTransferir">Transferir unidade</button>
               <span class="form-msg" id="transferirMsg"></span>
             </div>
           </div>
@@ -227,10 +267,12 @@
         <div class="workflow-block__title">Classificação administrativa</div>
         <div class="panel-section__desc">Use etiquetas para organizar a fila e facilitar filtros administrativos. Não registre evolução, conduta ou procedimentos neste ambiente.</div>
         <div id="guideTags" style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 10px"></div>
-        <div id="tagEditor" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">
+        <div id="tagEditor" class="tag-editor-row">
           <div class="field"><label for="tagSelect">Adicionar etiqueta</label><select id="tagSelect"><option value="">Selecione</option></select></div>
-          <button class="btn btn--outline btn--sm" type="button" id="btnAddTag">Adicionar</button>
-          <a class="btn btn--outline btn--sm" id="manageTagsLink" href="/admin.html#etiquetas" style="display:none">Gerenciar etiquetas</a>
+          <div class="tag-actions">
+            <button class="btn btn--outline" type="button" id="btnAddTag">Adicionar</button>
+            <a class="btn btn--outline" id="manageTagsLink" href="/admin.html#etiquetas" style="display:none">Gerenciar etiquetas</a>
+          </div>
         </div>
         <div class="notice-box" style="margin-top:16px"><strong>Registro clínico:</strong> o eMulti/Regulação é um ambiente gerencial. Evolução, conduta, procedimentos e demais informações de prontuário devem ser registrados exclusivamente no PEC e-SUS.</div>
       </div>
@@ -355,7 +397,7 @@
     if(box)box.innerHTML=ativas.length?ativas.map(t=>`<span class="mini-badge">${escapeHtml(t.nome)}${(access.regulador||access.organizador||access.gestor||access.administrador)?` <button type="button" data-tag-remove="${t.id}" style="border:0;background:transparent;cursor:pointer">×</button>`:''}</span>`).join(''):'<span class="muted">Sem etiquetas.</span>';
     if(sel)sel.innerHTML='<option value="">Selecione</option>'+todas.filter(t=>!activeSet.has(Number(t.id))).map(t=>`<option value="${t.id}">${escapeHtml(t.nome)}</option>`).join('');
     box?.querySelectorAll('[data-tag-remove]').forEach(b=>b.onclick=async()=>{await apiFetch(`/api/guias/${guiaId}/etiquetas?etiqueta_id=${b.dataset.tagRemove}`,{method:'DELETE'});carregarEtiquetas();});
-    const editor=document.getElementById('tagEditor'); if(editor)editor.style.display=(access.regulador||access.organizador||access.gestor||access.administrador)?'flex':'none'; const manage=document.getElementById('manageTagsLink'); if(manage)manage.style.display=(access.gestor||access.administrador)?'inline-flex':'none';
+    const editor=document.getElementById('tagEditor'); if(editor)editor.style.display=(access.regulador||access.organizador||access.gestor||access.administrador)?'':'none'; const manage=document.getElementById('manageTagsLink'); if(manage)manage.style.display=(access.gestor||access.administrador)?'inline-flex':'none';
   }
   document.getElementById('btnAddTag')?.addEventListener('click',async()=>{const id=Number(document.getElementById('tagSelect')?.value);if(!id)return;const r=await apiFetch(`/api/guias/${guiaId}/etiquetas`,{method:'POST',body:JSON.stringify({etiqueta_id:id})});if(!r.ok)alert(r.data?.error||'Não foi possível adicionar a etiqueta.');else carregarEtiquetas();});
 
