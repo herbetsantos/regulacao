@@ -271,6 +271,7 @@ async function loadEscala(){
       <div>${escapeHtml(x.especialidade_nome)}</div>
       <div class="muted">${escapeHtml((eqBy(x.equipe_id)?.unidades||[]).find(u=>u.code===x.unidade_code)?.nome||x.unidade_code)}
       ${x.vigencia_inicio?' · '+formatDateBR(x.vigencia_inicio)+(x.vigencia_fim?' a '+formatDateBR(x.vigencia_fim):''):''}</div>
+      <div class="muted">${Number(x.intervalo_entre_atendimentos_min||0)>0?'Intervalo entre atendimentos: '+Number(x.intervalo_entre_atendimentos_min)+' min':'Sem intervalo adicional entre atendimentos'}${x.almoco_inicio&&x.almoco_fim?' · Almoço '+escapeHtml(x.almoco_inicio)+'–'+escapeHtml(x.almoco_fim):''}</div>
       ${editable?`<div class="agenda-actions"><button class="btn btn--outline btn--sm" onclick="delEscala(${x.id})">Remover</button></div>`:''}
     </div>`).join('')||'<div class="empty-state">Nenhum período cadastrado.</div>';
 }
@@ -347,6 +348,12 @@ async function loadGrupos(){
     eEsp.onchange=()=>{refreshScaleProfessionals();loadEscala()};
     eProf.onchange=loadEscala;
     btnEscala.onclick=async()=>{
+      const dias_semana=[...eDias.querySelectorAll('input[type=checkbox]:checked')].map(x=>Number(x.value));
+      if(!dias_semana.length){setMsg('escalaMsg','Selecione ao menos um dia da semana.');return}
+      if((eAlmocoInicio.value&&!eAlmocoFim.value)||(!eAlmocoInicio.value&&eAlmocoFim.value)){
+        setMsg('escalaMsg','Informe início e fim do almoço, ou deixe os dois campos vazios.');return
+      }
+      btnEscala.disabled=true;
       const r=await apiFetch('/api/agenda/escalas',{
         method:'POST',
         body:JSON.stringify({
@@ -354,14 +361,20 @@ async function loadGrupos(){
           equipe_id:+eEquipe.value,
           especialidade_id:+eEsp.value,
           unidade_code:eUnidade.value,
-          dia_semana:+eDia.value,
+          dias_semana,
           hora_inicio:eInicio.value,
           hora_fim:eFim.value,
+          intervalo_entre_atendimentos_min:+eIntervalo.value||0,
+          almoco_inicio:eAlmocoInicio.value||null,
+          almoco_fim:eAlmocoFim.value||null,
           vigencia_inicio:eVigIni.value||null,
           vigencia_fim:eVigFim.value||null
         })
       });
-      setMsg('escalaMsg',r.ok?'Período adicionado.':r.data?.error||'Erro.',r.ok);
+      btnEscala.disabled=false;
+      const qtd=Number(r.data?.criadas||dias_semana.length);
+      const sucesso=qtd+' período'+(qtd===1?'':'s')+' adicionado'+(qtd===1?'':'s')+' à escala.';
+      setMsg('escalaMsg',r.ok?sucesso:r.data?.error||'Erro.',r.ok);
       if(r.ok)loadEscala();
     };
   }
