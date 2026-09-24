@@ -75,26 +75,49 @@ export async function ensureWithinScale(
     return { error: json({ error: 'Horário inválido.' }, 400) };
   }
 
-  const { results } = await env.DB_REGULACAO.prepare(`
-    SELECT id,hora_inicio,hora_fim,vigencia_inicio,vigencia_fim,
-           COALESCE(intervalo_entre_atendimentos_min,0) AS intervalo_entre_atendimentos_min,
-           almoco_inicio,almoco_fim
-    FROM agenda_escalas
-    WHERE profissional_id=?
-      AND especialidade_id=?
-      AND equipe_id=?
-      AND unidade_code=?
-      AND dia_semana=?
-      AND ativo=1
-      AND (vigencia_inicio IS NULL OR vigencia_inicio<=?)
-      AND (vigencia_fim IS NULL OR vigencia_fim>=?)
-    ORDER BY hora_inicio
-  `).bind(
+  let escalasDoDia = [];
+  const bindsEscala = [
     String(profissionalId), Number(especialidadeId), Number(equipeId),
     String(unidadeCode), dow, String(data), String(data)
-  ).all();
-
-  const escalasDoDia = results || [];
+  ];
+  try {
+    const { results } = await env.DB_REGULACAO.prepare(`
+      SELECT id,hora_inicio,hora_fim,vigencia_inicio,vigencia_fim,
+             COALESCE(intervalo_entre_atendimentos_min,0) AS intervalo_entre_atendimentos_min,
+             almoco_inicio,almoco_fim
+      FROM agenda_escalas
+      WHERE profissional_id=?
+        AND especialidade_id=?
+        AND equipe_id=?
+        AND unidade_code=?
+        AND dia_semana=?
+        AND ativo=1
+        AND (vigencia_inicio IS NULL OR vigencia_inicio<=?)
+        AND (vigencia_fim IS NULL OR vigencia_fim>=?)
+      ORDER BY hora_inicio
+    `).bind(...bindsEscala).all();
+    escalasDoDia = results || [];
+  } catch {
+    const { results } = await env.DB_REGULACAO.prepare(`
+      SELECT id,hora_inicio,hora_fim,vigencia_inicio,vigencia_fim
+      FROM agenda_escalas
+      WHERE profissional_id=?
+        AND especialidade_id=?
+        AND equipe_id=?
+        AND unidade_code=?
+        AND dia_semana=?
+        AND ativo=1
+        AND (vigencia_inicio IS NULL OR vigencia_inicio<=?)
+        AND (vigencia_fim IS NULL OR vigencia_fim>=?)
+      ORDER BY hora_inicio
+    `).bind(...bindsEscala).all();
+    escalasDoDia = (results || []).map((s) => ({
+      ...s,
+      intervalo_entre_atendimentos_min: 0,
+      almoco_inicio: null,
+      almoco_fim: null,
+    }));
+  }
   const dentroDoPeriodo = escalasDoDia.filter((s) => {
     const a = timeToMinutes(s.hora_inicio);
     const b = timeToMinutes(s.hora_fim);
