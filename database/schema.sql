@@ -466,4 +466,4 @@ CREATE TABLE IF NOT EXISTS regulacao_equipe_unidades (
 CREATE INDEX IF NOT EXISTS idx_reg_equipe_unidades_unit ON regulacao_equipe_unidades(unidade_code,equipe_id);
 CREATE TABLE IF NOT EXISTS regulacao_migration_state (key TEXT PRIMARY KEY,value TEXT,updated_at TEXT NOT NULL DEFAULT(datetime('now')));
 
-INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.26.3',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.26.3',updated_at=datetime('now');
+INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.27.1',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.27.1',updated_at=datetime('now');
