@@ -109,7 +109,8 @@ export async function onRequestPost({ request, env }) {
   if (scale.error) return scale.error;
 
   const available = await ensureProfessionalAvailable(
-    env, profissionalId, dataAtendimento, horaInicio, duracaoMinutos
+    env, profissionalId, dataAtendimento, horaInicio, duracaoMinutos,
+    null, scale.intervalo_entre_atendimentos_min
   );
   if (available.error) return available.error;
 
