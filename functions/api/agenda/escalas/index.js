@@ -68,6 +68,9 @@ export async function onRequestPost({ request, env }) {
     : [Number(body.dia_semana)].filter((d) => d >= 1 && d <= 7);
   const horaInicio = String(body.hora_inicio || '');
   const horaFim = String(body.hora_fim || '');
+  const intervaloEntreAtendimentosMin = Math.max(0, Math.min(180, Number(body.intervalo_entre_atendimentos_min || 0)));
+  const almocoInicio = body.almoco_inicio ? String(body.almoco_inicio) : null;
+  const almocoFim = body.almoco_fim ? String(body.almoco_fim) : null;
 
   if (
     !profissionalId || !especialidadeId || !equipeId || !unidadeCode ||
@@ -75,6 +78,17 @@ export async function onRequestPost({ request, env }) {
     !validTime(horaInicio) || !validTime(horaFim) || horaInicio >= horaFim
   ) {
     return json({ error: 'Preencha profissional, especialidade, equipe, unidade, ao menos um dia e intervalo válido.' }, 400);
+  }
+
+  if ((almocoInicio && !almocoFim) || (!almocoInicio && almocoFim)) {
+    return json({ error: 'Informe início e fim do horário de almoço, ou deixe ambos vazios.' }, 400);
+  }
+  if (almocoInicio && (
+    !validTime(almocoInicio) || !validTime(almocoFim) ||
+    almocoInicio >= almocoFim ||
+    almocoInicio < horaInicio || almocoFim > horaFim
+  )) {
+    return json({ error: 'O horário de almoço deve estar integralmente dentro do período de trabalho.' }, 400);
   }
 
   const chk = await canOrganizeAssistentialProfessional(
@@ -97,12 +111,14 @@ export async function onRequestPost({ request, env }) {
       INSERT INTO agenda_escalas (
         profissional_user_id, profissional_id, especialidade_id, equipe_id,
         unidade_code, dia_semana, hora_inicio, hora_fim,
+        intervalo_entre_atendimentos_min, almoco_inicio, almoco_fim,
         vigencia_inicio, vigencia_fim, created_by
       )
-      VALUES (0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       profissionalId, especialidadeId, equipeId, unidadeCode, diaSemana,
-      horaInicio, horaFim, vigenciaInicio, vigenciaFim, user.id
+      horaInicio, horaFim, intervaloEntreAtendimentosMin, almocoInicio, almocoFim,
+      vigenciaInicio, vigenciaFim, user.id
     )
   );
 
@@ -112,6 +128,7 @@ export async function onRequestPost({ request, env }) {
   for (let i = 0; i < diasSemana.length; i++) {
     await logAudit(env, user, 'create', 'agenda_escala', ids[i] || null, {
       profissionalId, especialidadeId, equipeId, unidadeCode, diaSemana:diasSemana[i],
+      intervaloEntreAtendimentosMin, almocoInicio, almocoFim,
       cadastro_em_lote:diasSemana.length > 1
     });
   }
