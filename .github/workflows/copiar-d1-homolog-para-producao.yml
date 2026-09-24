@@ -1,0 +1,132 @@
+name: Copiar D1 homologacao para producao
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacao:
+        description: "Digite exatamente: COPIAR HOMOLOG PARA PRODUCAO"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-copy-homolog-to-production
+  cancel-in-progress: false
+
+jobs:
+  copiar:
+    name: Copiar homologacao para producao
+    if: ${{ github.event.inputs.confirmacao == 'COPIAR HOMOLOG PARA PRODUCAO' }}
+    runs-on: ubuntu-latest
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      SOURCE_DB: regulacao-vagas-db-homolog
+      TARGET_DB: regulacao-vagas-db
+
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validar credenciais
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Secret CLOUDFLARE_API_TOKEN nao configurado."; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Secret CLOUDFLARE_ACCOUNT_ID nao configurado."; exit 1; }
+
+      - name: Instalar Wrangler
+        run: npm install
+
+      - name: Conferir banco de homologacao
+        shell: bash
+        run: |
+          ./node_modules/.bin/wrangler d1 execute "$SOURCE_DB" --remote --json \
+            --command="SELECT COUNT(*) AS user_tables FROM sqlite_schema WHERE type='table' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'sqlite_%';" \
+            > source-check.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('source-check.json', 'utf8'));
+          const blocks = Array.isArray(data) ? data : [data];
+          const rows = blocks.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+          const row = rows.find(x => Object.prototype.hasOwnProperty.call(x, 'user_tables'));
+          const count = Number(row?.user_tables ?? -1);
+          if (!Number.isFinite(count) || count <= 0) {
+            console.error('::error::O banco de homologacao nao possui tabelas de aplicacao ou nao pode ser validado.');
+            process.exit(1);
+          }
+          console.log('Homologacao validada: ' + count + ' tabela(s) de aplicacao.');
+          NODE
+
+      - name: Garantir que producao esta vazia
+        shell: bash
+        run: |
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --json \
+            --command="SELECT COUNT(*) AS user_tables FROM sqlite_schema WHERE type='table' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'sqlite_%';" \
+            > target-check.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('target-check.json', 'utf8'));
+          const blocks = Array.isArray(data) ? data : [data];
+          const rows = blocks.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+          const row = rows.find(x => Object.prototype.hasOwnProperty.call(x, 'user_tables'));
+          const count = Number(row?.user_tables ?? -1);
+          if (!Number.isFinite(count)) {
+            console.error('::error::Nao foi possivel validar o banco de producao.');
+            process.exit(1);
+          }
+          if (count !== 0) {
+            console.error('::error::OPERACAO CANCELADA: o banco de producao possui ' + count + ' tabela(s) de aplicacao. Este workflow somente copia para um banco vazio.');
+            process.exit(1);
+          }
+          console.log('Producao vazia confirmada.');
+          NODE
+
+      - name: Exportar homologacao
+        shell: bash
+        run: |
+          ./node_modules/.bin/wrangler d1 export "$SOURCE_DB" --remote \
+            --output=./d1-homolog-export.sql --skip-confirmation
+          test -s ./d1-homolog-export.sql || { echo "::error::Exportacao vazia."; exit 1; }
+
+      - name: Importar em producao
+        shell: bash
+        run: |
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote \
+            --file=./d1-homolog-export.sql --yes
+
+      - name: Validar copia
+        shell: bash
+        run: |
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --json \
+            --command="SELECT COUNT(*) AS user_tables FROM sqlite_schema WHERE type='table' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'sqlite_%';" \
+            > target-after.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const src = JSON.parse(fs.readFileSync('source-check.json', 'utf8'));
+          const dst = JSON.parse(fs.readFileSync('target-after.json', 'utf8'));
+          const findCount = (data) => {
+            const blocks = Array.isArray(data) ? data : [data];
+            const rows = blocks.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+            return Number(rows.find(x => Object.prototype.hasOwnProperty.call(x, 'user_tables'))?.user_tables ?? -1);
+          };
+          const sourceCount = findCount(src);
+          const targetCount = findCount(dst);
+          if (sourceCount <= 0 || targetCount !== sourceCount) {
+            console.error('::error::Validacao falhou. Homologacao=' + sourceCount + ', producao=' + targetCount + '.');
+            process.exit(1);
+          }
+          console.log('Copia concluida: ' + targetCount + ' tabela(s) de aplicacao em producao.');
+          NODE
+
+      - name: Apagar arquivos temporarios
+        if: always()
+        shell: bash
+        run: rm -f d1-homolog-export.sql source-check.json target-check.json target-after.json
