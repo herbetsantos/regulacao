@@ -76,7 +76,9 @@ export async function ensureWithinScale(
   }
 
   const { results } = await env.DB_REGULACAO.prepare(`
-    SELECT hora_inicio,hora_fim,vigencia_inicio,vigencia_fim
+    SELECT id,hora_inicio,hora_fim,vigencia_inicio,vigencia_fim,
+           COALESCE(intervalo_entre_atendimentos_min,0) AS intervalo_entre_atendimentos_min,
+           almoco_inicio,almoco_fim
     FROM agenda_escalas
     WHERE profissional_id=?
       AND especialidade_id=?
@@ -92,25 +94,45 @@ export async function ensureWithinScale(
     String(unidadeCode), dow, String(data), String(data)
   ).all();
 
-  const fits = (results || []).some((s) => {
+  const escalasDoDia = results || [];
+  const dentroDoPeriodo = escalasDoDia.filter((s) => {
     const a = timeToMinutes(s.hora_inicio);
     const b = timeToMinutes(s.hora_fim);
     return start >= a && end <= b;
   });
 
-  if (!fits) {
+  if (!dentroDoPeriodo.length) {
     return { error: json({
       error: 'O horário escolhido não está contido na escala ativa do profissional para esta unidade e especialidade.'
     }, 409) };
   }
-  return { ok: true };
+
+  const escala = dentroDoPeriodo.find((s) => {
+    if (!s.almoco_inicio || !s.almoco_fim) return true;
+    const lunchStart = timeToMinutes(s.almoco_inicio);
+    const lunchEnd = timeToMinutes(s.almoco_fim);
+    return !(start < lunchEnd && end > lunchStart);
+  });
+
+  if (!escala) {
+    return { error: json({
+      error: 'O horário escolhido coincide com o intervalo de almoço configurado para o profissional.'
+    }, 409) };
+  }
+
+  return {
+    ok: true,
+    escala,
+    intervalo_entre_atendimentos_min: Number(escala.intervalo_entre_atendimentos_min || 0),
+  };
 }
 
 export async function ensureProfessionalAvailable(
-  env, profissionalId, data, horaInicio, duracaoMinutos, ignoreGrupoId = null
+  env, profissionalId, data, horaInicio, duracaoMinutos, ignoreGrupoId = null, intervaloMinutos = 0
 ) {
   const start = timeToMinutes(horaInicio);
   const end = start + Number(duracaoMinutos || 0);
+  const buffer = Math.max(0, Number(intervaloMinutos || 0));
 
   const [ind, grp] = await Promise.all([
     env.DB_REGULACAO.prepare(`
@@ -133,11 +155,15 @@ export async function ensureProfessionalAvailable(
   const overlap = (s, d) => {
     const a = timeToMinutes(s);
     const b = a + Number(d || 0);
-    return start < b && end > a;
+    return start < (b + buffer) && (end + buffer) > a;
   };
 
   if ((ind.results || []).some((x) => overlap(x.hora_inicio, x.duracao_minutos))) {
-    return { error: json({ error: 'O profissional já possui atendimento individual nesse intervalo.' }, 409) };
+    return { error: json({
+      error: buffer
+        ? `O profissional já possui atendimento próximo desse horário. A escala exige ${buffer} minuto(s) de intervalo entre atendimentos.`
+        : 'O profissional já possui atendimento individual nesse intervalo.'
+    }, 409) };
   }
 
   const groupConflict = (grp.results || []).some((x) =>
@@ -145,7 +171,11 @@ export async function ensureProfessionalAvailable(
     && overlap(x.hora_inicio, x.duracao_minutos)
   );
   if (groupConflict) {
-    return { error: json({ error: 'O profissional já participa de outro grupo nesse intervalo.' }, 409) };
+    return { error: json({
+      error: buffer
+        ? `O profissional já participa de outro grupo próximo desse horário. A escala exige ${buffer} minuto(s) de intervalo entre atendimentos.`
+        : 'O profissional já participa de outro grupo nesse intervalo.'
+    }, 409) };
   }
 
   return { ok: true };
