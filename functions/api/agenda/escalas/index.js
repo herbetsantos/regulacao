@@ -63,16 +63,18 @@ export async function onRequestPost({ request, env }) {
   const especialidadeId = Number(body.especialidade_id);
   const equipeId = Number(body.equipe_id);
   const unidadeCode = String(body.unidade_code || '').trim();
-  const diaSemana = Number(body.dia_semana);
+  const diasSemana = Array.isArray(body.dias_semana)
+    ? [...new Set(body.dias_semana.map(Number).filter((d) => d >= 1 && d <= 7))].sort((a,b) => a-b)
+    : [Number(body.dia_semana)].filter((d) => d >= 1 && d <= 7);
   const horaInicio = String(body.hora_inicio || '');
   const horaFim = String(body.hora_fim || '');
 
   if (
     !profissionalId || !especialidadeId || !equipeId || !unidadeCode ||
-    diaSemana < 1 || diaSemana > 7 ||
+    !diasSemana.length ||
     !validTime(horaInicio) || !validTime(horaFim) || horaInicio >= horaFim
   ) {
-    return json({ error: 'Preencha profissional, especialidade, equipe, unidade, dia e intervalo válido.' }, 400);
+    return json({ error: 'Preencha profissional, especialidade, equipe, unidade, ao menos um dia e intervalo válido.' }, 400);
   }
 
   const chk = await canOrganizeAssistentialProfessional(
@@ -90,21 +92,33 @@ export async function onRequestPost({ request, env }) {
     return json({ error: 'Vigência inválida.' }, 400);
   }
 
-  const result = await env.DB_REGULACAO.prepare(`
-    INSERT INTO agenda_escalas (
-      profissional_user_id, profissional_id, especialidade_id, equipe_id,
-      unidade_code, dia_semana, hora_inicio, hora_fim,
-      vigencia_inicio, vigencia_fim, created_by
+  const statements = diasSemana.map((diaSemana) =>
+    env.DB_REGULACAO.prepare(`
+      INSERT INTO agenda_escalas (
+        profissional_user_id, profissional_id, especialidade_id, equipe_id,
+        unidade_code, dia_semana, hora_inicio, hora_fim,
+        vigencia_inicio, vigencia_fim, created_by
+      )
+      VALUES (0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      profissionalId, especialidadeId, equipeId, unidadeCode, diaSemana,
+      horaInicio, horaFim, vigenciaInicio, vigenciaFim, user.id
     )
-    VALUES (0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    profissionalId, especialidadeId, equipeId, unidadeCode, diaSemana,
-    horaInicio, horaFim, vigenciaInicio, vigenciaFim, user.id
-  ).run();
+  );
 
-  await logAudit(env, user, 'create', 'agenda_escala', result.meta.last_row_id, {
-    profissionalId, especialidadeId, equipeId, unidadeCode, diaSemana
-  });
+  const results = await env.DB_REGULACAO.batch(statements);
+  const ids = results.map((result) => result?.meta?.last_row_id).filter(Boolean);
 
-  return json({ id: result.meta.last_row_id }, 201);
+  for (let i = 0; i < diasSemana.length; i++) {
+    await logAudit(env, user, 'create', 'agenda_escala', ids[i] || null, {
+      profissionalId, especialidadeId, equipeId, unidadeCode, diaSemana:diasSemana[i],
+      cadastro_em_lote:diasSemana.length > 1
+    });
+  }
+
+  return json({
+    ids,
+    dias_semana:diasSemana,
+    criadas:diasSemana.length,
+  }, 201);
 }
