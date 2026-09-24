@@ -12,7 +12,8 @@ ADD COLUMN almoco_inicio TEXT;
 ALTER TABLE agenda_escalas
 ADD COLUMN almoco_fim TEXT;
 
-UPDATE emulti_schema_version
-SET version = '2.27.1',
-    updated_at = datetime('now')
-WHERE id = 1;
+INSERT INTO emulti_schema_version(id,version,updated_at)
+VALUES(1,'2.27.1',datetime('now'))
+ON CONFLICT(id) DO UPDATE SET
+  version='2.27.1',
+  updated_at=datetime('now');
