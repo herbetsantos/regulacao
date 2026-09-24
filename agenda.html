@@ -16,6 +16,7 @@
 .agenda-tabs button.is-active{background:var(--primary);color:white;border-color:var(--primary)}
 .agenda-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .agenda-grid .wide{grid-column:span 2}
+.agenda-grid .full{grid-column:1/-1}
 .agenda-card{background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:16px;margin-bottom:12px}
 .muted{color:var(--muted);font-size:12px}
 .agenda-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
@@ -23,8 +24,12 @@
 .prof-check{display:flex;gap:8px;align-items:flex-start;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .prof-check input{margin-top:2px}
 .role-note{border:1px solid var(--line);background:color-mix(in srgb,var(--surface) 94%,var(--primary) 6%);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px}
-@media(max-width:900px){.agenda-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:640px){.agenda-grid{grid-template-columns:1fr}.agenda-grid .wide{grid-column:auto}.prof-checks{grid-template-columns:1fr}}
+.weekday-checks{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.weekday-check{display:flex;align-items:center;gap:7px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);cursor:pointer;font-size:13px;font-weight:600}
+.weekday-check input{margin:0}
+.scale-hint{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.4}
+@media(max-width:900px){.agenda-grid{grid-template-columns:1fr 1fr}.weekday-checks{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:640px){.agenda-grid{grid-template-columns:1fr}.agenda-grid .wide,.agenda-grid .full{grid-column:auto}.prof-checks{grid-template-columns:1fr}.weekday-checks{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body>
@@ -60,11 +65,26 @@
         <div class="field"><label>Profissional</label><select id="eProf"><option value="">Selecione a equipe</option></select></div>
         <div class="field"><label>Especialidade</label><select id="eEsp"><option value="">Selecione</option></select></div>
         <div class="field"><label>Unidade</label><select id="eUnidade"><option value="">Selecione</option></select></div>
-        <div class="field"><label>Dia da semana</label><select id="eDia"><option value="1">Segunda</option><option value="2">Terça</option><option value="3">Quarta</option><option value="4">Quinta</option><option value="5">Sexta</option><option value="6">Sábado</option><option value="7">Domingo</option></select></div>
-        <div class="field"><label>Início</label><input id="eInicio" type="time"></div>
-        <div class="field"><label>Fim</label><input id="eFim" type="time"></div>
+        <div class="field full">
+          <label>Dias da semana *</label>
+          <div class="weekday-checks" id="eDias">
+            <label class="weekday-check"><input type="checkbox" value="1" checked>Segunda</label>
+            <label class="weekday-check"><input type="checkbox" value="2" checked>Terça</label>
+            <label class="weekday-check"><input type="checkbox" value="3" checked>Quarta</label>
+            <label class="weekday-check"><input type="checkbox" value="4" checked>Quinta</label>
+            <label class="weekday-check"><input type="checkbox" value="5" checked>Sexta</label>
+            <label class="weekday-check"><input type="checkbox" value="6">Sábado</label>
+            <label class="weekday-check"><input type="checkbox" value="7">Domingo</label>
+          </div>
+          <div class="scale-hint">Segunda a sexta ficam selecionadas por padrão. Desmarque os dias em que o profissional não trabalha.</div>
+        </div>
+        <div class="field"><label>Início da jornada</label><input id="eInicio" type="time"></div>
+        <div class="field"><label>Fim da jornada</label><input id="eFim" type="time"></div>
+        <div class="field"><label>Intervalo entre consultas (min)</label><input id="eIntervalo" type="number" min="0" max="180" step="5" value="0"></div>
         <div class="field"><label>Vigência inicial</label><input id="eVigIni" type="date"></div>
         <div class="field"><label>Vigência final</label><input id="eVigFim" type="date"></div>
+        <div class="field"><label>Almoço — início</label><input id="eAlmocoInicio" type="time"></div>
+        <div class="field"><label>Almoço — fim</label><input id="eAlmocoFim" type="time"></div>
       </div>
       <div class="agenda-actions">
         <button class="btn btn--accent btn--sm" id="btnEscala">Adicionar à escala</button>
@@ -162,7 +182,7 @@ const dias=['','Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo']
 const byId=(id)=>document.getElementById(id);
 const escalaAdminPanel=byId('escalaAdminPanel');
 const eEquipe=byId('eEquipe'),eProf=byId('eProf'),eEsp=byId('eEsp'),eUnidade=byId('eUnidade');
-const eDia=byId('eDia'),eInicio=byId('eInicio'),eFim=byId('eFim'),eVigIni=byId('eVigIni'),eVigFim=byId('eVigFim');
+const eDias=byId('eDias'),eInicio=byId('eInicio'),eFim=byId('eFim'),eIntervalo=byId('eIntervalo'),eVigIni=byId('eVigIni'),eVigFim=byId('eVigFim'),eAlmocoInicio=byId('eAlmocoInicio'),eAlmocoFim=byId('eAlmocoFim');
 const btnEscala=byId('btnEscala'),escalaMsg=byId('escalaMsg'),escalaTitulo=byId('escalaTitulo'),escalaDesc=byId('escalaDesc'),escalaList=byId('escalaList');
 const individualOrganizePanel=byId('individualOrganizePanel');
 const iGuia=byId('iGuia'),iEquipe=byId('iEquipe'),iUnidade=byId('iUnidade'),iProf=byId('iProf'),iData=byId('iData'),iHora=byId('iHora'),iBlocos=byId('iBlocos'),iObs=byId('iObs');
