@@ -87,7 +87,7 @@ jobs:
           console.log('Integridade referencial antes da migration: OK.');
           NODE
 
-          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote --json \
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --json \
             --command="SELECT sql AS table_sql FROM sqlite_schema WHERE type='table' AND name='pacientes'; SELECT COUNT(*) AS demo_columns FROM pragma_table_info('pacientes') WHERE name IN ('nome_social','identidade_genero'); SELECT COUNT(*) AS temp_tables FROM sqlite_schema WHERE type='table' AND name='pacientes_2_27_2';" \
             > migration-status.json
 
@@ -136,7 +136,7 @@ jobs:
           ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --json \
             --command="PRAGMA foreign_key_check;" > fk-after.json
 
-          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote --json \
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --json \
             --command="SELECT COUNT(*) AS demo_columns FROM pragma_table_info('pacientes') WHERE name IN ('nome_social','identidade_genero'); SELECT version FROM emulti_schema_version WHERE id=1; SELECT sql AS table_sql FROM sqlite_schema WHERE type='table' AND name='pacientes';" \
             > migration-after.json
 
