@@ -2,6 +2,24 @@
 
 Este documento substitui os antigos arquivos separados de `RELEASE`, `AVALIACAO`, `NOVIDADES`, `PATCH` e relatórios intermediários.
 
+## 2.27.2 — Consolidação da homologação e otimizações
+
+- Preservadas as melhorias da 2.27.1 em Agenda: múltiplos dias, intervalo mínimo e horário de almoço.
+- Incorporados nome social, identidade de gênero e sexo Indeterminado ao cadastro de pacientes e à integração e-SUS PEC.
+- Adicionado o Espelho do Acompanhamento para impressão/PDF, limitado a informações administrativas.
+- Nova migration `030_paciente_diversidade.sql`; a `029_agenda_intervalos_almoco.sql` permanece reservada à Agenda.
+- Regras demográficas e persistência de pacientes centralizadas em um módulo compartilhado, reduzindo duplicação nas APIs.
+- Gerador de impressão separado de `guia-detalhe.html` em `js/guia-impressao.js`.
+- Cache-busting dos assets passa a ser gerado automaticamente a partir da versão do `package.json`.
+- Workflow manual e protegido criado para aplicar a migration 030 primeiro em homologação e depois em produção.
+
+## 2.27.1 — Agenda e produção em Worker
+
+- Escalas em vários dias da semana.
+- Intervalo entre atendimentos e horário de almoço.
+- Fluxo atualizado de responsabilidade/destino das guias.
+- Worker de produção e D1 próprio consolidados.
+
 ## 2.26.4 — Correção do handoff com Apoio APS Cajamar
 
 - Corrigido o retorno do login integrado quando o destino da eMulti contém fragmento de URL, como `admin#unidades`.
