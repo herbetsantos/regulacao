@@ -57,6 +57,9 @@ jobs:
           grep -q "versionAtLeast(version,MIN_ADMIN_SCHEMA)" functions/api/admin/estrutura.js
           grep -q "ready_current" admin.html
           ! grep -q "Estrutura do banco ainda não corresponde ao código 2.26.3" admin.html
+          grep -q "String(p.id)===String(b.dataset.profEdit)" admin.html
+          grep -q "<th>Unidades</th>" admin.html
+          grep -q "specialtiesFor" admin.html
 
       - name: Validate single operational D1
         shell: bash
