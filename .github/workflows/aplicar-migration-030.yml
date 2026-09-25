@@ -61,7 +61,7 @@ jobs:
           console.log('Integridade referencial antes da migration: OK.');
           NODE
 
-          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --json             --command="SELECT sql AS table_sql FROM sqlite_schema WHERE type='table' AND name='pacientes'; SELECT COUNT(*) AS demo_columns FROM pragma_table_info('pacientes') WHERE name IN ('nome_social','identidade_genero'); SELECT COUNT(*) AS temp_tables FROM sqlite_schema WHERE type='table' AND name='pacientes_2_27_2';"             > migration-status.json
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --json             --command="SELECT sql AS table_sql FROM sqlite_schema WHERE type='table' AND name='pacientes'; SELECT COUNT(*) AS demo_columns FROM pragma_table_info('pacientes') WHERE name IN ('nome_social','identidade_genero'); SELECT COUNT(*) AS temp_tables FROM sqlite_schema WHERE type='table' AND name='pacientes_2_27_2'; SELECT version FROM emulti_schema_version WHERE id=1;"             > migration-status.json
 
           node - <<'NODE'
           const fs = require('fs');
@@ -72,6 +72,7 @@ jobs:
           const columns = Number(value('demo_columns') ?? -1);
           const temp = Number(value('temp_tables') ?? -1);
           const sql = String(value('table_sql') || '');
+          const version = String(value('version') || '');
 
           if (temp > 0) {
             console.error('::error::Existe pacientes_2_27_2 de uma tentativa anterior. Intervencao manual necessaria.');
@@ -82,16 +83,31 @@ jobs:
               console.error('::error::As colunas demograficas existem, mas sexo ainda nao aceita I.');
               process.exit(1);
             }
-            console.log('Migration 030 ja aplicada; nenhuma alteracao necessaria.');
             fs.appendFileSync(process.env.GITHUB_ENV, 'MIGRATION_NEEDED=false\n');
-            process.exit(0);
+            if (version === '2.27.2') {
+              fs.appendFileSync(process.env.GITHUB_ENV, 'METADATA_REPAIR_NEEDED=false\n');
+              console.log('Migration 030 ja aplicada e metadado do schema em 2.27.2.');
+              process.exit(0);
+            }
+            if (version === '2.27.1') {
+              fs.appendFileSync(process.env.GITHUB_ENV, 'METADATA_REPAIR_NEEDED=true\n');
+              console.log('Estrutura 2.27.2 confirmada, mas metadado ainda esta em 2.27.1. Sera corrigido sem reconstruir a tabela.');
+              process.exit(0);
+            }
+            console.error('::error::Estrutura 2.27.2 presente, mas versao registrada inesperada: ' + version);
+            process.exit(1);
           }
           if (columns !== 0) {
             console.error('::error::Schema demografico parcial detectado. Migration automatica cancelada.');
             process.exit(1);
           }
+          if (version !== '2.27.1') {
+            console.error('::error::Schema anterior inesperado para aplicar a migration 030: ' + version);
+            process.exit(1);
+          }
           fs.appendFileSync(process.env.GITHUB_ENV, 'MIGRATION_NEEDED=true\n');
-          console.log('Banco apto para receber a migration 030.');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'METADATA_REPAIR_NEEDED=false\n');
+          console.log('Banco 2.27.1 apto para receber a migration 030.');
           NODE
 
       - name: Aplicar migration 030
@@ -100,6 +116,13 @@ jobs:
         run: |
           test -s ./database/030_paciente_diversidade.sql || { echo "::error::Migration 030 nao encontrada."; exit 1; }
           ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote             --file=./database/030_paciente_diversidade.sql --yes
+
+      - name: Sincronizar metadado do schema
+        if: env.METADATA_REPAIR_NEEDED == 'true'
+        shell: bash
+        run: |
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --yes \
+            --command="INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.27.2',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.27.2',updated_at=datetime('now');"
 
       - name: Validar migration
         shell: bash
