@@ -65,29 +65,76 @@ jobs:
           console.log('Homologacao validada: ' + count + ' tabela(s) de aplicacao.');
           NODE
 
-      - name: Garantir que producao esta vazia
+      - name: Validar chaves estrangeiras da homologacao
+        shell: bash
+        run: |
+          ./node_modules/.bin/wrangler d1 execute "$SOURCE_BINDING" --env homologacao --remote --json \
+            --command="PRAGMA foreign_key_check;" > source-fk.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('source-fk.json', 'utf8'));
+          const blocks = Array.isArray(data) ? data : [data];
+          const rows = blocks.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+          if (rows.length) {
+            console.error('::error::A homologacao possui ' + rows.length + ' violacao(oes) de chave estrangeira. A copia foi interrompida.');
+            for (const r of rows.slice(0, 20)) {
+              console.error('Tabela=' + (r.table ?? '?') + ', rowid=' + (r.rowid ?? '?') + ', pai=' + (r.parent ?? '?') + ', fk=' + (r.fkid ?? '?'));
+            }
+            process.exit(1);
+          }
+          console.log('Integridade referencial da homologacao: OK.');
+          NODE
+
+      - name: Preparar banco de producao
         shell: bash
         run: |
           ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote --json \
-            --command="SELECT COUNT(*) AS user_tables FROM sqlite_schema WHERE type='table' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'sqlite_%';" \
-            > target-check.json
+            --command="SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'sqlite_%' ORDER BY name;" \
+            > target-tables.json
+
           node - <<'NODE'
           const fs = require('fs');
-          const data = JSON.parse(fs.readFileSync('target-check.json', 'utf8'));
+          const data = JSON.parse(fs.readFileSync('target-tables.json', 'utf8'));
           const blocks = Array.isArray(data) ? data : [data];
           const rows = blocks.flatMap(x => Array.isArray(x?.results) ? x.results : []);
-          const row = rows.find(x => Object.prototype.hasOwnProperty.call(x, 'user_tables'));
-          const count = Number(row?.user_tables ?? -1);
-          if (!Number.isFinite(count)) {
-            console.error('::error::Nao foi possivel validar o banco de producao.');
-            process.exit(1);
+          const names = rows.map(x => String(x.name || '')).filter(Boolean);
+          const q = (name) => '"' + name.replaceAll('"', '""') + '"';
+          if (!names.length) {
+            fs.writeFileSync('target-counts.sql', '');
+            fs.writeFileSync('target-drop.sql', '');
+            console.log('Producao vazia confirmada.');
+          } else {
+            const countSql = 'SELECT COALESCE(SUM(row_count),0) AS total_rows FROM (' +
+              names.map(n => 'SELECT COUNT(*) AS row_count FROM ' + q(n)).join(' UNION ALL ') +
+              ');';
+            fs.writeFileSync('target-counts.sql', countSql);
+            const dropSql = 'PRAGMA defer_foreign_keys = ON;\n' +
+              names.map(n => 'DROP TABLE IF EXISTS ' + q(n) + ';').join('\n') + '\n';
+            fs.writeFileSync('target-drop.sql', dropSql);
+            console.log('Producao contem ' + names.length + ' tabela(s); verificando se sao apenas schema vazio de tentativa anterior.');
           }
-          if (count !== 0) {
-            console.error('::error::OPERACAO CANCELADA: o banco de producao possui ' + count + ' tabela(s) de aplicacao. Este workflow somente copia para um banco vazio.');
-            process.exit(1);
-          }
-          console.log('Producao vazia confirmada.');
           NODE
+
+          if [ -s target-counts.sql ]; then
+            QUERY="$(cat target-counts.sql)"
+            ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote --json \
+              --command="$QUERY" > target-counts.json
+
+            TOTAL_ROWS="$(node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('target-counts.json','utf8'));const b=Array.isArray(d)?d:[d];const r=b.flatMap(x=>Array.isArray(x?.results)?x.results:[]);process.stdout.write(String(Number(r.find(x=>Object.prototype.hasOwnProperty.call(x,'total_rows'))?.total_rows??-1)))")"
+
+            if [ "$TOTAL_ROWS" -lt 0 ]; then
+              echo "::error::Nao foi possivel verificar se o banco de producao possui dados."
+              exit 1
+            fi
+            if [ "$TOTAL_ROWS" -gt 0 ]; then
+              echo "::error::OPERACAO CANCELADA: o banco de producao ja possui $TOTAL_ROWS linha(s) de dados. Nada sera sobrescrito."
+              exit 1
+            fi
+
+            echo "O banco de producao possui apenas schema vazio. Limpando a tentativa parcial anterior..."
+            ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote \
+              --file=./target-drop.sql --yes
+          fi
 
       - name: Exportar schema da homologacao
         shell: bash
@@ -109,6 +156,17 @@ jobs:
             --output=./d1-homolog-data.sql --no-schema --skip-confirmation
           test -s ./d1-homolog-data.sql || { echo "::error::Exportacao dos dados ficou vazia."; exit 1; }
 
+          node - <<'NODE'
+          const fs = require('fs');
+          const file = 'd1-homolog-data.sql';
+          let sql = fs.readFileSync(file, 'utf8');
+          sql = sql
+            .replace(/^\s*PRAGMA\s+foreign_keys\s*=.*?;\s*$/gmi, '')
+            .replace(/^\s*PRAGMA\s+defer_foreign_keys\s*=.*?;\s*$/gmi, '');
+          fs.writeFileSync(file, 'PRAGMA defer_foreign_keys = ON;\n' + sql);
+          console.log('Importacao de dados preparada com chaves estrangeiras diferidas.');
+          NODE
+
       - name: Importar dados em producao
         shell: bash
         run: |
@@ -118,6 +176,20 @@ jobs:
       - name: Validar copia
         shell: bash
         run: |
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote --json \
+            --command="PRAGMA foreign_key_check;" > target-fk.json
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('target-fk.json', 'utf8'));
+          const blocks = Array.isArray(data) ? data : [data];
+          const rows = blocks.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+          if (rows.length) {
+            console.error('::error::A copia terminou com violacoes de chave estrangeira.');
+            process.exit(1);
+          }
+          console.log('Integridade referencial da producao: OK.');
+          NODE
+
           ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote --json \
             --command="SELECT COUNT(*) AS user_tables FROM sqlite_schema WHERE type='table' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'sqlite_%';" \
             > target-after.json
@@ -142,4 +214,4 @@ jobs:
       - name: Apagar arquivos temporarios
         if: always()
         shell: bash
-        run: rm -f d1-homolog-schema.sql d1-homolog-data.sql source-check.json target-check.json target-after.json
+        run: rm -f d1-homolog-schema.sql d1-homolog-data.sql source-check.json source-fk.json target-tables.json target-counts.sql target-counts.json target-drop.sql target-fk.json target-after.json
