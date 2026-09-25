@@ -54,6 +54,9 @@ jobs:
           grep -q "sexo IN ('F','M','I')" database/schema.sql
           grep -q 'intervalo_entre_atendimentos_min' functions/api/agenda/escalas/index.js
           grep -q 'almoco_inicio' functions/api/agenda/escalas/index.js
+          grep -q "versionAtLeast(version,MIN_ADMIN_SCHEMA)" functions/api/admin/estrutura.js
+          grep -q "ready_current" admin.html
+          ! grep -q "Estrutura do banco ainda não corresponde ao código 2.26.3" admin.html
 
       - name: Validate single operational D1
         shell: bash
