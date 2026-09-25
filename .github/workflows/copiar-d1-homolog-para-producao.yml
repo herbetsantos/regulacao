@@ -138,18 +138,18 @@ jobs:
               --file=./target-drop.sql --yes
           fi
 
-      - name: Exportar schema da homologacao
+      - name: Aplicar schema consolidado em producao
         shell: bash
         run: |
-          ./node_modules/.bin/wrangler d1 export "$SOURCE_BINDING" --env homologacao --remote \
-            --output=./d1-homolog-schema.sql --no-data --skip-confirmation
-          test -s ./d1-homolog-schema.sql || { echo "::error::Exportacao do schema ficou vazia."; exit 1; }
+          test -s ./database/schema.sql || { echo "::error::database/schema.sql nao encontrado."; exit 1; }
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote \
+            --file=./database/schema.sql --yes
 
-      - name: Importar schema em producao
+      - name: Limpar dados iniciais do schema
         shell: bash
         run: |
           ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote \
-            --file=./d1-homolog-schema.sql --yes
+            --command="PRAGMA defer_foreign_keys = ON; DELETE FROM regulacao_etiquetas; DELETE FROM especialidades; DELETE FROM emulti_schema_version;"
 
       - name: Exportar dados da homologacao
         shell: bash
@@ -216,4 +216,4 @@ jobs:
       - name: Apagar arquivos temporarios
         if: always()
         shell: bash
-        run: rm -f d1-homolog-schema.sql d1-homolog-data.sql source-check.json source-fk.json target-tables.json target-table-names.txt target-one-count.json target-drop.sql target-fk.json target-after.json
+        run: rm -f d1-homolog-data.sql source-check.json source-fk.json target-tables.json target-table-names.txt target-one-count.json target-drop.sql target-fk.json target-after.json
