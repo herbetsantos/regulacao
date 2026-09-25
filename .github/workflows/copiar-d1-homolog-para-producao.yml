@@ -72,7 +72,7 @@ jobs:
           curl -fsS \
             -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
             -H "Content-Type: application/json" \
-            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/d1/database?per_page=100" \
             > d1-list.json
 
           node - <<'NODE'
@@ -169,7 +169,7 @@ jobs:
       - name: Exportar homologacao
         shell: bash
         run: |
-          ./node_modules/.bin/wrangler d1 export "$SOURCE_DB" --env homologacao --remote \
+          ./node_modules/.bin/wrangler d1 export "$SOURCE_BINDING" --env homologacao --remote \
             --output=./d1-homolog-export.sql --skip-confirmation
           test -s ./d1-homolog-export.sql || { echo "::error::Exportacao vazia."; exit 1; }
 
@@ -182,7 +182,7 @@ jobs:
       - name: Validar copia
         shell: bash
         run: |
-          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote --json \
+          ./node_modules/.bin/wrangler d1 execute DB_REGULACAO --config wrangler.copy-production.toml --remote --json \
             --command="SELECT COUNT(*) AS user_tables FROM sqlite_schema WHERE type='table' AND name NOT LIKE '_cf_%' AND name NOT LIKE 'sqlite_%';" \
             > target-after.json
           node - <<'NODE'
