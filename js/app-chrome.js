@@ -1,8 +1,8 @@
 // Estrutura visual do módulo eMulti / Regulação de Vagas.
-// O acesso pode ser interno ou integrado ao Apoio APS Cajamar.
+// O acesso pode ser interno ou integrado ao Apoio APS.
 // A autorização e os dados operacionais permanecem no banco próprio da Regulação.
 
-const PORTAL_URL = 'https://apoioapscajamar.pages.dev';
+const PORTAL_URL = 'https://atencaoprimaria.apoiosaude.workers.dev';
 const APP_VERSION = '2.27.1';
 window.EMULTI_VERSION = APP_VERSION;
 
