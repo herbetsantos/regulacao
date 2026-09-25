@@ -30,8 +30,6 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      TARGET_BINDING: DB_REGULACAO
-      TARGET_ENV: ${{ github.event.inputs.ambiente == 'homologacao' && 'homologacao' || '' }}
 
     steps:
       - name: Validar confirmacao
@@ -42,13 +40,17 @@ jobs:
         run: |
           if [ "$AMBIENTE" = "homologacao" ]; then
             EXPECTED="APLICAR 030 HOMOLOGACAO"
+            TARGET_DB="regulacao-vagas-db-homolog"
           else
             EXPECTED="APLICAR 030 PRODUCAO"
+            TARGET_DB="regulacao-vagas-db"
           fi
           if [ "$CONFIRMACAO" != "$EXPECTED" ]; then
             echo "::error::Confirmacao invalida. Digite exatamente: $EXPECTED"
             exit 1
           fi
+          echo "TARGET_DB=$TARGET_DB" >> "$GITHUB_ENV"
+          echo "Banco selecionado: $TARGET_DB"
 
       - name: Baixar repositorio
         uses: actions/checkout@v4
@@ -70,9 +72,7 @@ jobs:
       - name: Validar banco antes da migration
         shell: bash
         run: |
-          ENV_ARG="--env=$TARGET_ENV"
-
-          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote --json \
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --json \
             --command="PRAGMA foreign_key_check;" > fk-before.json
 
           node - <<'NODE'
@@ -127,16 +127,13 @@ jobs:
         shell: bash
         run: |
           test -s ./database/030_paciente_diversidade.sql || { echo "::error::Migration 030 nao encontrada."; exit 1; }
-          ENV_ARG="--env=$TARGET_ENV"
-          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote \
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote \
             --file=./database/030_paciente_diversidade.sql --yes
 
       - name: Validar migration
         shell: bash
         run: |
-          ENV_ARG="--env=$TARGET_ENV"
-
-          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote --json \
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_DB" --remote --json \
             --command="PRAGMA foreign_key_check;" > fk-after.json
 
           ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote --json \
