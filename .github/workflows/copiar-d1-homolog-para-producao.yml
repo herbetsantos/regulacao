@@ -89,18 +89,31 @@ jobs:
           console.log('Producao vazia confirmada.');
           NODE
 
-      - name: Exportar homologacao
+      - name: Exportar schema da homologacao
         shell: bash
         run: |
           ./node_modules/.bin/wrangler d1 export "$SOURCE_BINDING" --env homologacao --remote \
-            --output=./d1-homolog-export.sql --skip-confirmation
-          test -s ./d1-homolog-export.sql || { echo "::error::Exportacao vazia."; exit 1; }
+            --output=./d1-homolog-schema.sql --no-data --skip-confirmation
+          test -s ./d1-homolog-schema.sql || { echo "::error::Exportacao do schema ficou vazia."; exit 1; }
 
-      - name: Importar em producao
+      - name: Importar schema em producao
         shell: bash
         run: |
           ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote \
-            --file=./d1-homolog-export.sql --yes
+            --file=./d1-homolog-schema.sql --yes
+
+      - name: Exportar dados da homologacao
+        shell: bash
+        run: |
+          ./node_modules/.bin/wrangler d1 export "$SOURCE_BINDING" --env homologacao --remote \
+            --output=./d1-homolog-data.sql --no-schema --skip-confirmation
+          test -s ./d1-homolog-data.sql || { echo "::error::Exportacao dos dados ficou vazia."; exit 1; }
+
+      - name: Importar dados em producao
+        shell: bash
+        run: |
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote \
+            --file=./d1-homolog-data.sql --yes
 
       - name: Validar copia
         shell: bash
@@ -129,4 +142,4 @@ jobs:
       - name: Apagar arquivos temporarios
         if: always()
         shell: bash
-        run: rm -f d1-homolog-export.sql source-check.json target-check.json target-after.json
+        run: rm -f d1-homolog-schema.sql d1-homolog-data.sql source-check.json target-check.json target-after.json
