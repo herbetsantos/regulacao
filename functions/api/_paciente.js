@@ -10,6 +10,7 @@ const IDENTIDADES_GENERO = new Set([
 ]);
 
 const PACIENTE_WRITE_COLUMNS = [
+  'cpf',
   'cns',
   'nome',
   'nome_social',
