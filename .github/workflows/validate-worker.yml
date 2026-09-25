@@ -1,0 +1,66 @@
+name: Validate eMulti Worker
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+      - homologacao
+      - chore/2.27.2-single-db-cleanup
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Worker and static assets
+        run: npm run build
+
+      - name: Validate build output
+        shell: bash
+        run: |
+          test -f dist/worker/index.js
+          test -f dist/client/index.html
+          test -f dist/client/login.html
+          test -f dist/client/guia-detalhe.html
+          test -d dist/client/assets
+          test -d dist/client/css
+          test -d dist/client/js
+          test ! -e dist/client/database
+          test ! -e dist/client/docs
+          test ! -e dist/client/functions
+
+      - name: Validate consolidated 2.27.2 features
+        shell: bash
+        run: |
+          grep -q 'v=2.27.2' dist/client/login.html
+          grep -q 'btnImprimirGuia' dist/client/guia-detalhe.html
+          grep -q 'js/guia-impressao.js?v=2.27.2' dist/client/guia-detalhe.html
+          grep -q 'nome_social' functions/api/_paciente.js
+          grep -q "sexo IN ('F','M','I')" database/schema.sql
+          grep -q 'intervalo_entre_atendimentos_min' functions/api/agenda/escalas/index.js
+          grep -q 'almoco_inicio' functions/api/agenda/escalas/index.js
+
+      - name: Validate single operational D1
+        shell: bash
+        run: |
+          test "$(grep -c 'database_name = "regulacao-vagas-db"' wrangler.toml)" -eq 2
+          if grep -R --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist             'regulacao-vagas-db-homolog' .; then
+            echo "::error::Ainda existe referência ao banco secundário de homologação."
+            exit 1
+          fi
