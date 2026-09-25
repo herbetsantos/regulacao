@@ -22,7 +22,7 @@ export async function onRequestGet({ request, env, params }) {
 
   const pacienteInfo = await env.DB_REGULACAO.prepare("PRAGMA table_info('pacientes')").all();
   const pacienteCols = new Set((pacienteInfo.results || []).map((c) => c.name));
-  const opcionais = ['cns', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'municipio', 'uf'];
+  const opcionais = ['cns', 'nome_social', 'identidade_genero', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'municipio', 'uf'];
   const opcionaisSql = opcionais.map((c) =>
     pacienteCols.has(c) ? `p.${c} AS paciente_${c}` : `NULL AS paciente_${c}`
   ).join(', ');
