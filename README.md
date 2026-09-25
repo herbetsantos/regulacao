@@ -38,6 +38,8 @@ DB            → portal-saude-db      # login integrado/handoff + importação 
 DB_REGULACAO  → regulacao-vagas-db   # operação da Regulação + acesso interno
 ```
 
+A homologação é somente de **código/Worker** e utiliza o mesmo `regulacao-vagas-db`. Não existe banco D1 secundário nem fluxo de cópia de dados entre homologação e produção.
+
 ## Acesso e governança
 
 As duas formas de login entram no mesmo modelo de autorização da Regulação. As responsabilidades podem ser combinadas:

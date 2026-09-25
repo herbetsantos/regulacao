@@ -21,15 +21,14 @@ binding = "DB"
 database_name = "portal-saude-db"
 database_id = "4467670b-0e48-490a-8d56-fb4ad4cf6bce"
 
-# Banco próprio da eMulti/Regulação.
-# Producao: regulacao-vagas-db. Homologacao permanece isolada no env abaixo.
+# Banco próprio da eMulti/Regulação. É a única base operacional do módulo.
 [[d1_databases]]
 binding = "DB_REGULACAO"
 database_name = "regulacao-vagas-db"
 database_id = "d13defa7-1e22-43e3-b55f-468261dcaf74"
 
-# Ambiente isolado de homologacao.
-# Bindings D1 nao sao herdados entre ambientes, por isso sao declarados aqui.
+# Homologação é apenas de código/Worker. Ela compartilha o mesmo D1 operacional
+# de produção; não existe banco secundário de homologação.
 [env.homologacao]
 name = "regulacao-homologacao"
 
@@ -40,5 +39,5 @@ database_id = "4467670b-0e48-490a-8d56-fb4ad4cf6bce"
 
 [[env.homologacao.d1_databases]]
 binding = "DB_REGULACAO"
-database_name = "regulacao-vagas-db-homolog"
-database_id = "75c5bcdf-81be-46b9-ae86-85d3a3f65a14"
+database_name = "regulacao-vagas-db"
+database_id = "d13defa7-1e22-43e3-b55f-468261dcaf74"
