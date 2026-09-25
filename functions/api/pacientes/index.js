@@ -4,14 +4,18 @@
 import { json, logAudit } from '../_utils.js';
 import { requireRegulacaoAccess, requireRegulacaoCapability, isValidCPF, onlyDigits } from '../_shared.js';
 import { getUnidadeAtivaComTipo, friendlyRegulacaoError } from '../_db.js';
-import { normalizeAddressPayload, validateAddress, composeEndereco, getPacienteEnderecoColumnStatus } from '../_address.js';
+import { normalizeAddressPayload, validateAddress, composeEndereco } from '../_address.js';
+import {
+  normalizeDemografia,
+  validateDemografia,
+  getPacienteColumns,
+  requerMigrationDemografia,
+  insertPaciente,
+} from '../_paciente.js';
 
 function configError(err) {
   const friendly = friendlyRegulacaoError(err);
-  return json({
-    ...friendly,
-    detalhe: String(err?.message || ''),
-  }, 503);
+  return json({ ...friendly, detalhe: String(err?.message || '') }, 503);
 }
 
 export async function onRequestGet({ request, env }) {
@@ -27,12 +31,20 @@ export async function onRequestGet({ request, env }) {
       const paciente = await env.DB_REGULACAO.prepare('SELECT * FROM pacientes WHERE cpf = ?').bind(cpf).first();
       return json({ pacientes: paciente ? [paciente] : [] });
     }
+
     if (q) {
-      const { results } = await env.DB_REGULACAO.prepare(
-        'SELECT * FROM pacientes WHERE nome LIKE ? ORDER BY nome ASC LIMIT 25'
-      ).bind(`%${q}%`).all();
+      const columns = await getPacienteColumns(env);
+      const termo = `%${q}%`;
+      const statement = columns.has('nome_social')
+        ? "SELECT * FROM pacientes WHERE nome LIKE ? OR nome_social LIKE ? ORDER BY COALESCE(NULLIF(nome_social,''),nome) ASC LIMIT 25"
+        : 'SELECT * FROM pacientes WHERE nome LIKE ? ORDER BY nome ASC LIMIT 25';
+      const query = env.DB_REGULACAO.prepare(statement);
+      const { results } = columns.has('nome_social')
+        ? await query.bind(termo, termo).all()
+        : await query.bind(termo).all();
       return json({ pacientes: results || [] });
     }
+
     return json({ pacientes: [] });
   } catch (err) {
     return configError(err);
@@ -51,10 +63,10 @@ export async function onRequestPost({ request, env }) {
 
   const cpf = onlyDigits(body.cpf);
   const cns = onlyDigits(body.cns) || null;
-  const nome = (body.nome || '').trim();
-  const data_nascimento = (body.data_nascimento || '').trim();
-  const sexo = body.sexo;
-  const unidade_referencia_code = (body.unidade_referencia_code || '').trim();
+  const nome = String(body.nome || '').trim();
+  const data_nascimento = String(body.data_nascimento || '').trim();
+  const unidade_referencia_code = String(body.unidade_referencia_code || '').trim();
+  const demografia = normalizeDemografia(body);
   const address = normalizeAddressPayload(body);
   const endereco = composeEndereco(address);
   const tel1 = onlyDigits(body.tel1) || null;
@@ -65,57 +77,56 @@ export async function onRequestPost({ request, env }) {
   if (cns && !/^\d{15}$/.test(cns)) return json({ error: 'CNS inválido (deve ter 15 dígitos).' }, 400);
   if (!nome) return json({ error: 'Nome é obrigatório.' }, 400);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data_nascimento)) return json({ error: 'Data de nascimento inválida.' }, 400);
-  if (!['F', 'M'].includes(sexo)) return json({ error: 'Sexo deve ser F ou M.' }, 400);
+  const demografiaError = validateDemografia(demografia);
+  if (demografiaError) return json({ error: demografiaError }, 400);
   if (!unidade_referencia_code) return json({ error: 'Unidade de referência é obrigatória.' }, 400);
   const addressError = validateAddress(address);
   if (addressError) return json({ error: addressError }, 400);
 
   try {
-    const { unidade } = await getUnidadeAtivaComTipo(env, unidade_referencia_code);
-    if (!unidade) return json({ error: 'Unidade de referência não encontrada.' }, 400);
-    if (unidade.tipo !== 'aps') return json({ error: 'A unidade de referência deve ser uma unidade de Atenção Primária.' }, 400);
-
     if (!env.DB_REGULACAO) {
       return json({
-        error: 'O banco da Regulação não está vinculado ao projeto. Configure o binding DB_REGULACAO no Cloudflare Pages.',
+        error: 'O banco da Regulação não está vinculado ao projeto.',
         codigo: 'DB_REGULACAO_AUSENTE',
       }, 503);
     }
 
+    const { unidade } = await getUnidadeAtivaComTipo(env, unidade_referencia_code);
+    if (!unidade) return json({ error: 'Unidade de referência não encontrada.' }, 400);
+    if (unidade.tipo !== 'aps') return json({ error: 'A unidade de referência deve ser uma unidade de Atenção Primária.' }, 400);
+
     const existente = await env.DB_REGULACAO.prepare('SELECT cpf FROM pacientes WHERE cpf = ?').bind(cpf).first();
     if (existente) return json({ error: 'Já existe um paciente cadastrado com esse CPF.' }, 409);
 
-    const enderecoColumns = await getPacienteEnderecoColumnStatus(env);
-    const info = await env.DB_REGULACAO.prepare("PRAGMA table_info('pacientes')").all();
-    const hasCns = (info.results || []).some((c) => c.name === 'cns');
-    if (enderecoColumns.ok && hasCns) {
-      await env.DB_REGULACAO.prepare(
-        `INSERT INTO pacientes (
-          cpf, cns, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco,
-          cep, logradouro, numero, complemento, bairro, municipio, uf
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
-        cpf, cns, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco,
-        address.cep, address.logradouro, address.numero, address.complemento, address.bairro, address.municipio, address.uf
-      ).run();
-    } else if (enderecoColumns.ok) {
-      await env.DB_REGULACAO.prepare(
-        `INSERT INTO pacientes (
-          cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco,
-          cep, logradouro, numero, complemento, bairro, municipio, uf
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
-        cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco,
-        address.cep, address.logradouro, address.numero, address.complemento, address.bairro, address.municipio, address.uf
-      ).run();
-    } else {
-      // Compatibilidade com banco ainda não migrado: o endereço completo
-      // continua salvo na coluna legada e o cadastro não é bloqueado.
-      await env.DB_REGULACAO.prepare(
-        `INSERT INTO pacientes (cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco).run();
+    const columns = await getPacienteColumns(env);
+    if (requerMigrationDemografia(columns, demografia)) {
+      return json({
+        error: 'Os campos demográficos novos ainda não estão disponíveis neste banco. Aplique a migration 030.',
+        codigo: 'REGULACAO_MIGRATION_030_PENDENTE',
+      }, 503);
     }
+
+    await insertPaciente(env, {
+      cpf,
+      cns,
+      nome,
+      nome_social: demografia.nome_social,
+      data_nascimento,
+      sexo: demografia.sexo,
+      identidade_genero: demografia.identidade_genero,
+      tel1,
+      tel2,
+      tel3,
+      unidade_referencia_code,
+      endereco,
+      cep: address.cep,
+      logradouro: address.logradouro,
+      numero: address.numero,
+      complemento: address.complemento,
+      bairro: address.bairro,
+      municipio: address.municipio,
+      uf: address.uf,
+    }, columns);
 
     await logAudit(env, user, 'create', 'paciente', cpf, { nome });
     const paciente = await env.DB_REGULACAO.prepare('SELECT * FROM pacientes WHERE cpf = ?').bind(cpf).first();
