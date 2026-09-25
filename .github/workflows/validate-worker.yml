@@ -59,6 +59,9 @@ jobs:
           ! grep -q "Estrutura do banco ainda não corresponde ao código 2.26.3" admin.html
           grep -q "String(p.id)===String(b.dataset.profEdit)" admin.html
           grep -q "<th>Unidades</th>" admin.html
+          grep -q "<th>Cargo</th>" admin.html
+          grep -q "professional-table" admin.html
+          grep -q "admin-page" admin.html
           grep -q "specialtiesFor" admin.html
 
       - name: Validate single operational D1
