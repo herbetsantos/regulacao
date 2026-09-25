@@ -6,11 +6,11 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="/js/theme.js?v=2.26.4"></script>
+<script src="/js/theme.js?v=2.27.2"></script>
 <title>Pacientes — eMulti</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=2.26.4">
+<link rel="stylesheet" href="/css/style.css?v=2.27.2">
 <style>
   .reg-search-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:24px; }
   .reg-search-row .field { margin-bottom:0; min-width:220px; }
@@ -26,7 +26,7 @@
   .field--span-2 { grid-column:span 2; }
   @media (max-width:760px) { .field--span-2 { grid-column:auto; } }
 </style>
-<link rel="stylesheet" href="/css/theme.css?v=2.26.4">
+<link rel="stylesheet" href="/css/theme.css?v=2.27.2">
 </head>
 <body>
 <div id="app-topbar"></div>
@@ -58,8 +58,10 @@
         <div class="field"><label for="pCpf">CPF *</label><input type="text" id="pCpf" required maxlength="14"></div>
         <div class="field"><label for="pCns">CNS</label><input type="text" id="pCns" maxlength="15" inputmode="numeric"></div>
         <div class="field"><label for="pNome">Nome completo *</label><input type="text" id="pNome" required></div>
+        <div class="field"><label for="pNomeSocial">Nome social</label><input type="text" id="pNomeSocial"></div>
         <div class="field"><label for="pNasc">Data de nascimento *</label><input type="date" id="pNasc" required></div>
-        <div class="field"><label for="pSexo">Sexo *</label><select id="pSexo" required><option value="">Selecione</option><option value="F">Feminino</option><option value="M">Masculino</option></select></div>
+        <div class="field"><label for="pSexo">Sexo *</label><select id="pSexo" required><option value="">Selecione</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="I">Indeterminado</option></select></div>
+        <div class="field"><label for="pIdentidadeGenero">Identidade de gênero</label><select id="pIdentidadeGenero"><option value="">Não informado</option><option value="mulher_cisgenero">Mulher cisgênero</option><option value="mulher_transgenero">Mulher transgênero</option><option value="homem_cisgenero">Homem cisgênero</option><option value="homem_transgenero">Homem transgênero</option><option value="nao_binario">Não-binário</option><option value="transgenero">Transgênero</option><option value="travesti">Travesti</option><option value="outro">Outro</option></select></div>
         <div class="field"><label for="pUnidade">Unidade de referência (APS) *</label><select id="pUnidade" required><option value="">Selecione</option></select></div>
         <div class="field"><label for="pTel1">Telefone 1</label><input type="text" id="pTel1" maxlength="15"></div>
         <div class="field"><label for="pTel2">Telefone 2</label><input type="text" id="pTel2" maxlength="15"></div>
@@ -89,8 +91,8 @@
   </div>
 </main>
 
-<script src="/js/app-chrome.js?v=2.26.4"></script>
-<script src="/js/regulacao.js?v=2.26.4"></script>
+<script src="/js/app-chrome.js?v=2.27.2"></script>
+<script src="/js/regulacao.js?v=2.27.2"></script>
 <script>
 (async () => {
   const user = await initPortalChrome();
@@ -211,14 +213,16 @@
     document.getElementById('formMsg').textContent = '';
 
     if (paciente) {
-      title.textContent = `Editar paciente — ${paciente.nome}`;
+      title.textContent = `Editar paciente — ${paciente.nome_social || paciente.nome}`;
       currentCpf = paciente.cpf;
       document.getElementById('pCpf').value = maskCPF(paciente.cpf);
       document.getElementById('pCns').value = paciente.cns || '';
       document.getElementById('pCpf').disabled = true;
       document.getElementById('pNome').value = paciente.nome;
+      document.getElementById('pNomeSocial').value = paciente.nome_social || '';
       document.getElementById('pNasc').value = paciente.data_nascimento;
       document.getElementById('pSexo').value = paciente.sexo;
+      document.getElementById('pIdentidadeGenero').value = paciente.identidade_genero || '';
       apsSel.value = paciente.unidade_referencia_code;
       document.getElementById('pTel1').value = maskPhone(paciente.tel1 || '');
       document.getElementById('pTel2').value = maskPhone(paciente.tel2 || '');
@@ -272,7 +276,7 @@
       return;
     }
 
-    area.innerHTML = `<div class="table-wrap"><table><thead><tr><th>CPF</th><th>Nome</th><th>Nascimento</th><th>Unidade de referência</th><th></th></tr></thead><tbody>${pacientes.map((p) => `<tr><td>${maskCPF(p.cpf)}</td><td>${escapeHtml(p.nome)}</td><td>${formatDateBR(p.data_nascimento)}</td><td>${escapeHtml(unidadeNome[p.unidade_referencia_code] || p.unidade_referencia_code)}</td><td>${podeCadastrar ? `<button class="btn btn--outline btn--sm" data-cpf="${p.cpf}">Editar</button>` : '<span style="color:var(--muted);font-size:12px">Somente consulta</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+    area.innerHTML = `<div class="table-wrap"><table><thead><tr><th>CPF</th><th>Nome</th><th>Nascimento</th><th>Unidade de referência</th><th></th></tr></thead><tbody>${pacientes.map((p) => { const nomeExibicao = p.nome_social ? `<strong>${escapeHtml(p.nome_social)}</strong><br><span style="color:var(--muted);font-size:11px">Nome civil: ${escapeHtml(p.nome)}</span>` : escapeHtml(p.nome); return `<tr><td>${maskCPF(p.cpf)}</td><td>${nomeExibicao}</td><td>${formatDateBR(p.data_nascimento)}</td><td>${escapeHtml(unidadeNome[p.unidade_referencia_code] || p.unidade_referencia_code)}</td><td>${podeCadastrar ? `<button class="btn btn--outline btn--sm" data-cpf="${p.cpf}">Editar</button>` : '<span style="color:var(--muted);font-size:12px">Somente consulta</span>'}</td></tr>`; }).join('')}</tbody></table></div>`;
     area.querySelectorAll('button[data-cpf]').forEach((btn) => btn.addEventListener('click', () => showForm(pacientes.find((p) => p.cpf === btn.dataset.cpf))));
   }
 
@@ -289,8 +293,10 @@
       cpf:document.getElementById('pCpf').value,
       cns:document.getElementById('pCns').value,
       nome:document.getElementById('pNome').value.trim(),
+      nome_social:document.getElementById('pNomeSocial').value.trim(),
       data_nascimento:document.getElementById('pNasc').value,
       sexo:document.getElementById('pSexo').value,
+      identidade_genero:document.getElementById('pIdentidadeGenero').value,
       unidade_referencia_code:apsSel.value,
       tel1:document.getElementById('pTel1').value,
       tel2:document.getElementById('pTel2').value,
