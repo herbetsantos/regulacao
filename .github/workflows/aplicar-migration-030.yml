@@ -1,0 +1,183 @@
+name: Aplicar migration 030
+
+on:
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: "Banco de destino"
+        required: true
+        type: choice
+        options:
+          - homologacao
+          - producao
+      confirmacao:
+        description: "Digite APLICAR 030 HOMOLOGACAO ou APLICAR 030 PRODUCAO"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: d1-migration-030-${{ github.event.inputs.ambiente }}
+  cancel-in-progress: false
+
+jobs:
+  migrar:
+    name: Migration 030 - ${{ github.event.inputs.ambiente }}
+    runs-on: ubuntu-latest
+
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TARGET_BINDING: DB_REGULACAO
+      TARGET_ENV: ${{ github.event.inputs.ambiente == 'homologacao' && 'homologacao' || '' }}
+
+    steps:
+      - name: Validar confirmacao
+        shell: bash
+        env:
+          AMBIENTE: ${{ github.event.inputs.ambiente }}
+          CONFIRMACAO: ${{ github.event.inputs.confirmacao }}
+        run: |
+          if [ "$AMBIENTE" = "homologacao" ]; then
+            EXPECTED="APLICAR 030 HOMOLOGACAO"
+          else
+            EXPECTED="APLICAR 030 PRODUCAO"
+          fi
+          if [ "$CONFIRMACAO" != "$EXPECTED" ]; then
+            echo "::error::Confirmacao invalida. Digite exatamente: $EXPECTED"
+            exit 1
+          fi
+
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validar credenciais
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Secret CLOUDFLARE_API_TOKEN nao configurado."; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Secret CLOUDFLARE_ACCOUNT_ID nao configurado."; exit 1; }
+
+      - name: Instalar Wrangler
+        run: npm install
+
+      - name: Validar banco antes da migration
+        shell: bash
+        run: |
+          ENV_ARG="--env=$TARGET_ENV"
+
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote --json \
+            --command="PRAGMA foreign_key_check;" > fk-before.json
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('fk-before.json','utf8'));
+          const blocks = Array.isArray(data) ? data : [data];
+          const rows = blocks.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+          if (rows.length) {
+            console.error('::error::O banco possui ' + rows.length + ' violacao(oes) de chave estrangeira antes da migration.');
+            process.exit(1);
+          }
+          console.log('Integridade referencial antes da migration: OK.');
+          NODE
+
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote --json \
+            --command="SELECT sql AS table_sql FROM sqlite_schema WHERE type='table' AND name='pacientes'; SELECT COUNT(*) AS demo_columns FROM pragma_table_info('pacientes') WHERE name IN ('nome_social','identidade_genero'); SELECT COUNT(*) AS temp_tables FROM sqlite_schema WHERE type='table' AND name='pacientes_2_27_2';" \
+            > migration-status.json
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('migration-status.json','utf8'));
+          const blocks = Array.isArray(data) ? data : [data];
+          const rows = blocks.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+          const value = (key) => rows.find(r => Object.prototype.hasOwnProperty.call(r,key))?.[key];
+          const columns = Number(value('demo_columns') ?? -1);
+          const temp = Number(value('temp_tables') ?? -1);
+          const sql = String(value('table_sql') || '');
+
+          if (temp > 0) {
+            console.error('::error::Existe uma tabela temporaria pacientes_2_27_2 de tentativa anterior. Intervencao manual necessaria.');
+            process.exit(1);
+          }
+          if (columns === 2) {
+            if (!/CHECK\s*\(\s*sexo\s+IN\s*\([^)]*['"]I['"]/i.test(sql)) {
+              console.error('::error::As colunas demograficas existem, mas a regra de sexo ainda nao aceita I. Estado inconsistente.');
+              process.exit(1);
+            }
+            console.log('Migration 030 ja aplicada; nenhuma alteracao necessaria.');
+            fs.appendFileSync(process.env.GITHUB_ENV, 'MIGRATION_NEEDED=false\n');
+            process.exit(0);
+          }
+          if (columns !== 0) {
+            console.error('::error::Schema demografico parcial detectado. Migration automatica cancelada.');
+            process.exit(1);
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV, 'MIGRATION_NEEDED=true\n');
+          console.log('Banco apto para receber a migration 030.');
+          NODE
+
+      - name: Aplicar migration 030
+        if: env.MIGRATION_NEEDED == 'true'
+        shell: bash
+        run: |
+          test -s ./database/030_paciente_diversidade.sql || { echo "::error::Migration 030 nao encontrada."; exit 1; }
+          ENV_ARG="--env=$TARGET_ENV"
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote \
+            --file=./database/030_paciente_diversidade.sql --yes
+
+      - name: Validar migration
+        shell: bash
+        run: |
+          ENV_ARG="--env=$TARGET_ENV"
+
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote --json \
+            --command="PRAGMA foreign_key_check;" > fk-after.json
+
+          ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" "$ENV_ARG" --remote --json \
+            --command="SELECT COUNT(*) AS demo_columns FROM pragma_table_info('pacientes') WHERE name IN ('nome_social','identidade_genero'); SELECT version FROM emulti_schema_version WHERE id=1; SELECT sql AS table_sql FROM sqlite_schema WHERE type='table' AND name='pacientes';" \
+            > migration-after.json
+
+          node - <<'NODE'
+          const fs = require('fs');
+          const parseRows = (file) => {
+            const data = JSON.parse(fs.readFileSync(file,'utf8'));
+            const blocks = Array.isArray(data) ? data : [data];
+            return blocks.flatMap(x => Array.isArray(x?.results) ? x.results : []);
+          };
+          const fk = parseRows('fk-after.json');
+          if (fk.length) {
+            console.error('::error::A migration terminou com violacoes de chave estrangeira.');
+            process.exit(1);
+          }
+
+          const rows = parseRows('migration-after.json');
+          const value = (key) => rows.find(r => Object.prototype.hasOwnProperty.call(r,key))?.[key];
+          const columns = Number(value('demo_columns') ?? -1);
+          const version = String(value('version') || '');
+          const sql = String(value('table_sql') || '');
+
+          if (columns !== 2) {
+            console.error('::error::As colunas nome_social e identidade_genero nao foram confirmadas.');
+            process.exit(1);
+          }
+          if (!/CHECK\s*\(\s*sexo\s+IN\s*\([^)]*['"]I['"]/i.test(sql)) {
+            console.error('::error::A tabela pacientes nao foi confirmada com sexo Indeterminado.');
+            process.exit(1);
+          }
+          if (version !== '2.27.2') {
+            console.error('::error::Versao do schema inesperada: ' + version);
+            process.exit(1);
+          }
+          console.log('Migration 030 validada com sucesso. Integridade referencial: OK. Schema: 2.27.2.');
+          NODE
+
+      - name: Limpar arquivos temporarios
+        if: always()
+        shell: bash
+        run: rm -f fk-before.json migration-status.json fk-after.json migration-after.json
