@@ -4,7 +4,14 @@
 import { json, logAudit } from '../_utils.js';
 import { requireRegulacaoAccess, requireRegulacaoCapability, onlyDigits } from '../_shared.js';
 import { getUnidadeAtivaComTipo, friendlyRegulacaoError } from '../_db.js';
-import { normalizeAddressPayload, validateAddress, composeEndereco, getPacienteEnderecoColumnStatus } from '../_address.js';
+import { normalizeAddressPayload, validateAddress, composeEndereco } from '../_address.js';
+import {
+  normalizeDemografia,
+  validateDemografia,
+  getPacienteColumns,
+  requerMigrationDemografia,
+  updatePaciente,
+} from '../_paciente.js';
 
 function configError(err) {
   const friendly = friendlyRegulacaoError(err);
@@ -48,10 +55,10 @@ export async function onRequestPut({ request, env, params }) {
     try { body = await request.json(); } catch { return json({ error: 'JSON inválido.' }, 400); }
 
     const cns = onlyDigits(body.cns) || null;
-    const nome = (body.nome || '').trim();
-    const data_nascimento = (body.data_nascimento || '').trim();
-    const sexo = body.sexo;
-    const unidade_referencia_code = (body.unidade_referencia_code || '').trim();
+    const nome = String(body.nome || '').trim();
+    const data_nascimento = String(body.data_nascimento || '').trim();
+    const unidade_referencia_code = String(body.unidade_referencia_code || '').trim();
+    const demografia = normalizeDemografia(body);
     const address = normalizeAddressPayload(body);
     const endereco = composeEndereco(address);
     const tel1 = onlyDigits(body.tel1) || null;
@@ -61,7 +68,8 @@ export async function onRequestPut({ request, env, params }) {
     if (cns && !/^\d{15}$/.test(cns)) return json({ error: 'CNS inválido (deve ter 15 dígitos).' }, 400);
     if (!nome) return json({ error: 'Nome é obrigatório.' }, 400);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data_nascimento)) return json({ error: 'Data de nascimento inválida.' }, 400);
-    if (!['F', 'M'].includes(sexo)) return json({ error: 'Sexo deve ser F ou M.' }, 400);
+    const demografiaError = validateDemografia(demografia);
+    if (demografiaError) return json({ error: demografiaError }, 400);
     if (!unidade_referencia_code) return json({ error: 'Unidade de referência é obrigatória.' }, 400);
     const addressError = validateAddress(address);
     if (addressError) return json({ error: addressError }, 400);
@@ -72,33 +80,34 @@ export async function onRequestPut({ request, env, params }) {
       return json({ error: 'A unidade de referência deve ser uma unidade de Atenção Primária.' }, 400);
     }
 
-    const enderecoColumns = await getPacienteEnderecoColumnStatus(env);
-    const info = await env.DB_REGULACAO.prepare("PRAGMA table_info('pacientes')").all();
-    const hasCns = (info.results || []).some((c) => c.name === 'cns');
-    if (enderecoColumns.ok && hasCns) {
-      await env.DB_REGULACAO.prepare(
-        `UPDATE pacientes SET cns=?, nome=?, data_nascimento=?, sexo=?, tel1=?, tel2=?, tel3=?,
-         unidade_referencia_code=?, endereco=?, cep=?, logradouro=?, numero=?, complemento=?, bairro=?, municipio=?, uf=?,
-         updated_at=datetime('now') WHERE cpf=?`
-      ).bind(
-        cns, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco,
-        address.cep, address.logradouro, address.numero, address.complemento, address.bairro, address.municipio, address.uf, cpf
-      ).run();
-    } else if (enderecoColumns.ok) {
-      await env.DB_REGULACAO.prepare(
-        `UPDATE pacientes SET nome=?, data_nascimento=?, sexo=?, tel1=?, tel2=?, tel3=?,
-         unidade_referencia_code=?, endereco=?, cep=?, logradouro=?, numero=?, complemento=?, bairro=?, municipio=?, uf=?,
-         updated_at=datetime('now') WHERE cpf=?`
-      ).bind(
-        nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco,
-        address.cep, address.logradouro, address.numero, address.complemento, address.bairro, address.municipio, address.uf, cpf
-      ).run();
-    } else {
-      await env.DB_REGULACAO.prepare(
-        `UPDATE pacientes SET nome=?, data_nascimento=?, sexo=?, tel1=?, tel2=?, tel3=?,
-         unidade_referencia_code=?, endereco=?, updated_at=datetime('now') WHERE cpf=?`
-      ).bind(nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco, cpf).run();
+    const columns = await getPacienteColumns(env);
+    if (requerMigrationDemografia(columns, demografia)) {
+      return json({
+        error: 'Os campos demográficos novos ainda não estão disponíveis neste banco. Aplique a migration 030.',
+        codigo: 'REGULACAO_MIGRATION_030_PENDENTE',
+      }, 503);
     }
+
+    await updatePaciente(env, cpf, {
+      cns,
+      nome,
+      nome_social: demografia.nome_social,
+      data_nascimento,
+      sexo: demografia.sexo,
+      identidade_genero: demografia.identidade_genero,
+      tel1,
+      tel2,
+      tel3,
+      unidade_referencia_code,
+      endereco,
+      cep: address.cep,
+      logradouro: address.logradouro,
+      numero: address.numero,
+      complemento: address.complemento,
+      bairro: address.bairro,
+      municipio: address.municipio,
+      uf: address.uf,
+    }, columns);
 
     await logAudit(env, user, 'update', 'paciente', cpf, { nome });
 
