@@ -22,6 +22,7 @@ database_name = "portal-saude-db"
 database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
 
 # Banco próprio da eMulti/Regulação.
+# Producao: regulacao-vagas-db. Homologacao permanece isolada no env abaixo.
 [[d1_databases]]
 binding = "DB_REGULACAO"
 database_name = "regulacao-vagas-db"
