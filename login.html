@@ -9,7 +9,7 @@
   <title>Acessar — eMulti Regulação</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css?v=2.26.4">
+  <link rel="stylesheet" href="/css/style.css?v=2.27.1">
   <style>
     html,body{min-height:100%;}
     body{min-height:100vh;margin:0;display:grid;place-items:center;padding:28px;background:linear-gradient(145deg,#f7f9fd 0%,#eef2f8 100%);}
@@ -54,20 +54,20 @@
   <main class="login-shell" aria-labelledby="loginTitle">
     <section class="login-identity" aria-label="Identidade eMulti Regulação">
       <div class="login-logo">
-        <img src="/assets/imagotipo.png?v=2.26.4" alt="Prefeitura de Cajamar">
+        <img src="/assets/imagotipo.png?v=2.27.1" alt="Prefeitura de Cajamar">
         <div class="login-logo__text"><strong>eMulti | Regulação</strong><span>Secretaria Municipal de Saúde</span></div>
       </div>
       <div class="login-identity__copy">
         <h2>Gestão da Regulação eMulti</h2>
         <p>Acesso seguro para organização de encaminhamentos, equipes, agenda e atendimentos administrativos.</p>
       </div>
-      <div class="login-version">Versão 2.26.4</div>
+      <div class="login-version">Versão 2.27.1</div>
     </section>
 
     <section class="login-main">
       <div class="login-box">
         <h1 id="loginTitle">Acessar a Regulação</h1>
-        <p class="subtitle">Entre com sua credencial interna da eMulti ou utilize a autenticação integrada do Apoio APS Cajamar.</p>
+        <p class="subtitle">Entre com sua credencial interna da eMulti ou utilize a autenticação integrada do Apoio APS.</p>
 
         <form id="localForm" novalidate>
           <div class="field">
@@ -89,19 +89,19 @@
 
         <button class="portal-access" type="button" id="portalBtn">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7M5 10v10h14V10M9 20v-6h6v6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>Acessar com Apoio APS Cajamar</span>
+          <span>Acessar com Apoio APS</span>
         </button>
 
         <div class="login-note">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.7 7 10 4.1-1.3 7-5.4 7-10V6l-7-3Z" stroke-width="1.8" stroke-linejoin="round"/><path d="m9.2 12 1.8 1.8 3.9-4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>Os dois acessos levam à mesma Regulação. Equipes, permissões, profissionais e dados operacionais permanecem independentes do Apoio APS Cajamar.</span>
+          <span>Os dois acessos levam à mesma Regulação. Equipes, permissões, profissionais e dados operacionais permanecem independentes do Apoio APS.</span>
         </div>
       </div>
     </section>
   </main>
 
   <script>
-    const PORTAL_URL='https://apoioapscajamar.pages.dev';
+    const PORTAL_URL='https://atencaoprimaria.apoiosaude.workers.dev';
     const params=new URLSearchParams(location.search);
     function safeLocalNext(raw){
       if(!raw)return '/painel.html';
@@ -120,7 +120,7 @@
     const password=document.getElementById('password');
     const passwordToggle=document.getElementById('passwordToggle');
     if(params.get('erro')==='handoff'){
-      loginMessage.textContent='Não foi possível concluir o acesso pelo Apoio APS Cajamar. Tente novamente.';
+      loginMessage.textContent='Não foi possível concluir o acesso pelo Apoio APS. Tente novamente.';
     }
 
     passwordToggle.addEventListener('click',()=>{
