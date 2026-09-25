@@ -42,8 +42,10 @@ CREATE TABLE IF NOT EXISTS pacientes (
   cpf TEXT PRIMARY KEY,
   cns TEXT,                                     -- CNS opcional, 15 dígitos
   nome TEXT NOT NULL,
+  nome_social TEXT,
   data_nascimento TEXT NOT NULL,               -- YYYY-MM-DD
-  sexo TEXT NOT NULL CHECK (sexo IN ('F','M')),
+  sexo TEXT NOT NULL CHECK (sexo IN ('F','M','I')),
+  identidade_genero TEXT,
   tel1 TEXT,
   tel2 TEXT,
   tel3 TEXT,
@@ -466,4 +468,4 @@ CREATE TABLE IF NOT EXISTS regulacao_equipe_unidades (
 CREATE INDEX IF NOT EXISTS idx_reg_equipe_unidades_unit ON regulacao_equipe_unidades(unidade_code,equipe_id);
 CREATE TABLE IF NOT EXISTS regulacao_migration_state (key TEXT PRIMARY KEY,value TEXT,updated_at TEXT NOT NULL DEFAULT(datetime('now')));
 
-INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.27.1',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.27.1',updated_at=datetime('now');
+INSERT INTO emulti_schema_version(id,version,updated_at) VALUES(1,'2.27.2',datetime('now')) ON CONFLICT(id) DO UPDATE SET version='2.27.2',updated_at=datetime('now');
