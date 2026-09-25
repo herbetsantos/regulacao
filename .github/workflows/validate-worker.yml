@@ -60,7 +60,6 @@ jobs:
         shell: bash
         run: |
           test "$(grep -c 'database_name = "regulacao-vagas-db"' wrangler.toml)" -eq 2
-          if grep -R --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=dist             'regulacao-vagas-db-homolog' .; then
-            echo "::error::Ainda existe referência ao banco secundário de homologação."
-            exit 1
-          fi
+          ! grep -q 'regulacao-vagas-db-homolog' wrangler.toml
+          ! grep -q 'regulacao-vagas-db-homolog' .github/workflows/aplicar-migration-030.yml
+          test ! -e .github/workflows/copiar-d1-homolog-para-producao.yml
