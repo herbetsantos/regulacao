@@ -6,11 +6,11 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script src="/js/theme.js?v=2.27.1"></script>
+<script src="/js/theme.js?v=2.27.2"></script>
 <title>Guia de Encaminhamento — Regulação de Vagas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=2.27.1">
+<link rel="stylesheet" href="/css/style.css?v=2.27.2">
 <style>
   .reg-grid-2 { display:grid; grid-template-columns:1.3fr 1fr; gap:24px; align-items:start; }
   @media (max-width:900px) { .reg-grid-2 { grid-template-columns:1fr; } }
@@ -116,6 +116,16 @@
     border-color:var(--primary, #203b90);
     box-shadow:0 0 0 3px color-mix(in srgb, var(--primary, #203b90) 12%, transparent);
   }
+  .guide-print-btn { min-height:40px; white-space:nowrap; }
+  .print-dialog { width:min(560px,calc(100vw - 28px)); border:0; border-radius:14px; padding:0; background:var(--surface,#fff); color:var(--text,#122052); box-shadow:0 24px 70px rgba(18,32,82,.28); }
+  .print-dialog::backdrop { background:rgba(7,18,48,.52); }
+  .print-dialog__head { padding:20px 22px 14px; border-bottom:1px solid #e3e8f0; }
+  .print-dialog__head h2 { margin:0 0 6px; color:var(--primary-dark,#0e2a73); font-size:20px; }
+  .print-dialog__head p { margin:0; color:var(--muted,#667085); font-size:13px; line-height:1.45; }
+  .print-dialog__body { padding:18px 22px; }
+  .print-option { display:flex; gap:10px; padding:12px 0; border-bottom:1px solid #edf0f5; }
+  .print-option:last-child { border-bottom:0; }
+  .print-dialog__actions { display:flex; justify-content:flex-end; gap:9px; padding:14px 22px 20px; }
   .organization-note {
     margin-top:12px;
     padding:12px 14px;
@@ -134,7 +144,7 @@
     .guide-hero__meta { justify-content:flex-start; }
   }
 </style>
-<link rel="stylesheet" href="/css/theme.css?v=2.27.1">
+<link rel="stylesheet" href="/css/theme.css?v=2.27.2">
 </head>
 <body>
 
@@ -155,6 +165,7 @@
     <div class="guide-hero__meta">
       <span class="guide-meta-pill" id="guideHeroSpecialty">—</span>
       <span id="guideHeroStatus"></span>
+      <button class="btn btn--outline guide-print-btn" type="button" id="btnImprimirGuia">Espelho do Acompanhamento</button>
     </div>
   </div>
 
@@ -253,8 +264,25 @@
   </div>
 </main>
 
-<script src="/js/app-chrome.js?v=2.27.1"></script>
-<script src="/js/regulacao.js?v=2.27.1"></script>
+<dialog class="print-dialog" id="printDialog" aria-labelledby="printDialogTitle">
+  <header class="print-dialog__head">
+    <h2 id="printDialogTitle">Espelho do Acompanhamento</h2>
+    <p>Escolha as informações que devem constar no espelho timbrado.</p>
+  </header>
+  <section class="print-dialog__body">
+    <label class="print-option"><input type="checkbox" id="printPaciente" checked><span><strong>Dados do paciente</strong><br><small>Identificação, contatos, referência e endereço.</small></span></label>
+    <label class="print-option"><input type="checkbox" id="printGuia" checked><span><strong>Dados da guia</strong><br><small>Encaminhamento, situação e responsabilidade.</small></span></label>
+    <label class="print-option"><input type="checkbox" id="printAcompanhamento"><span><strong>Acompanhamento administrativo</strong><br><small>Agenda, grupos, encontros e desfechos. Sem conduta clínica.</small></span></label>
+  </section>
+  <footer class="print-dialog__actions">
+    <button class="btn btn--outline btn--sm" type="button" id="btnCancelarImpressao">Cancelar</button>
+    <button class="btn btn--accent btn--sm" type="button" id="btnGerarImpressao">Gerar impressão / PDF</button>
+  </footer>
+</dialog>
+
+<script src="/js/app-chrome.js?v=2.27.2"></script>
+<script src="/js/regulacao.js?v=2.27.2"></script>
+<script src="/js/guia-impressao.js?v=2.27.2"></script>
 <script>
 (async () => {
   const user = await initPortalChrome();
@@ -325,6 +353,7 @@
   tEquipeSel.addEventListener('change', () => preencherSelectUnidadesDaEquipe(tUnidadeSel, tEquipeSel.value));
 
   let guiaAtual = null;
+  let detalheAtual = null;
   async function carregarEtiquetas(){
     const [all,selected]=await Promise.all([apiFetch('/api/etiquetas'),apiFetch(`/api/guias/${guiaId}/etiquetas`)]);
     const todas=all.ok?(all.data.etiquetas||[]):[],ativas=selected.ok?(selected.data.etiquetas||[]):[];
@@ -356,11 +385,12 @@
     if (!ok) { document.getElementById('pageTitle').textContent = 'Guia não encontrada'; return; }
 
     guiaAtual = data.guia;
+    detalheAtual = data;
     carregarEtiquetas();
     document.getElementById('pageTitle').textContent = 'Detalhes da guia';
     document.getElementById('guideHero').style.display = '';
     document.getElementById('guideHeroCode').textContent = formatGuideCode(guiaAtual);
-    document.getElementById('guideHeroPatient').textContent = guiaAtual.paciente_nome || '—';
+    document.getElementById('guideHeroPatient').textContent = guiaAtual.paciente_nome_social || guiaAtual.paciente_nome || '—';
     document.getElementById('guideHeroSpecialty').textContent = guiaAtual.especialidade_nome || '—';
     document.getElementById('guideHeroStatus').innerHTML = situacaoBadgeHtml(guiaAtual.situacao);
     const enderecoPartes = [
@@ -374,11 +404,12 @@
     const enderecoFormatado = enderecoPartes.join(' · ') || guiaAtual.paciente_endereco || '—';
 
     document.getElementById('pacienteInfo').innerHTML = `
-      <li class="wide"><span>Nome</span><span>${escapeHtml(guiaAtual.paciente_nome)}</span></li>
+      <li class="wide"><span>Nome</span><span>${escapeHtml(guiaAtual.paciente_nome_social || guiaAtual.paciente_nome)}${guiaAtual.paciente_nome_social ? `<br><small>Nome civil: ${escapeHtml(guiaAtual.paciente_nome)}</small>` : ''}</span></li>
       <li><span>CPF</span><span>${maskCPF(guiaAtual.cpf)}</span></li>
       <li><span>CNS</span><span>${escapeHtml(guiaAtual.paciente_cns || '—')}</span></li>
       <li><span>Data de nascimento</span><span>${formatDateBR(guiaAtual.paciente_data_nascimento)}</span></li>
-      <li><span>Sexo</span><span>${guiaAtual.paciente_sexo === 'F' ? 'Feminino' : guiaAtual.paciente_sexo === 'M' ? 'Masculino' : escapeHtml(guiaAtual.paciente_sexo || '—')}</span></li>
+      <li><span>Sexo</span><span>${guiaAtual.paciente_sexo === 'F' ? 'Feminino' : guiaAtual.paciente_sexo === 'M' ? 'Masculino' : guiaAtual.paciente_sexo === 'I' ? 'Indeterminado' : escapeHtml(guiaAtual.paciente_sexo || '—')}</span></li>
+      <li><span>Identidade de gênero</span><span>${escapeHtml(guiaAtual.paciente_identidade_genero || '—')}</span></li>
       <li><span>Telefones</span><span>${[guiaAtual.paciente_tel1, guiaAtual.paciente_tel2, guiaAtual.paciente_tel3].filter(Boolean).map(maskPhone).join(' · ') || '—'}</span></li>
       <li class="wide"><span>Unidade de referência</span><span>${escapeHtml(nomeUnidade(guiaAtual.paciente_unidade_referencia_code))}</span></li>
       <li class="full"><span>Endereço</span><span>${escapeHtml(enderecoFormatado)}</span></li>
@@ -463,6 +494,13 @@
     carregar();
   });
 
+  initGuiaImpressao({
+    guiaId,
+    user,
+    getGuia:()=>guiaAtual,
+    getDetalhe:()=>detalheAtual,
+    nomeUnidade,
+  });
   carregar();
 })();
 </script>
