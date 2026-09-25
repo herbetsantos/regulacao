@@ -247,8 +247,16 @@ async function loadProfessionals(page=state.profPage){
   }
   const teamMap=Object.fromEntries(data.equipes.map(t=>[t.id,t.nome]));
   a.innerHTML=data.profissionais.length?`<div class="table-wrap"><table class="admin-table"><thead><tr><th>Profissional</th><th>Conta de acesso</th><th>Equipes</th><th>Vínculos</th><th>Carga semanal</th><th></th></tr></thead><tbody>${data.profissionais.map(p=>`<tr><td><strong>${e(p.nome)}</strong><br><span class="admin-note">${e(p.registro_profissional||'Sem registro informado')}</span></td><td>${p.conta?`<span class="source-badge ${p.conta.source}">${p.conta.source==='local'?'Interno':'Apoio APS'}</span> ${e(p.conta.name)}`:'<span class="admin-note">Sem login vinculado</span>'}</td><td><div class="role-wrap">${(p.equipe_ids||[]).map(id=>`<span class="mini-badge">${e(teamMap[id]||('Equipe '+id))}</span>`).join('')||'<span class="admin-note">—</span>'}</div></td><td><div class="specialty-metric">${p.vinculos.filter(v=>v.ativo).map(v=>`<span class="mini-badge">${e(v.especialidade_nome)} · ${e(v.unidade_nome_snapshot||v.unidade_code||'—')}</span>`).join('')||'<span class="admin-note">Nenhum vínculo</span>'}</div></td><td><span class="hours">${Number(p.carga_horaria_total||0).toLocaleString('pt-BR',{maximumFractionDigits:2})} h</span></td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn--outline btn--sm" data-prof-edit="${p.id}">Editar</button>${(!p.conta&&isFullAdmin)?`<button class="btn btn--accent btn--sm" data-prof-access="${p.id}">Criar acesso</button>`:''}</div></td></tr>`).join('')}</tbody></table></div>`:'<div class="admin-empty">Nenhum profissional encontrado.</div>';
-  a.querySelectorAll('[data-prof-edit]').forEach(b=>b.onclick=()=>openProfessional(data.profissionais.find(p=>p.id===b.dataset.profEdit),data));
-  a.querySelectorAll('[data-prof-access]').forEach(b=>b.onclick=()=>openCreateProfessionalAccess(data.profissionais.find(p=>p.id===b.dataset.profAccess)));
+  a.querySelectorAll('[data-prof-edit]').forEach(b=>b.onclick=()=>{
+    const profissional=data.profissionais.find(p=>Number(p.id)===Number(b.dataset.profEdit));
+    if(!profissional){alert('Não foi possível localizar este profissional. Atualize a página e tente novamente.');return}
+    openProfessional(profissional,data);
+  });
+  a.querySelectorAll('[data-prof-access]').forEach(b=>b.onclick=()=>{
+    const profissional=data.profissionais.find(p=>Number(p.id)===Number(b.dataset.profAccess));
+    if(!profissional){alert('Não foi possível localizar este profissional. Atualize a página e tente novamente.');return}
+    openCreateProfessionalAccess(profissional);
+  });
   pager(profPager,data.pagination,p=>loadProfessionals(p));
 }
 function suggestedUsername(name){
