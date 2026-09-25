@@ -19,7 +19,7 @@ run_worker_first = true
 [[d1_databases]]
 binding = "DB"
 database_name = "portal-saude-db"
-database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
+database_id = "4467670b-0e48-490a-8d56-fb4ad4cf6bce"
 
 # Banco próprio da eMulti/Regulação.
 # Producao: regulacao-vagas-db. Homologacao permanece isolada no env abaixo.
@@ -36,7 +36,7 @@ name = "regulacao-homologacao"
 [[env.homologacao.d1_databases]]
 binding = "DB"
 database_name = "portal-saude-db"
-database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
+database_id = "4467670b-0e48-490a-8d56-fb4ad4cf6bce"
 
 [[env.homologacao.d1_databases]]
 binding = "DB_REGULACAO"
