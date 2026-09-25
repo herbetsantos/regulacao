@@ -2,87 +2,76 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Acessar — eMulti Regulação</title>
+  <script src="/js/theme.js?v=2.27.1"></script>
+  <title>eMulti | Regulação — Faça seu login</title>
+  <meta name="description" content="eMulti | Regulação — acesso para profissionais autorizados da rede municipal de saúde.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css?v=2.27.1">
+  <link rel="stylesheet" href="/css/theme.css?v=2.27.1">
+  <link rel="icon" href="/assets/favicon.png">
   <style>
-    html,body{min-height:100%;}
-    body{min-height:100vh;margin:0;display:grid;place-items:center;padding:28px;background:linear-gradient(145deg,#f7f9fd 0%,#eef2f8 100%);}
-    .login-shell{width:min(940px,100%);display:grid;grid-template-columns:minmax(320px,.9fr) minmax(400px,1.1fr);background:#fff;border:1px solid #dfe5ef;border-radius:18px;overflow:hidden;box-shadow:0 24px 70px rgba(32,59,143,.13);}
-    .login-identity{position:relative;display:flex;flex-direction:column;justify-content:space-between;min-height:570px;padding:42px 38px;background:linear-gradient(160deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;overflow:hidden;}
-    .login-identity:after{content:"";position:absolute;width:290px;height:290px;border-radius:50%;right:-130px;bottom:-115px;border:46px solid rgba(255,255,255,.055);}
-    .login-logo{position:relative;z-index:1;display:flex;align-items:center;gap:18px;}
-    .login-logo img{display:block;width:104px;height:auto;max-height:76px;object-fit:contain;}
-    .login-logo__text strong{display:block;font-size:23px;font-weight:800;letter-spacing:-.025em;}
-    .login-logo__text span{display:block;margin-top:4px;font-size:12px;font-weight:500;opacity:.82;}
-    .login-identity__copy{position:relative;z-index:1;max-width:310px;margin-top:50px;}
-    .login-identity__copy h2{font-size:27px;line-height:1.2;margin:0 0 12px;letter-spacing:-.03em;}
-    .login-identity__copy p{margin:0;color:rgba(255,255,255,.82);font-size:13px;line-height:1.7;}
-    .login-version{position:relative;z-index:1;font-size:11px;color:rgba(255,255,255,.66);}
-    .login-main{display:flex;align-items:center;padding:44px 46px;}
-    .login-box{width:100%;max-width:430px;margin:0 auto;}
-    .login-box h1{font-size:25px;line-height:1.2;margin:0 0 8px;color:var(--ink);}
-    .login-box>.subtitle{margin:0 0 25px;color:var(--muted);font-size:13px;line-height:1.6;}
-    .login-box .field{margin-bottom:15px;}
-    .login-box .field label{display:block;margin-bottom:7px;font-size:12px;font-weight:700;color:var(--ink);}
-    .login-box .field input{width:100%;height:46px;border:1px solid #d7deea;border-radius:9px;background:#fff;padding:0 13px;font:inherit;font-size:13px;color:var(--ink);transition:border-color .15s,box-shadow .15s;}
-    .login-box .field input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px rgba(32,59,143,.10);}
-    .password-wrap{position:relative;}
-    .password-wrap input{padding-right:76px!important;}
-    .password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--primary);font:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:7px;}
-    .login-submit,.portal-access{width:100%;min-height:46px;justify-content:center;font-weight:700;}
-    .login-submit{margin-top:4px;}
-    .login-message{min-height:18px;margin-top:10px;color:#b42318;font-size:12px;line-height:1.45;}
-    .login-divider{display:flex;align-items:center;gap:12px;margin:18px 0;color:#8a93a8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
-    .login-divider:before,.login-divider:after{content:"";height:1px;background:#e2e7f0;flex:1;}
-    .portal-access{border:1px solid #cfd8e8;background:#fff;color:var(--primary);border-radius:9px;display:flex;align-items:center;gap:9px;cursor:pointer;font:inherit;}
-    .portal-access:hover{background:#f6f8fc;border-color:#b8c5db;}
-    .portal-access svg{width:18px;height:18px;stroke:currentColor;fill:none;}
-    .login-note{display:flex;gap:9px;align-items:flex-start;margin-top:18px;padding:13px 14px;border-radius:9px;background:#f6f8fc;color:var(--muted);font-size:11px;line-height:1.55;}
-    .login-note svg{width:16px;height:16px;flex:0 0 16px;margin-top:1px;stroke:var(--primary);fill:none;}
-    .login-box button[disabled]{opacity:.68;cursor:wait;}
-    @media(max-width:780px){body{padding:16px}.login-shell{grid-template-columns:1fr;max-width:480px}.login-identity{min-height:auto;padding:24px 26px}.login-identity__copy{display:none}.login-version{margin-top:18px}.login-logo img{width:82px}.login-main{padding:30px 26px 32px}}
-    @media(max-width:420px){body{padding:0;background:#fff}.login-shell{min-height:100vh;border:0;border-radius:0;box-shadow:none}.login-main{padding:28px 20px}.login-identity{border-radius:0}}
+    .login-card .brand{background:transparent;height:auto;padding:0;margin-bottom:18px}
+    .login-card .brand img{height:58px;max-width:230px}
+    .login-product{text-align:center;font-size:20px;font-weight:800;color:var(--primary-dark);margin-bottom:4px}
+    .login-product-sub{text-align:center;color:var(--muted);font-size:12.5px;line-height:1.5;margin-bottom:22px}
+    .password-wrap{position:relative}
+    .password-wrap input{padding-right:72px}
+    .password-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--primary);font:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:7px}
+    .login-divider{display:flex;align-items:center;gap:10px;margin:17px 0;color:var(--muted);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+    .login-divider:before,.login-divider:after{content:"";height:1px;background:var(--line);flex:1}
+    .portal-access{width:100%;min-height:44px;border:1.5px solid var(--line);background:#fff;color:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font:inherit;font-size:13px;font-weight:700}
+    .portal-access:hover{border-color:var(--primary);background:var(--surface)}
+    .portal-access svg{width:17px;height:17px;stroke:currentColor;fill:none}
+    .login-message{display:none;font-size:13px;border-radius:8px;padding:10px 12px;margin-bottom:14px}
+    .login-message.is-error{display:block;background:#fdece9;color:var(--danger)}
+    .login-note{text-align:center;color:var(--muted);font-size:11px;line-height:1.5;margin-top:16px}
+    .login-version{text-align:center;color:var(--muted);font-size:10.5px;margin-top:10px;opacity:.8}
+    .login-card button[disabled]{opacity:.6;cursor:wait}
+    @media(max-width:860px){.login-hero__subtitle{max-width:36ch}}
   </style>
 </head>
 <body>
-  <main class="login-shell" aria-labelledby="loginTitle">
-    <section class="login-identity" aria-label="Identidade eMulti Regulação">
-      <div class="login-logo">
-        <img src="/assets/imagotipo.png?v=2.27.1" alt="Prefeitura de Cajamar">
-        <div class="login-logo__text"><strong>eMulti | Regulação</strong><span>Secretaria Municipal de Saúde</span></div>
-      </div>
-      <div class="login-identity__copy">
-        <h2>Gestão da Regulação eMulti</h2>
-        <p>Acesso seguro para organização de encaminhamentos, equipes, agenda e atendimentos administrativos.</p>
-      </div>
-      <div class="login-version">Versão 2.27.1</div>
-    </section>
+  <div class="login-shell">
+    <div class="login-bg" aria-hidden="true">
+      <canvas id="netBg"></canvas>
+    </div>
 
-    <section class="login-main">
-      <div class="login-box">
-        <h1 id="loginTitle">Acessar a Regulação</h1>
-        <p class="subtitle">Entre com sua credencial interna da eMulti ou utilize a autenticação integrada do Apoio APS.</p>
+    <div class="login-layout">
+      <div class="login-hero">
+        <div class="login-hero__title">Bem-vindo ao eMulti</div>
+        <div class="login-hero__subtitle">Regulação de vagas, organização da agenda e gestão dos atendimentos eMulti em um ambiente integrado à rede municipal de saúde.</div>
+      </div>
+
+      <div class="login-card" aria-labelledby="loginTitle">
+        <div class="brand">
+          <img src="/assets/imagotipo.png?v=2.27.1" alt="Cajamar Saúde">
+        </div>
+
+        <div class="login-product" id="loginTitle">eMulti | Regulação</div>
+        <div class="login-product-sub">Acesso restrito a profissionais autorizados</div>
+
+        <div class="login-message" id="loginMessage" role="alert" aria-live="polite"></div>
 
         <form id="localForm" novalidate>
           <div class="field">
-            <label for="username">Usuário ou e-mail</label>
-            <input id="username" name="username" autocomplete="username" spellcheck="false" required>
+            <label for="username">Usuário</label>
+            <input type="text" id="username" name="username" autocomplete="username" spellcheck="false" required autofocus>
           </div>
+
           <div class="field">
             <label for="password">Senha</label>
             <div class="password-wrap">
-              <input id="password" name="password" type="password" autocomplete="current-password" required>
+              <input type="password" id="password" name="password" autocomplete="current-password" required>
               <button class="password-toggle" id="passwordToggle" type="button" aria-label="Mostrar senha">Mostrar</button>
             </div>
           </div>
-          <button class="btn btn--accent login-submit" id="localSubmit" type="submit">Entrar</button>
-          <div class="login-message" id="loginMessage" role="alert" aria-live="polite"></div>
+
+          <button type="submit" class="btn btn--accent" id="localSubmit">Entrar</button>
         </form>
 
         <div class="login-divider"><span>ou</span></div>
@@ -92,17 +81,137 @@
           <span>Acessar com Apoio APS</span>
         </button>
 
-        <div class="login-note">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.6 2.9 8.7 7 10 4.1-1.3 7-5.4 7-10V6l-7-3Z" stroke-width="1.8" stroke-linejoin="round"/><path d="m9.2 12 1.8 1.8 3.9-4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>Os dois acessos levam à mesma Regulação. Equipes, permissões, profissionais e dados operacionais permanecem independentes do Apoio APS.</span>
-        </div>
+        <div class="login-note">O login do Apoio APS é utilizado somente para autenticação integrada. Os dados operacionais da Regulação permanecem no ambiente próprio do eMulti.</div>
+        <div class="login-version">Versão 2.27.1</div>
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
+
+  <script>
+    // Mesmo fundo visual da tela de login do Apoio APS.
+    (function () {
+      const canvas = document.getElementById('netBg');
+      const shell = document.querySelector('.login-shell');
+      if (!canvas || !shell) return;
+      const ctx = canvas.getContext('2d');
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      const LINE_COLOR = '32,59,143';
+      const CONNECT_DIST = 190;
+      const REPEL_RADIUS = 150;
+      const REPEL_STRENGTH = 46;
+      const EASE = 0.08;
+      const MAX_LINE_ALPHA = 0.28;
+      const DOT_ALPHA = 0.35;
+      const DOT_RADIUS = 1.6;
+
+      let w = 0, h = 0, dpr = 1;
+      let particles = [];
+      let mouse = { x: 0, y: 0, active: false };
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        w = shell.clientWidth;
+        h = shell.clientHeight;
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        initParticles();
+        if (prefersReduced) drawFrame();
+      }
+
+      function initParticles() {
+        const count = Math.max(40, Math.min(100, Math.floor((w * h) / 15000)));
+        particles = [];
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            vx: (Math.random() - 0.5) * 0.18,
+            vy: (Math.random() - 0.5) * 0.18,
+            ox: 0,
+            oy: 0
+          });
+        }
+      }
+
+      function updateParticles() {
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x <= 0 || p.x >= w) { p.vx *= -1; p.x = Math.max(0, Math.min(w, p.x)); }
+          if (p.y <= 0 || p.y >= h) { p.vy *= -1; p.y = Math.max(0, Math.min(h, p.y)); }
+
+          let tox = 0, toy = 0;
+          if (mouse.active) {
+            const dx = p.x - mouse.x;
+            const dy = p.y - mouse.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 0.001;
+            if (dist < REPEL_RADIUS) {
+              const force = (1 - dist / REPEL_RADIUS) * REPEL_STRENGTH;
+              tox = (dx / dist) * force;
+              toy = (dy / dist) * force;
+            }
+          }
+          p.ox += (tox - p.ox) * EASE;
+          p.oy += (toy - p.oy) * EASE;
+        }
+      }
+
+      function drawFrame() {
+        ctx.clearRect(0, 0, w, h);
+        for (let i = 0; i < particles.length; i++) {
+          const a = particles[i];
+          const ax = a.x + a.ox, ay = a.y + a.oy;
+          for (let j = i + 1; j < particles.length; j++) {
+            const b = particles[j];
+            const bx = b.x + b.ox, by = b.y + b.oy;
+            const dx = ax - bx, dy = ay - by;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < CONNECT_DIST) {
+              const alpha = (1 - dist / CONNECT_DIST) * MAX_LINE_ALPHA;
+              ctx.strokeStyle = `rgba(${LINE_COLOR},${alpha.toFixed(3)})`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(ax, ay);
+              ctx.lineTo(bx, by);
+              ctx.stroke();
+            }
+          }
+        }
+        for (const p of particles) {
+          const x = p.x + p.ox, y = p.y + p.oy;
+          ctx.beginPath();
+          ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${LINE_COLOR},${DOT_ALPHA})`;
+          ctx.fill();
+        }
+      }
+
+      function loop() {
+        updateParticles();
+        drawFrame();
+        requestAnimationFrame(loop);
+      }
+
+      window.addEventListener('resize', resize);
+      shell.addEventListener('mousemove', (e) => {
+        const rect = shell.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+        mouse.active = true;
+      });
+      shell.addEventListener('mouseleave', () => { mouse.active = false; });
+
+      resize();
+      if (!prefersReduced) requestAnimationFrame(loop);
+    })();
+  </script>
 
   <script>
     const PORTAL_URL='https://atencaoprimaria.apoiosaude.workers.dev';
     const params=new URLSearchParams(location.search);
+
     function safeLocalNext(raw){
       if(!raw)return '/painel.html';
       try{
@@ -112,6 +221,7 @@
       }catch{}
       return '/painel.html';
     }
+
     const next=safeLocalNext(params.get('next'));
     const localForm=document.getElementById('localForm');
     const localSubmit=document.getElementById('localSubmit');
@@ -119,8 +229,18 @@
     const portalBtn=document.getElementById('portalBtn');
     const password=document.getElementById('password');
     const passwordToggle=document.getElementById('passwordToggle');
+
+    function showError(message){
+      loginMessage.textContent=message||'Não foi possível entrar.';
+      loginMessage.className='login-message is-error';
+    }
+    function clearError(){
+      loginMessage.textContent='';
+      loginMessage.className='login-message';
+    }
+
     if(params.get('erro')==='handoff'){
-      loginMessage.textContent='Não foi possível concluir o acesso pelo Apoio APS. Tente novamente.';
+      showError('Não foi possível concluir o acesso pelo Apoio APS. Tente novamente.');
     }
 
     passwordToggle.addEventListener('click',()=>{
@@ -132,19 +252,27 @@
 
     localForm.addEventListener('submit',async(e)=>{
       e.preventDefault();
-      loginMessage.textContent='';
+      clearError();
       const username=document.getElementById('username').value.trim();
       const pass=password.value;
-      if(!username||!pass){loginMessage.textContent='Informe usuário e senha.';return}
+      if(!username||!pass){showError('Informe usuário e senha.');return}
+
       localSubmit.disabled=true;
       localSubmit.textContent='Entrando…';
       try{
-        const response=await fetch('/api/auth/local-login',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({username,password:pass})});
+        const response=await fetch('/api/auth/local-login',{
+          method:'POST',
+          credentials:'same-origin',
+          headers:{'content-type':'application/json'},
+          body:JSON.stringify({username,password:pass})
+        });
         const data=await response.json().catch(()=>({}));
-        if(!response.ok){loginMessage.textContent=data.error||'Não foi possível entrar.';return}
-        location.href=data.must_change_password?`/minha-conta.html?trocar_senha=1&next=${encodeURIComponent(next)}`:next;
+        if(!response.ok){showError(data.error||'Não foi possível entrar.');return}
+        location.href=data.must_change_password
+          ?`/minha-conta.html?trocar_senha=1&next=${encodeURIComponent(next)}`
+          :next;
       }catch{
-        loginMessage.textContent='Não foi possível conectar ao serviço de autenticação.';
+        showError('Não foi possível conectar ao serviço de autenticação.');
       }finally{
         localSubmit.disabled=false;
         localSubmit.textContent='Entrar';
