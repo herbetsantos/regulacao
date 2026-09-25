@@ -77,7 +77,10 @@ jobs:
           set -e
           if [ $status -ne 0 ]; then
             echo "::error::Falha ao consultar o D1 de producao."
-            cat target-check.err
+            echo "----- resposta do Wrangler -----"
+            cat target-check.json || true
+            cat target-check.err || true
+            echo "--------------------------------"
             exit $status
           fi
           node - <<'NODE'
