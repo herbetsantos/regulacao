@@ -25,8 +25,7 @@ database_id = "d20e8935-68c2-47cb-8a88-69162fb9feaa"
 [[d1_databases]]
 binding = "DB_REGULACAO"
 database_name = "regulacao-vagas-db"
-database_id = "1a40262a-3005-4b06-9fb7-2f04ebda9246"
-
+database_id = "d13defa7-1e22-43e3-b55f-468261dcaf74"
 
 # Ambiente isolado de homologacao.
 # Bindings D1 nao sao herdados entre ambientes, por isso sao declarados aqui.
