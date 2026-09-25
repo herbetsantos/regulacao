@@ -3,7 +3,7 @@
 // A autorização e os dados operacionais permanecem no banco próprio da Regulação.
 
 const PORTAL_URL = 'https://atencaoprimaria.apoiosaude.workers.dev';
-const APP_VERSION = '2.27.1';
+const APP_VERSION = '2.27.2';
 window.EMULTI_VERSION = APP_VERSION;
 
 function formatGuideCode(guia) {
