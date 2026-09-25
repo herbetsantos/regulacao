@@ -104,9 +104,6 @@ jobs:
             fs.writeFileSync('target-drop.sql', '');
             console.log('Producao vazia confirmada.');
           } else {
-            const dropSql = 'PRAGMA defer_foreign_keys = ON;\n' +
-              names.map(n => 'DROP TABLE IF EXISTS ' + q(n) + ';').join('\n') + '\n';
-            fs.writeFileSync('target-drop.sql', dropSql);
             console.log('Producao contem ' + names.length + ' tabela(s); verificando tabela por tabela se ha dados.');
           }
           NODE
@@ -133,9 +130,7 @@ jobs:
               fi
             done < target-table-names.txt
 
-            echo "As tabelas existentes em producao estao vazias. Limpando o schema parcial da tentativa anterior..."
-            ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote \
-              --file=./target-drop.sql --yes
+            echo "As tabelas existentes em producao estao vazias. Mantendo o schema existente e seguindo com o schema consolidado."
           fi
 
       - name: Aplicar schema consolidado em producao
@@ -216,4 +211,4 @@ jobs:
       - name: Apagar arquivos temporarios
         if: always()
         shell: bash
-        run: rm -f d1-homolog-data.sql source-check.json source-fk.json target-tables.json target-table-names.txt target-one-count.json target-drop.sql target-fk.json target-after.json
+        run: rm -f d1-homolog-data.sql source-check.json source-fk.json target-tables.json target-table-names.txt target-one-count.json target-fk.json target-after.json
