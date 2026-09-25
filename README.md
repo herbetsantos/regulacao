@@ -1,7 +1,7 @@
 # eMulti / Regulação — Cajamar Saúde
 
-**Versão da aplicação:** 2.26.4  
-**Schema da Regulação:** 2.26.3
+**Versão da aplicação:** 2.27.2  
+**Schema da Regulação:** 2.27.2
 
 Sistema gerencial para Regulação de Vagas e organização dos atendimentos eMulti. O **PEC e-SUS permanece como prontuário oficial**; evolução, conduta e demais registros clínicos não são gravados neste ambiente.
 
@@ -73,9 +73,11 @@ Para bases existentes, aplique apenas as migrations ainda pendentes, em ordem. N
 026_multiplas_equipes_profissional.sql
 027_desmembramento_portal.sql
 028_restaurar_acesso_interno.sql
+029_agenda_intervalos_almoco.sql
+030_paciente_diversidade.sql
 ```
 
-A migration `028_restaurar_acesso_interno.sql` restaura as credenciais internas dentro do banco próprio da Regulação e atualiza o marcador do schema para 2.26.3. `database/update.sql` é apenas um marcador de compatibilidade e **não deve ser usado como migration**.
+A migration `029_agenda_intervalos_almoco.sql` adiciona dias múltiplos, intervalo entre atendimentos e pausa de almoço às escalas. A `030_paciente_diversidade.sql` adiciona nome social, identidade de gênero e sexo Indeterminado. `database/update.sql` é apenas um marcador de compatibilidade e **não deve ser usado como migration**.
 
 ## Documentação
 
