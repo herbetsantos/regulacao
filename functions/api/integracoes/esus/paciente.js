@@ -1,17 +1,18 @@
 // POST /api/integracoes/esus/paciente
 // Recebe dados do cidadão extraídos da tela de Visualização do cadastro do
 // e-SUS PEC pela extensão eSUS PEC → eMulti.
-//
-// Segurança:
-// - usa a sessão normal do eMulti (nenhum token permanente na extensão);
-// - exige responsabilidade Cadastrante/Administrador;
-// - não aceita unidade que não seja APS;
-// - se o CPF já existe, NÃO sobrescreve automaticamente o cadastro.
 
 import { json, logAudit } from '../../_utils.js';
 import { requireRegulacaoCapability, isValidCPF, onlyDigits } from '../../_shared.js';
 import { listUnidadesAtivasComTipo, getUnidadeAtivaComTipo, friendlyRegulacaoError } from '../../_db.js';
-import { normalizeAddressPayload, validateAddress, composeEndereco, getPacienteEnderecoColumnStatus } from '../../_address.js';
+import { normalizeAddressPayload, validateAddress, composeEndereco } from '../../_address.js';
+import {
+  normalizeDemografia,
+  validateDemografia,
+  getPacienteColumns,
+  requerMigrationDemografia,
+  insertPaciente,
+} from '../../_paciente.js';
 
 function configError(err) {
   const friendly = friendlyRegulacaoError(err);
@@ -46,9 +47,7 @@ async function resolveUnidade(env, body) {
 
   const { unidades } = await listUnidadesAtivasComTipo(env);
   const aps = (unidades || []).filter((u) => u.tipo === 'aps');
-  const hints = [body.unidade_responsavel, body.unidade_saude]
-    .map(stripCnesSuffix)
-    .filter(Boolean);
+  const hints = [body.unidade_responsavel, body.unidade_saude].map(stripCnesSuffix).filter(Boolean);
 
   for (const hint of hints) {
     const nHint = normalizeName(hint);
@@ -70,11 +69,6 @@ async function resolveUnidade(env, body) {
   };
 }
 
-async function hasPacienteColumn(env, column) {
-  const { results } = await env.DB_REGULACAO.prepare("PRAGMA table_info('pacientes')").all();
-  return (results || []).some((c) => c.name === column);
-}
-
 export async function onRequestPost({ request, env }) {
   const { user, error } = await requireRegulacaoCapability(
     request,
@@ -91,7 +85,7 @@ export async function onRequestPost({ request, env }) {
   const cns = onlyDigits(body.cns) || null;
   const nome = text(body.nome);
   const data_nascimento = text(body.data_nascimento);
-  const sexo = text(body.sexo).toUpperCase();
+  const demografia = normalizeDemografia(body);
   const tel1 = onlyDigits(body.tel1) || null;
   const tel2 = onlyDigits(body.tel2) || null;
   const tel3 = onlyDigits(body.tel3) || null;
@@ -105,9 +99,8 @@ export async function onRequestPost({ request, env }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data_nascimento)) {
     return json({ error: 'Data de nascimento inválida ou não encontrada no PEC.' }, 400);
   }
-  if (!['F', 'M'].includes(sexo)) {
-    return json({ error: 'Sexo inválido ou não encontrado no PEC.' }, 400);
-  }
+  const demografiaError = validateDemografia(demografia);
+  if (demografiaError) return json({ error: demografiaError }, 400);
   if (cns && !/^\d{15}$/.test(cns)) {
     return json({ error: 'CNS inválido. O CNS deve possuir 15 dígitos.' }, 400);
   }
@@ -147,39 +140,35 @@ export async function onRequestPost({ request, env }) {
       }, 422);
     }
 
-    const enderecoColumns = await getPacienteEnderecoColumnStatus(env);
-    const hasCns = await hasPacienteColumn(env, 'cns');
-
-    if (enderecoColumns.ok && hasCns) {
-      await env.DB_REGULACAO.prepare(
-        `INSERT INTO pacientes (
-          cpf, cns, nome, data_nascimento, sexo, tel1, tel2, tel3,
-          unidade_referencia_code, endereco, cep, logradouro, numero,
-          complemento, bairro, municipio, uf
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
-        cpf, cns, nome, data_nascimento, sexo, tel1, tel2, tel3,
-        resolved.unidade.code, endereco, address.cep, address.logradouro,
-        address.numero, address.complemento, address.bairro, address.municipio, address.uf
-      ).run();
-    } else if (enderecoColumns.ok) {
-      await env.DB_REGULACAO.prepare(
-        `INSERT INTO pacientes (
-          cpf, nome, data_nascimento, sexo, tel1, tel2, tel3,
-          unidade_referencia_code, endereco, cep, logradouro, numero,
-          complemento, bairro, municipio, uf
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(
-        cpf, nome, data_nascimento, sexo, tel1, tel2, tel3,
-        resolved.unidade.code, endereco, address.cep, address.logradouro,
-        address.numero, address.complemento, address.bairro, address.municipio, address.uf
-      ).run();
-    } else {
-      await env.DB_REGULACAO.prepare(
-        `INSERT INTO pacientes (cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, unidade_referencia_code, endereco)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).bind(cpf, nome, data_nascimento, sexo, tel1, tel2, tel3, resolved.unidade.code, endereco).run();
+    const columns = await getPacienteColumns(env);
+    if (requerMigrationDemografia(columns, demografia)) {
+      return json({
+        error: 'Os campos demográficos recebidos do PEC exigem a migration 030 no banco da Regulação.',
+        codigo: 'REGULACAO_MIGRATION_030_PENDENTE',
+      }, 503);
     }
+
+    await insertPaciente(env, {
+      cpf,
+      cns,
+      nome,
+      nome_social: demografia.nome_social,
+      data_nascimento,
+      sexo: demografia.sexo,
+      identidade_genero: demografia.identidade_genero,
+      tel1,
+      tel2,
+      tel3,
+      unidade_referencia_code: resolved.unidade.code,
+      endereco,
+      cep: address.cep,
+      logradouro: address.logradouro,
+      numero: address.numero,
+      complemento: address.complemento,
+      bairro: address.bairro,
+      municipio: address.municipio,
+      uf: address.uf,
+    }, columns);
 
     await logAudit(env, user, 'create', 'paciente_integracao_esus', cpf, {
       origem: 'esus_pec',
