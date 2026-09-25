@@ -153,22 +153,20 @@ jobs:
             --output=./d1-homolog-data.sql --no-schema --skip-confirmation
           test -s ./d1-homolog-data.sql || { echo "::error::Exportacao dos dados ficou vazia."; exit 1; }
 
-          node - <<'NODE'
-          const fs = require('fs');
-          const file = 'd1-homolog-data.sql';
-          let sql = fs.readFileSync(file, 'utf8');
-          sql = sql
-            .replace(/^\s*PRAGMA\s+foreign_keys\s*=.*?;\s*$/gmi, '')
-            .replace(/^\s*PRAGMA\s+defer_foreign_keys\s*=.*?;\s*$/gmi, '');
-          fs.writeFileSync(file, 'PRAGMA defer_foreign_keys = ON;\n' + sql);
-          console.log('Importacao de dados preparada com chaves estrangeiras diferidas.');
-          NODE
+      - name: Ordenar dados por dependencias
+        shell: bash
+        run: |
+          node ./scripts/ordenar-d1-dados.mjs \
+            ./database/schema.sql \
+            ./d1-homolog-data.sql \
+            ./d1-homolog-data-ordered.sql
+          test -s ./d1-homolog-data-ordered.sql || { echo "::error::Arquivo de dados ordenado ficou vazio."; exit 1; }
 
       - name: Importar dados em producao
         shell: bash
         run: |
           ./node_modules/.bin/wrangler d1 execute "$TARGET_BINDING" --remote \
-            --file=./d1-homolog-data.sql --yes
+            --file=./d1-homolog-data-ordered.sql --yes
 
       - name: Validar copia
         shell: bash
@@ -211,4 +209,4 @@ jobs:
       - name: Apagar arquivos temporarios
         if: always()
         shell: bash
-        run: rm -f d1-homolog-data.sql source-check.json source-fk.json target-tables.json target-table-names.txt target-one-count.json target-fk.json target-after.json
+        run: rm -f d1-homolog-data.sql d1-homolog-data-ordered.sql source-check.json source-fk.json target-tables.json target-table-names.txt target-one-count.json target-fk.json target-after.json
