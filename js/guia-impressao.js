@@ -148,3 +148,15 @@
     });
   };
 })();
+
+(function(){
+  const original=window.initGuiaImpressao;
+  if(typeof original!=='function')return;
+  window.initGuiaImpressao=function(args){
+    original(args);
+    const script=document.createElement('script');
+    script.src='/js/guia-atendimento.js?v=2.27.3';
+    script.onload=()=>window.initGuiaAtendimento?.(args);
+    document.head.appendChild(script);
+  };
+})();
