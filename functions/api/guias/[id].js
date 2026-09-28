@@ -151,7 +151,7 @@ export async function onRequestPatch({ request, env, params }) {
       }, 403);
     }
 
-    if (situacao === 'em_atendimento' && !access.administrador) {
+    if (situacao === 'em_atendimento') {
       const [individual, grupo] = await Promise.all([
         env.DB_REGULACAO.prepare(`
           SELECT 1 ok FROM agenda_individuais
