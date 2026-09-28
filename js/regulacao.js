@@ -78,6 +78,20 @@ async function apiFetch(url, options = {}) {
   const somenteExecutor = !!(access.executor && !access.organizador && !access.administrador);
   if (!podeOrganizar && !somenteExecutor) return;
 
+  if (podeOrganizar) {
+    form.style.display = '';
+    const observer = new MutationObserver(() => {
+      if (form.style.display === 'none') form.style.display = '';
+    });
+    observer.observe(form, { attributes: true, attributeFilter: ['style'] });
+    if (!access.administrador) {
+      situation.innerHTML = `
+        <option value="lista_espera">Em lista de espera</option>
+        <option value="em_atendimento">Em atendimento</option>
+      `;
+    }
+  }
+
   const style = document.createElement('style');
   style.textContent = `
     .guide-organization { margin-top:18px; padding-top:18px; border-top:1px solid #e7eaf0; }
@@ -117,7 +131,7 @@ async function apiFetch(url, options = {}) {
           <div class="field" style="margin-bottom:0"><label for="guideOrgProfessional">Profissional *</label><select id="guideOrgProfessional"><option value="">Carregando profissionais...</option></select></div>
           <div class="field" style="margin-bottom:0"><label for="guideOrgDate">Data *</label><input id="guideOrgDate" type="date"></div>
           <div class="field" style="margin-bottom:0"><label for="guideOrgTime">Horário *</label><input id="guideOrgTime" type="time"></div>
-          <div class="field" style="margin-bottom:0"><label>Unidade executante</label><input id="guideOrgUnit" type="text" readonly></div>
+          <div class="field" style="margin-bottom:0"><label for="guideOrgUnit">Unidade executante</label><input id="guideOrgUnit" type="text" readonly></div>
         </div>
         <div class="guide-organization__hint">O horário informado será conferido automaticamente contra a escala ativa e os demais atendimentos do profissional.</div>
       </div>
@@ -267,12 +281,6 @@ async function apiFetch(url, options = {}) {
     if (situation.value === 'em_atendimento') await prepareOrganization();
   });
 
-  /*
-   * O Organizador não envia um PATCH simples para "Em atendimento".
-   * A ação precisa primeiro criar o atendimento individual ou o vínculo no grupo.
-   * O backend dessas duas operações já valida escala, equipe, unidade, capacidade
-   * e disponibilidade e, em seguida, muda a situação para em_atendimento.
-   */
   form.addEventListener('submit', async (event) => {
     if (!podeOrganizar || situation.value !== 'em_atendimento') return;
     event.preventDefault();
@@ -332,7 +340,6 @@ async function apiFetch(url, options = {}) {
     }
   }, true);
 
-  /* O Executor não precisa iniciar a situação: a organização da agenda já a define. */
   if (somenteExecutor) {
     const option = situation.querySelector('option[value="em_atendimento"]');
     if (option) option.remove();
