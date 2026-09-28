@@ -52,6 +52,12 @@ export async function onRequestPost({ request, env, params }) {
     if (Number(guia.equipe_id) !== equipeId) {
       return json({ error: 'A guia pertence a outra equipe. Transfira-a antes de organizar o atendimento.' }, 409);
     }
+    if (!guia.unidade_executante_code) {
+      return json({ error: 'A guia ainda não possui unidade executante. Defina a unidade antes de organizar o atendimento.' }, 409);
+    }
+    if (String(guia.unidade_executante_code) !== unidadeCode) {
+      return json({ error: 'A unidade selecionada é diferente da unidade executante definida na guia.' }, 409);
+    }
 
     const chk = await canOrganizeAssistentialProfessional(
       env, user, access, equipeId, profissionalId, guia.especialidade_id, unidadeCode
@@ -152,6 +158,12 @@ export async function onRequestPost({ request, env, params }) {
   }
   if (Number(guia.equipe_id) !== Number(grupo.equipe_id)) {
     return json({ error: 'A guia pertence a outra equipe. Transfira-a antes de incluí-la no grupo.' }, 409);
+  }
+  if (!guia.unidade_executante_code) {
+    return json({ error: 'A guia ainda não possui unidade executante. Defina a unidade antes de incluí-la no grupo.' }, 409);
+  }
+  if (String(guia.unidade_executante_code) !== String(grupo.unidade_code)) {
+    return json({ error: 'O grupo está em unidade diferente da unidade executante definida na guia.' }, 409);
   }
 
   const ocupacao = await env.DB_REGULACAO.prepare(`
