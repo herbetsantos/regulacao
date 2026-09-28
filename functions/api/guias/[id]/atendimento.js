@@ -87,20 +87,19 @@ export async function onRequestPost({ request, env, params }) {
       return json({ error: 'Esta guia já possui uma organização assistencial ativa.' }, 409);
     }
 
-    const result = await env.DB_REGULACAO.prepare(`
-      INSERT INTO agenda_individuais (
-        guia_id, profissional_user_id, profissional_id, especialidade_id,
-        equipe_id, unidade_code, data_atendimento, hora_inicio,
-        duracao_minutos, observacao, created_by
-      )
-      VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      id, profissionalId, guia.especialidade_id, equipeId, unidadeCode,
-      dataAtendimento, horaInicio, duracaoMinutos,
-      String(body.observacao || '').trim() || null, user.id
-    ).run();
-
-    await env.DB_REGULACAO.batch([
+    const results = await env.DB_REGULACAO.batch([
+      env.DB_REGULACAO.prepare(`
+        INSERT INTO agenda_individuais (
+          guia_id, profissional_user_id, profissional_id, especialidade_id,
+          equipe_id, unidade_code, data_atendimento, hora_inicio,
+          duracao_minutos, observacao, created_by
+        )
+        VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        id, profissionalId, guia.especialidade_id, equipeId, unidadeCode,
+        dataAtendimento, horaInicio, duracaoMinutos,
+        String(body.observacao || '').trim() || null, user.id
+      ),
       env.DB_REGULACAO.prepare(`
         UPDATE guias
         SET situacao='em_atendimento',
@@ -111,9 +110,10 @@ export async function onRequestPost({ request, env, params }) {
       `).bind(equipeId, unidadeCode, id),
     ]);
 
+    const agendaId = results[0]?.meta?.last_row_id || null;
     await logAudit(env, user, 'create', 'guia_atendimento', id, {
       tipo,
-      agenda_individual_id: result.meta.last_row_id,
+      agenda_individual_id: agendaId,
       profissionalId,
       equipeId,
       unidadeCode,
@@ -125,7 +125,7 @@ export async function onRequestPost({ request, env, params }) {
     return json({
       ok: true,
       tipo,
-      id: result.meta.last_row_id,
+      id: agendaId,
       duracao_minutos: duracaoMinutos,
     }, 201);
   }
